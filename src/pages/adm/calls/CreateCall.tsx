@@ -1,0 +1,819 @@
+import React, { useMemo, useRef, useState } from "react"
+import { Helmet } from "react-helmet"
+import { Link } from "react-router-dom"
+import {
+  ArrowLeft,
+  Upload,
+  FileText,
+  CalendarRange,
+  Save,
+  X,
+  Check,
+  AlertTriangle,
+  Info,
+  Eye,
+  Clock,
+  BookOpen,
+  RotateCcw,
+  GraduationCap,
+  Layers,
+  Users,
+  SlidersHorizontal,
+  ListChecks,
+} from "lucide-react"
+
+type Status = "DRAFT" | "PUBLISHED"
+type YesNo = "SIM" | "NAO"
+
+function yearNow() {
+  return new Date().getFullYear()
+}
+
+// Small reusable Sim/Não radio field, mirroring the legacy SIGAA widget.
+function YesNoField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: YesNo
+  onChange: (v: YesNo) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-neutral-light last:border-b-0">
+      <span className="text-sm text-primary">
+        {label} <span className="text-red-500">*</span>
+      </span>
+
+      <div className="flex items-center gap-4 shrink-0">
+        <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+          <input
+            type="radio"
+            checked={value === "SIM"}
+            onChange={() => onChange("SIM")}
+            className="accent-primary"
+          />
+          Sim
+        </label>
+
+        <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+          <input
+            type="radio"
+            checked={value === "NAO"}
+            onChange={() => onChange("NAO")}
+            className="accent-primary"
+          />
+          Não
+        </label>
+      </div>
+    </div>
+  )
+}
+
+export default function CreateCall() {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // ===== File =====
+  const [file, setFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string>("")
+  const fileName = file?.name ?? ""
+
+  // ===== Dados do Edital (required) =====
+  const [editalYear, setEditalYear] = useState<string>(String(yearNow())) // Ano do Edital *
+  const [code, setCode] = useState("") // Código (não obrigatório)
+  const [descricao, setDescricao] = useState("") // Descrição *
+
+  const [submissionStart, setSubmissionStart] = useState("") // Período de Submissões *
+  const [submissionEnd, setSubmissionEnd] = useState("")
+
+  const [executionStart, setExecutionStart] = useState("") // Período de Execução do Projeto *
+  const [executionEnd, setExecutionEnd] = useState("")
+
+  const [titulacaoMinima, setTitulacaoMinima] = useState("") // Titulação mínima para solicitação de cotas *
+  const [periodoCota, setPeriodoCota] = useState("") // Período de Cota *
+  const [tipoEdital, setTipoEdital] = useState("PESQUISA") // Tipo Edital *
+  const [categoria, setCategoria] = useState("") // Categoria *
+
+  const [limiteProjetosOrientador, setLimiteProjetosOrientador] = useState("0") // *
+  const [limitePlanosOrientador, setLimitePlanosOrientador] = useState("0") // *
+
+  // ===== Regras do Edital (Sim/Não, todos obrigatórios) =====
+  const [editalVoluntarios, setEditalVoluntarios] = useState<YesNo>("NAO")
+  const [avaliacaoVigente, setAvaliacaoVigente] = useState<YesNo>("NAO")
+  const [apenasCoordenadorOrientaPlano, setApenasCoordenadorOrientaPlano] = useState<YesNo>("NAO")
+  const [apenasColaboradorVoluntarioCadastraProjeto, setApenasColaboradorVoluntarioCadastraProjeto] =
+    useState<YesNo>("NAO")
+  const [professorSubstitutoCadastraProjeto, setProfessorSubstitutoCadastraProjeto] = useState<YesNo>("NAO")
+  const [tecnicoAdministrativoPodeCoordenar, setTecnicoAdministrativoPodeCoordenar] = useState<YesNo>("NAO")
+  const [distribuicaoCotasBolsas, setDistribuicaoCotasBolsas] = useState<YesNo>("NAO")
+
+  // ===== Parâmetros da Distribuição de Cotas (obrigatórios, somente se Distribuição = Sim) =====
+  const [tipoBolsa, setTipoBolsa] = useState("")
+  const [quantidadeCotas, setQuantidadeCotas] = useState("0")
+  const [fppiMinimo, setFppiMinimo] = useState("0,00")
+  const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState("0,0")
+
+  // ===== Status =====
+  const [status, setStatus] = useState<Status>("DRAFT")
+
+  // ===== Derived =====
+  const fileSizeMb = useMemo(() => {
+    if (!file) return 0
+    return Math.round((file.size / (1024 * 1024)) * 10) / 10
+  }, [file])
+
+  const submissionDateError = useMemo(() => {
+    if (!submissionStart || !submissionEnd) return ""
+    if (submissionEnd < submissionStart) return "O fim do período de submissões não pode ser anterior ao início."
+    return ""
+  }, [submissionStart, submissionEnd])
+
+  const executionDateError = useMemo(() => {
+    if (!executionStart || !executionEnd) return ""
+    if (executionEnd < executionStart) return "O fim do período de execução não pode ser anterior ao início."
+    return ""
+  }, [executionStart, executionEnd])
+
+  const requiredErrors = useMemo(() => {
+    const errs: string[] = []
+
+    if (!editalYear.trim()) errs.push("Informe o ano do edital.")
+    if (!descricao.trim()) errs.push("Informe a descrição do edital.")
+    if (!submissionStart || !submissionEnd) errs.push("Informe o período de submissões.")
+    if (submissionDateError) errs.push(submissionDateError)
+    if (!executionStart || !executionEnd) errs.push("Informe o período de execução do projeto.")
+    if (executionDateError) errs.push(executionDateError)
+    if (!titulacaoMinima) errs.push("Informe a titulação mínima para solicitação de cotas.")
+    if (!periodoCota) errs.push("Selecione o período de cota.")
+    if (!tipoEdital) errs.push("Selecione o tipo de edital.")
+    if (!categoria) errs.push("Selecione a categoria do edital.")
+    if (!limiteProjetosOrientador.trim()) errs.push("Informe o limite de solicitações de projetos por orientador.")
+    if (!limitePlanosOrientador.trim()) errs.push("Informe o limite de planos de trabalho por orientador.")
+    if (!file) errs.push("Faça upload do PDF do edital.")
+
+    if (distribuicaoCotasBolsas === "SIM") {
+      if (!tipoBolsa) errs.push("Selecione o tipo da bolsa.")
+      if (!quantidadeCotas.trim()) errs.push("Informe a quantidade de cotas.")
+      if (!fppiMinimo.trim()) errs.push("Informe o FPPI mínimo.")
+      if (!mediaMinimaProjetos.trim()) errs.push("Informe a média mínima dos projetos.")
+    }
+
+    return errs
+  }, [
+    editalYear,
+    descricao,
+    submissionStart,
+    submissionEnd,
+    submissionDateError,
+    executionStart,
+    executionEnd,
+    executionDateError,
+    titulacaoMinima,
+    periodoCota,
+    tipoEdital,
+    categoria,
+    limiteProjetosOrientador,
+    limitePlanosOrientador,
+    file,
+    distribuicaoCotasBolsas,
+    tipoBolsa,
+    quantidadeCotas,
+    fppiMinimo,
+    mediaMinimaProjetos,
+  ])
+
+  const canSaveDraft = useMemo(() => !!descricao.trim(), [descricao])
+  const canPublish = requiredErrors.length === 0
+
+  // ===== Handlers =====
+  function onPickFile(f?: File | null) {
+    setFileError("")
+
+    if (!f) {
+      setFile(null)
+      return
+    }
+
+    if (f.type !== "application/pdf") {
+      setFile(null)
+      setFileError("Formato inválido. Envie um arquivo PDF.")
+      return
+    }
+
+    const maxMb = 25
+    const mb = f.size / (1024 * 1024)
+
+    if (mb > maxMb) {
+      setFile(null)
+      setFileError(`Arquivo muito grande (${Math.round(mb)}MB). Limite: ${maxMb}MB.`)
+      return
+    }
+
+    setFile(f)
+  }
+
+  function removeFile() {
+    setFile(null)
+    setFileError("")
+    if (inputRef.current) inputRef.current.value = ""
+  }
+
+  function autoCodeFromDescricao() {
+    const y = editalYear?.trim() || String(yearNow())
+
+    const clean = descricao
+      .trim()
+      .toUpperCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+
+    setCode(`${clean}_${y}`.slice(0, 40))
+  }
+
+  function saveDraft() {
+    setStatus("DRAFT")
+
+    // TODO: integrar com API
+    // payload: {
+    //   editalYear, code, descricao,
+    //   submissionStart, submissionEnd,
+    //   executionStart, executionEnd,
+    //   titulacaoMinima, periodoCota, tipoEdital, categoria,
+    //   limiteProjetosOrientador, limitePlanosOrientador,
+    //   editalVoluntarios, avaliacaoVigente, apenasCoordenadorOrientaPlano,
+    //   apenasColaboradorVoluntarioCadastraProjeto, professorSubstitutoCadastraProjeto,
+    //   tecnicoAdministrativoPodeCoordenar, distribuicaoCotasBolsas,
+    //   tipoBolsa, quantidadeCotas, fppiMinimo, mediaMinimaProjetos,
+    //   status: "DRAFT", file,
+    // }
+
+    alert("Rascunho salvo (placeholder).")
+  }
+
+  function publish() {
+    if (!canPublish) return
+    setStatus("PUBLISHED")
+    // TODO: integrar com API
+    alert("Edital publicado (placeholder).")
+  }
+
+  function resetForm() {
+    setFile(null)
+    setFileError("")
+    if (inputRef.current) inputRef.current.value = ""
+
+    setEditalYear(String(yearNow()))
+    setCode("")
+    setDescricao("")
+    setSubmissionStart("")
+    setSubmissionEnd("")
+    setExecutionStart("")
+    setExecutionEnd("")
+    setTitulacaoMinima("")
+    setPeriodoCota("")
+    setTipoEdital("PESQUISA")
+    setCategoria("")
+    setLimiteProjetosOrientador("0")
+    setLimitePlanosOrientador("0")
+
+    setEditalVoluntarios("NAO")
+    setAvaliacaoVigente("NAO")
+    setApenasCoordenadorOrientaPlano("NAO")
+    setApenasColaboradorVoluntarioCadastraProjeto("NAO")
+    setProfessorSubstitutoCadastraProjeto("NAO")
+    setTecnicoAdministrativoPodeCoordenar("NAO")
+    setDistribuicaoCotasBolsas("NAO")
+
+    setTipoBolsa("")
+    setQuantidadeCotas("0")
+    setFppiMinimo("0,00")
+    setMediaMinimaProjetos("0,0")
+
+    setStatus("DRAFT")
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <Helmet>
+        <title>Criar Edital • PROPESQ</title>
+      </Helmet>
+
+      {/* ===== Header ===== */}
+      <div className="rounded-2xl border border-neutral-light bg-white p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-3">
+
+            <div>
+              <h1 className="text-2xl font-bold text-primary">Criar Edital</h1>
+              <p className="text-sm text-neutral mt-1 max-w-2xl">
+                Registre um novo edital, envie o PDF oficial e informe os campos obrigatórios do
+                cadastro para controle de cotas, vigência, publicação e acompanhamento administrativo.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={resetForm}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-neutral-light text-primary hover:bg-neutral-50 transition-colors"
+            >
+              <RotateCcw size={16} />
+              Limpar
+            </button>
+
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={!canSaveDraft}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white transition-colors
+                ${!canSaveDraft ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-90"}`}
+            >
+              <Save size={16} />
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Progresso / Estado ===== */}
+      <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
+          <div className="flex items-center gap-2">
+            <Clock size={18} />
+            <h2 className="text-sm font-semibold text-primary">Status do registro</h2>
+          </div>
+
+          <span
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border
+              ${
+                status === "PUBLISHED"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-neutral-50 text-neutral border-neutral-light"
+              }`}
+          >
+            {status === "PUBLISHED" ? <Check size={14} /> : <Info size={14} />}
+            {status === "PUBLISHED" ? "Publicado" : "Rascunho"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+            <p className="text-xs text-neutral">PDF</p>
+            <p className="text-sm font-semibold text-primary">{file ? "OK" : "Pendente"}</p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+            <p className="text-xs text-neutral">Descrição</p>
+            <p className="text-sm font-semibold text-primary">{descricao.trim() ? "OK" : "Pendente"}</p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+            <p className="text-xs text-neutral">Ano do Edital</p>
+            <p className="text-sm font-semibold text-primary">{editalYear.trim() ? "OK" : "Pendente"}</p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+            <p className="text-xs text-neutral">Períodos</p>
+            <p className="text-sm font-semibold text-primary">
+              {submissionStart && submissionEnd && executionStart && executionEnd && !submissionDateError && !executionDateError
+                ? "OK"
+                : "Pendente"}
+            </p>
+          </div>
+        </div>
+
+      </section>
+
+      <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-6">
+        {/* ===== Upload PDF ===== */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Upload size={18} />
+            <h2 className="text-sm font-semibold text-primary">PDF do Edital</h2>
+          </div>
+
+          <div className="rounded-lg border border-dashed border-neutral-light p-6">
+            <label className="block text-sm text-neutral cursor-pointer">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+              />
+
+              <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-neutral-light/60">
+                    <FileText size={18} />
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-primary">
+                      {file ? "PDF selecionado" : "Clique para selecionar o PDF"}
+                    </p>
+
+                    <p className="text-xs text-neutral mt-1">
+                      {file ? `${fileName} • ${fileSizeMb}MB` : "Somente PDF • limite sugerido: 25MB"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {file && (
+                    <>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50"
+                        onClick={() => alert("Preview (placeholder). Aqui você pode abrir o PDF em um viewer.")}
+                      >
+                        <Eye size={16} />
+                        Visualizar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50"
+                        onClick={removeFile}
+                      >
+                        <X size={16} />
+                        Remover
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {fileError && <p className="text-sm text-red-600">{fileError}</p>}
+        </div>
+
+        {/* ===== Dados do Edital ===== */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Layers size={18} />
+            <h2 className="text-sm font-semibold text-primary">Dados do Edital</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Ano do Edital <span className="text-red-500">*</span>
+              </span>
+              <input
+                value={editalYear}
+                onChange={(e) => setEditalYear(e.target.value)}
+                inputMode="numeric"
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Ex.: 2026"
+              />
+            </label>
+
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">Código</span>
+              <div className="flex gap-2">
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Ex.: EDITAL_PIBIC_2026"
+                />
+                <button
+                  type="button"
+                  onClick={autoCodeFromDescricao}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50 whitespace-nowrap"
+                >
+                  Gerar
+                </button>
+              </div>
+              <p className="text-[11px] text-neutral mt-1">Campo não obrigatório. Pode ficar em branco.</p>
+            </label>
+
+            <label className="text-sm md:col-span-2">
+              <span className="block text-xs text-neutral mb-1">
+                Descrição <span className="text-red-500">*</span>
+              </span>
+              <input
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Ex.: PIBIC 2026"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* ===== Períodos ===== */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarRange size={18} />
+            <h2 className="text-sm font-semibold text-primary">Períodos</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <span className="block text-xs text-neutral mb-1">
+                Período de Submissões <span className="text-red-500">*</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={submissionStart}
+                  onChange={(e) => setSubmissionStart(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <span className="text-xs text-neutral">a</span>
+                <input
+                  type="date"
+                  value={submissionEnd}
+                  onChange={(e) => setSubmissionEnd(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              {submissionDateError && <p className="text-xs text-red-600 mt-1">{submissionDateError}</p>}
+            </div>
+
+            <div>
+              <span className="block text-xs text-neutral mb-1">
+                Período de Execução do Projeto <span className="text-red-500">*</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={executionStart}
+                  onChange={(e) => setExecutionStart(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <span className="text-xs text-neutral">a</span>
+                <input
+                  type="date"
+                  value={executionEnd}
+                  onChange={(e) => setExecutionEnd(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              {executionDateError && <p className="text-xs text-red-600 mt-1">{executionDateError}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Classificação e Cotas ===== */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={18} />
+            <h2 className="text-sm font-semibold text-primary">Classificação e Cotas</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Titulação mínima para a solicitação de cotas <span className="text-red-500">*</span>
+              </span>
+              <select
+                value={titulacaoMinima}
+                onChange={(e) => setTitulacaoMinima(e.target.value)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- SELECIONE --</option>
+                <option value="GRADUACAO">Graduação</option>
+                <option value="ESPECIALIZACAO">Especialização</option>
+                <option value="MESTRADO">Mestrado</option>
+                <option value="DOUTORADO">Doutorado</option>
+              </select>
+            </label>
+
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Período de Cota <span className="text-red-500">*</span>
+              </span>
+              <select
+                value={periodoCota}
+                onChange={(e) => setPeriodoCota(e.target.value)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- SELECIONE --</option>
+                {/* TODO: popular via API com as cotas de bolsa já cadastradas */}
+                <option value="2026-2027_PIBIC_EM_CNPQ">2026-2027 PIBIC-EM-CNPq</option>
+              </select>
+            </label>
+
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Tipo Edital <span className="text-red-500">*</span>
+              </span>
+              <select
+                value={tipoEdital}
+                onChange={(e) => setTipoEdital(e.target.value)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="PESQUISA">Pesquisa</option>
+                <option value="EXTENSAO">Extensão</option>
+                <option value="ENSINO">Ensino</option>
+                <option value="POS_GRADUACAO">Pós-graduação</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </label>
+
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Categoria <span className="text-red-500">*</span>
+              </span>
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- SELECIONE --</option>
+                <option value="PIBIC">PIBIC</option>
+                <option value="PIVIC">PIVIC</option>
+                <option value="PIBIC_EM">PIBIC-EM</option>
+                <option value="PIBITI">PIBITI</option>
+                <option value="OUTRA">Outra</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {/* ===== Limites por orientador ===== */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Users size={18} />
+            <h2 className="text-sm font-semibold text-primary">Limites por Orientador</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Limite de solicitações de projetos por orientador <span className="text-red-500">*</span>
+              </span>
+              <input
+                value={limiteProjetosOrientador}
+                onChange={(e) => setLimiteProjetosOrientador(e.target.value)}
+                inputMode="numeric"
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+
+            <label className="text-sm">
+              <span className="block text-xs text-neutral mb-1">
+                Limite de Planos de trabalho por orientador <span className="text-red-500">*</span>
+              </span>
+              <input
+                value={limitePlanosOrientador}
+                onChange={(e) => setLimitePlanosOrientador(e.target.value)}
+                inputMode="numeric"
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* ===== Regras do Edital ===== */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 mb-2">
+            <ListChecks size={18} />
+            <h2 className="text-sm font-semibold text-primary">Regras do Edital</h2>
+          </div>
+
+          <div className="rounded-xl border border-neutral-light px-4">
+            <YesNoField label="Edital para Voluntários?" value={editalVoluntarios} onChange={setEditalVoluntarios} />
+            <YesNoField label="Avaliação Vigente?" value={avaliacaoVigente} onChange={setAvaliacaoVigente} />
+            <YesNoField
+              label="Apenas Coordenador Orienta Plano"
+              value={apenasCoordenadorOrientaPlano}
+              onChange={setApenasCoordenadorOrientaPlano}
+            />
+            <YesNoField
+              label="Apenas Colaborador Voluntário Cadastra Projeto"
+              value={apenasColaboradorVoluntarioCadastraProjeto}
+              onChange={setApenasColaboradorVoluntarioCadastraProjeto}
+            />
+            <YesNoField
+              label="Professor Substituto Cadastra Projeto"
+              value={professorSubstitutoCadastraProjeto}
+              onChange={setProfessorSubstitutoCadastraProjeto}
+            />
+            <YesNoField
+              label="Técnico-Administrativo Pode Coordenar Projeto?"
+              value={tecnicoAdministrativoPodeCoordenar}
+              onChange={setTecnicoAdministrativoPodeCoordenar}
+            />
+            <YesNoField
+              label="Distribuição de Cotas de Bolsas?"
+              value={distribuicaoCotasBolsas}
+              onChange={setDistribuicaoCotasBolsas}
+            />
+          </div>
+        </div>
+
+        {/* ===== Parâmetros da Distribuição de Cotas (condicional) ===== */}
+        {distribuicaoCotasBolsas === "SIM" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal size={18} />
+              <h2 className="text-sm font-semibold text-primary">Parâmetros da Distribuição de Cotas</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Tipo da bolsa <span className="text-red-500">*</span>
+                </span>
+                <select
+                  value={tipoBolsa}
+                  onChange={(e) => setTipoBolsa(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">-- SELECIONE --</option>
+                  <option value="PIBIC">PIBIC</option>
+                  <option value="PIVIC">PIVIC</option>
+                  <option value="PIBIC_EM">PIBIC-EM</option>
+                  <option value="PIVIC_EM">PIVIC-EM</option>
+                  <option value="PIBIC_BALCAO">PIBIC-Balcão</option>
+                </select>
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Quantidade <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={quantidadeCotas}
+                  onChange={(e) => setQuantidadeCotas(e.target.value)}
+                  inputMode="numeric"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  FPPI Mínimo <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={fppiMinimo}
+                  onChange={(e) => setFppiMinimo(e.target.value)}
+                  inputMode="decimal"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Média Mínima dos Projetos <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={mediaMinimaProjetos}
+                  onChange={(e) => setMediaMinimaProjetos(e.target.value)}
+                  inputMode="decimal"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Actions ===== */}
+        <div className="flex items-center justify-between gap-3 flex-col md:flex-row">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50 w-full md:w-auto"
+          >
+            Limpar
+          </button>
+
+          <div className="flex gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={!canSaveDraft}
+              className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white w-full md:w-auto
+                ${!canSaveDraft ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-90"}`}
+            >
+              <Save size={16} />
+              Salvar rascunho
+            </button>
+
+            <button
+              type="button"
+              onClick={publish}
+              disabled={!canPublish}
+              className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border w-full md:w-auto
+                ${
+                  !canPublish
+                    ? "border-neutral-light text-neutral/40 bg-neutral-50 cursor-not-allowed"
+                    : "border-green-200 bg-green-50 text-green-700 hover:opacity-95"
+                }`}
+            >
+              <Check size={16} />
+              Publicar
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
