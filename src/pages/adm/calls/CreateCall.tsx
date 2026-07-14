@@ -1,19 +1,16 @@
-import React, { useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link } from "react-router-dom"
 import {
-  ArrowLeft,
   Upload,
   FileText,
   CalendarRange,
   Save,
   X,
   Check,
-  AlertTriangle,
   Info,
   Eye,
   Clock,
-  BookOpen,
   RotateCcw,
   GraduationCap,
   Layers,
@@ -21,6 +18,11 @@ import {
   SlidersHorizontal,
   ListChecks,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import {
+  scholarshipSettingsService,
+  type ScholarshipLookup,
+} from "@/features/settings/api/scholarshipSettingsService"
 
 type Status = "DRAFT" | "PUBLISHED"
 type YesNo = "SIM" | "NAO"
@@ -29,16 +31,14 @@ function yearNow() {
   return new Date().getFullYear()
 }
 
-// Small reusable Sim/Não radio field, mirroring the legacy SIGAA widget.
-function YesNoField({
-  label,
-  value,
-  onChange,
-}: {
+type YesNoFieldProps = Readonly<{
   label: string
   value: YesNo
   onChange: (v: YesNo) => void
-}) {
+}>
+
+// Small reusable Sim/Não radio field, mirroring the legacy SIGAA widget.
+function YesNoField({ label, value, onChange }: YesNoFieldProps) {
   return (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-neutral-light last:border-b-0">
       <span className="text-sm text-primary">
@@ -113,8 +113,35 @@ export default function CreateCall() {
   const [fppiMinimo, setFppiMinimo] = useState("0,00")
   const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState("0,0")
 
+  const [bolsaOptions, setBolsaOptions] = useState<ScholarshipLookup[]>([])
+  const [bolsaLoading, setBolsaLoading] = useState(true)
+  const [bolsaError, setBolsaError] = useState<string | null>(null)
+
   // ===== Status =====
   const [status, setStatus] = useState<Status>("DRAFT")
+
+  const loadBolsaOptions = useCallback(async () => {
+    setBolsaLoading(true)
+    setBolsaError(null)
+
+    try {
+      const rows = await scholarshipSettingsService.lookup()
+      setBolsaOptions(rows)
+    } catch (err) {
+      setBolsaOptions([])
+      setBolsaError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar os tipos de bolsa.",
+      )
+    } finally {
+      setBolsaLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadBolsaOptions()
+  }, [loadBolsaOptions])
 
   // ===== Derived =====
   const fileSizeMb = useMemo(() => {
@@ -725,15 +752,46 @@ export default function CreateCall() {
                 <select
                   value={tipoBolsa}
                   onChange={(e) => setTipoBolsa(e.target.value)}
-                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                  disabled={bolsaLoading || Boolean(bolsaError)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
                 >
-                  <option value="">-- SELECIONE --</option>
-                  <option value="PIBIC">PIBIC</option>
-                  <option value="PIVIC">PIVIC</option>
-                  <option value="PIBIC_EM">PIBIC-EM</option>
-                  <option value="PIVIC_EM">PIVIC-EM</option>
-                  <option value="PIBIC_BALCAO">PIBIC-Balcão</option>
+                  <option value="">
+                    {bolsaLoading ? "Carregando..." : "-- SELECIONE --"}
+                  </option>
+                  {!bolsaLoading && !bolsaError && bolsaOptions.length === 0 && (
+                    <option value="" disabled>
+                      Cadastre um tipo de bolsa nas configurações
+                    </option>
+                  )}
+                  {bolsaOptions.map((opt) => (
+                    <option key={opt.id} value={String(opt.id)}>
+                      {opt.descricao}
+                    </option>
+                  ))}
                 </select>
+                {bolsaError && (
+                  <p className="mt-1 text-xs text-red-600 flex items-center gap-2 flex-wrap">
+                    <span>{bolsaError}</span>
+                    <button
+                      type="button"
+                      onClick={() => void loadBolsaOptions()}
+                      className="underline font-semibold"
+                    >
+                      Tentar novamente
+                    </button>
+                  </p>
+                )}
+                {!bolsaLoading && !bolsaError && bolsaOptions.length === 0 && (
+                  <p className="mt-1 text-xs text-neutral">
+                    Nenhum tipo cadastrado.{" "}
+                    <Link
+                      to="/adm/settings/scholarships"
+                      className="text-primary font-semibold underline"
+                    >
+                      Ir para Entidades & Tipos de Bolsa
+                    </Link>
+                  </p>
+                )}
               </label>
 
               <label className="text-sm">

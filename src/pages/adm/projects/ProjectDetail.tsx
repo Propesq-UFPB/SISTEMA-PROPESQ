@@ -138,7 +138,7 @@ function asArrayKeywords(v?: string[] | string) {
 
 /* ================= UI ================= */
 
-function Pill({ children }: { children: React.ReactNode }) {
+function Pill({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <span className="inline-flex items-center rounded-full bg-neutral-light px-3 py-1 text-xs font-semibold text-neutral">
       {children}
@@ -151,12 +151,12 @@ function Section({
   icon,
   children,
   right,
-}: {
+}: Readonly<{
   title: string
   icon?: React.ReactNode
   children: React.ReactNode
   right?: React.ReactNode
-}) {
+}>) {
   return (
     <section className="rounded-2xl border border-neutral-light bg-white shadow-card">
       <div className="flex items-center justify-between gap-4 border-b border-neutral-light px-6 py-4">
@@ -171,7 +171,7 @@ function Section({
   )
 }
 
-function KV({ k, v }: { k: string; v: React.ReactNode }) {
+function KV({ k, v }: Readonly<{ k: string; v: React.ReactNode }>) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-bold uppercase tracking-wide text-neutral/70">
@@ -185,10 +185,10 @@ function KV({ k, v }: { k: string; v: React.ReactNode }) {
 function Tabs({
   active,
   onChange,
-}: {
+}: Readonly<{
   active: TabKey
   onChange: (t: TabKey) => void
-}) {
+}>) {
   const items: Array<{ k: TabKey; label: string; icon: React.ReactNode }> = [
     { k: "OVERVIEW", label: "Visão Geral", icon: <Info size={16} /> },
     { k: "CADASTRO", label: "Cadastro", icon: <BookOpen size={16} /> },
@@ -322,6 +322,20 @@ export default function ProjectDetail() {
 
   const [tab, setTab] = useState<TabKey>("OVERVIEW")
 
+  const members = useMemo(
+    () => (project ? buildMockMembers(project) : []),
+    [project]
+  )
+  const docs = useMemo(
+    () => (project ? buildMockDocs(project) : []),
+    [project]
+  )
+  const decisions = useMemo(() => buildMockDecisions(), [])
+  const audit = useMemo(
+    () => (project ? buildMockAudit(project) : []),
+    [project]
+  )
+
   if (!project) {
     return (
       <div className="min-h-screen bg-white">
@@ -348,11 +362,6 @@ export default function ProjectDetail() {
       </div>
     )
   }
-
-  const members = useMemo(() => buildMockMembers(project), [project])
-  const docs = useMemo(() => buildMockDocs(project), [project])
-  const decisions = useMemo(() => buildMockDecisions(), [])
-  const audit = useMemo(() => buildMockAudit(project), [project])
 
   const odsList = project.ods || [
     { id: 4, label: "Educação de Qualidade" },
