@@ -341,13 +341,12 @@ export default function NewsCreate() {
 
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
                   {form.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={form.coverUrl}
                       alt="Prévia da capa"
                       className="w-full h-40 object-cover"
                       onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).style.display = "none"
+                        e.currentTarget.style.display = "none"
                       }}
                     />
                   ) : (

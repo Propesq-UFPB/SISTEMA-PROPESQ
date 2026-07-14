@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import {
   ShieldCheck,
@@ -13,6 +13,9 @@ import {
   Info,
   Search,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import { fundingAgencyService } from "@/features/settings/api/fundingAgencyService"
+import { scholarshipSettingsService } from "@/features/settings/api/scholarshipSettingsService"
 
 type Org = {
   id: string
@@ -25,10 +28,6 @@ type ScholarshipType = {
   value?: number | null
   payerOrgId: string
   allowStacking: boolean
-}
-
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
 }
 
 function formatBRL(value?: number | null) {
@@ -44,32 +43,34 @@ function formatBRL(value?: number | null) {
   }
 }
 
+function mapAgencyToOrg(agency: { id: number; nome: string }): Org {
+  return { id: String(agency.id), name: agency.nome }
+}
+
+function mapScholarshipToType(row: {
+  id: number
+  descricao: string
+  valor: number | null
+  orgao_id: number | null
+  permite_acumulo: boolean
+}): ScholarshipType {
+  return {
+    id: String(row.id),
+    name: row.descricao,
+    value: row.valor,
+    payerOrgId: row.orgao_id != null ? String(row.orgao_id) : "",
+    allowStacking: row.permite_acumulo,
+  }
+}
+
 export default function ScholarshipEntities() {
-  // ===== Mock inicial (troque por dados da API depois) =====
-  const [orgs, setOrgs] = useState<Org[]>([
-    { id: "cnpq", name: "CNPq" },
-    { id: "ufpb", name: "UFPB" },
-    { id: "fapesq", name: "FAPESQ" },
-  ])
+  const [orgs, setOrgs] = useState<Org[]>([])
+  const [types, setTypes] = useState<ScholarshipType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const [types, setTypes] = useState<ScholarshipType[]>([
-    {
-      id: "bolsa_1",
-      name: "PIBIC",
-      value: 700,
-      payerOrgId: "cnpq",
-      allowStacking: false,
-    },
-    {
-      id: "bolsa_2",
-      name: "Monitoria",
-      value: null,
-      payerOrgId: "ufpb",
-      allowStacking: true,
-    },
-  ])
-
-  // ===== UI state =====
   const [orgQuery, setOrgQuery] = useState("")
   const [typeQuery, setTypeQuery] = useState("")
 
@@ -84,6 +85,31 @@ export default function ScholarshipEntities() {
   const [typeValue, setTypeValue] = useState<string>("")
   const [typePayerOrgId, setTypePayerOrgId] = useState<string>("")
   const [typeAllowStacking, setTypeAllowStacking] = useState(false)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const [agencies, scholarships] = await Promise.all([
+        fundingAgencyService.list(200, 0),
+        scholarshipSettingsService.list(200, 0),
+      ])
+
+      setOrgs(agencies.results.map(mapAgencyToOrg))
+      setTypes(scholarships.results.map(mapScholarshipToType))
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Não foi possível carregar órgãos e bolsas."
+      setLoadError(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const orgsFiltered = useMemo(() => {
     const q = orgQuery.trim().toLowerCase()
@@ -117,14 +143,15 @@ export default function ScholarshipEntities() {
     return types.filter((t) => t.allowStacking).length
   }, [types])
 
-  // ===== Helpers: abrir/fechar modais =====
   function openCreateOrg() {
+    setActionError(null)
     setOrgEditingId(null)
     setOrgName("")
     setOrgModalOpen(true)
   }
 
   function openEditOrg(o: Org) {
+    setActionError(null)
     setOrgEditingId(o.id)
     setOrgName(o.name)
     setOrgModalOpen(true)
@@ -137,6 +164,7 @@ export default function ScholarshipEntities() {
   }
 
   function openCreateType() {
+    setActionError(null)
     setTypeEditingId(null)
     setTypeName("")
     setTypeValueEnabled(false)
@@ -147,6 +175,7 @@ export default function ScholarshipEntities() {
   }
 
   function openEditType(t: ScholarshipType) {
+    setActionError(null)
     setTypeEditingId(t.id)
     setTypeName(t.name)
     setTypeValueEnabled(t.value !== null && t.value !== undefined)
@@ -166,48 +195,68 @@ export default function ScholarshipEntities() {
     setTypeAllowStacking(false)
   }
 
-  // ===== CRUD Órgãos =====
-  function saveOrg() {
+  async function saveOrg() {
     const name = orgName.trim()
 
-    if (!name) return
+    if (!name || saving) return
 
     const exists = orgs.some(
-      (o) => o.name.trim().toLowerCase() === name.toLowerCase() && o.id !== orgEditingId
+      (o) => o.name.trim().toLowerCase() === name.toLowerCase() && o.id !== orgEditingId,
     )
 
     if (exists) return
 
-    if (orgEditingId) {
-      setOrgs((prev) => prev.map((o) => (o.id === orgEditingId ? { ...o, name } : o)))
-    } else {
-      const newId = uid("org")
+    setSaving(true)
+    setActionError(null)
 
-      setOrgs((prev) => [...prev, { id: newId, name }])
+    try {
+      if (orgEditingId) {
+        const updated = await fundingAgencyService.update(Number(orgEditingId), { nome: name })
+        setOrgs((prev) =>
+          prev.map((o) => (o.id === orgEditingId ? mapAgencyToOrg(updated) : o)),
+        )
+      } else {
+        const created = await fundingAgencyService.create({ nome: name })
+        const mapped = mapAgencyToOrg(created)
+        setOrgs((prev) => [...prev, mapped])
 
-      if (!typePayerOrgId) setTypePayerOrgId(newId)
+        if (!typePayerOrgId) setTypePayerOrgId(mapped.id)
+      }
+
+      closeOrgModal()
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : "Não foi possível salvar o órgão.",
+      )
+    } finally {
+      setSaving(false)
     }
-
-    // TODO: chamar API aqui
-    closeOrgModal()
   }
 
-  function deleteOrg(id: string) {
+  async function deleteOrg(id: string) {
     const inUse = types.some((t) => t.payerOrgId === id)
 
-    if (inUse) return
+    if (inUse || saving) return
 
-    setOrgs((prev) => prev.filter((o) => o.id !== id))
+    setSaving(true)
+    setActionError(null)
 
-    // TODO: chamar API aqui
+    try {
+      await fundingAgencyService.remove(Number(id))
+      setOrgs((prev) => prev.filter((o) => o.id !== id))
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : "Não foi possível excluir o órgão.",
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // ===== CRUD Tipos de Bolsa =====
-  function saveType() {
+  async function saveType() {
     const name = typeName.trim()
 
-    if (!name) return
-    if (!typePayerOrgId) return
+    if (!name || !typePayerOrgId || saving) return
 
     let parsedValue: number | null = null
 
@@ -230,56 +279,73 @@ export default function ScholarshipEntities() {
     }
 
     const exists = types.some(
-      (t) => t.name.trim().toLowerCase() === name.toLowerCase() && t.id !== typeEditingId
+      (t) => t.name.trim().toLowerCase() === name.toLowerCase() && t.id !== typeEditingId,
     )
 
     if (exists) return
 
-    if (typeEditingId) {
-      setTypes((prev) =>
-        prev.map((t) =>
-          t.id === typeEditingId
-            ? {
-                ...t,
-                name,
-                value: parsedValue,
-                payerOrgId: typePayerOrgId,
-                allowStacking: typeAllowStacking,
-              }
-            : t
-        )
-      )
-    } else {
-      setTypes((prev) => [
-        ...prev,
-        {
-          id: uid("bolsa"),
-          name,
-          value: parsedValue,
-          payerOrgId: typePayerOrgId,
-          allowStacking: typeAllowStacking,
-        },
-      ])
-    }
+    setSaving(true)
+    setActionError(null)
 
-    // TODO: chamar API aqui
-    closeTypeModal()
+    try {
+      if (typeEditingId) {
+        const updated = await scholarshipSettingsService.update(Number(typeEditingId), {
+          descricao: name,
+          orgao_id: Number(typePayerOrgId),
+          valor: parsedValue,
+          permite_acumulo: typeAllowStacking,
+        })
+        setTypes((prev) =>
+          prev.map((t) => (t.id === typeEditingId ? mapScholarshipToType(updated) : t)),
+        )
+      } else {
+        const created = await scholarshipSettingsService.createFromSettings({
+          descricao: name,
+          orgao_id: Number(typePayerOrgId),
+          valor: parsedValue,
+          permite_acumulo: typeAllowStacking,
+        })
+        setTypes((prev) => [...prev, mapScholarshipToType(created)])
+      }
+
+      closeTypeModal()
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : "Não foi possível salvar o tipo de bolsa.",
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function deleteType(id: string) {
-    setTypes((prev) => prev.filter((t) => t.id !== id))
+  async function deleteType(id: string) {
+    if (saving) return
 
-    // TODO: chamar API aqui
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      await scholarshipSettingsService.remove(Number(id))
+      setTypes((prev) => prev.filter((t) => t.id !== id))
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : "Não foi possível excluir o tipo de bolsa.",
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   const orgNameError =
     orgName.trim().length > 0 &&
-    orgs.some((o) => o.name.trim().toLowerCase() === orgName.trim().toLowerCase() && o.id !== orgEditingId)
+    orgs.some(
+      (o) => o.name.trim().toLowerCase() === orgName.trim().toLowerCase() && o.id !== orgEditingId,
+    )
 
   const typeNameError =
     typeName.trim().length > 0 &&
     types.some(
-      (t) => t.name.trim().toLowerCase() === typeName.trim().toLowerCase() && t.id !== typeEditingId
+      (t) => t.name.trim().toLowerCase() === typeName.trim().toLowerCase() && t.id !== typeEditingId,
     )
 
   const orgIdToName = useMemo(() => {
@@ -315,7 +381,8 @@ export default function ScholarshipEntities() {
             <button
               type="button"
               onClick={openCreateOrg}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-neutral-light text-primary hover:bg-neutral-50 transition-colors"
+              disabled={loading || saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-neutral-light text-primary hover:bg-neutral-50 transition-colors disabled:opacity-50"
             >
               <Plus size={16} />
               Novo órgão
@@ -324,7 +391,8 @@ export default function ScholarshipEntities() {
             <button
               type="button"
               onClick={openCreateType}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
+              disabled={loading || saving || orgs.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors disabled:opacity-50"
             >
               <Plus size={16} />
               Novo tipo
@@ -332,6 +400,31 @@ export default function ScholarshipEntities() {
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            className="text-xs font-semibold underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+
+      {loading && (
+        <div className="rounded-xl border border-neutral-light bg-white px-4 py-6 text-sm text-neutral">
+          Carregando órgãos e tipos de bolsa...
+        </div>
+      )}
 
       {/* ===== Resumo ===== */}
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
@@ -471,8 +564,8 @@ export default function ScholarshipEntities() {
 
                           <button
                             type="button"
-                            onClick={() => deleteOrg(o.id)}
-                            disabled={inUse}
+                            onClick={() => void deleteOrg(o.id)}
+                            disabled={inUse || saving}
                             title={inUse ? "Não é possível excluir: órgão está em uso." : "Excluir"}
                             className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold
                               ${
@@ -600,8 +693,9 @@ export default function ScholarshipEntities() {
 
                           <button
                             type="button"
-                            onClick={() => deleteType(t.id)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold"
+                            onClick={() => void deleteType(t.id)}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold disabled:opacity-50"
                           >
                             <Trash2 size={16} />
                             Excluir
@@ -669,8 +763,8 @@ export default function ScholarshipEntities() {
 
               <button
                 type="button"
-                onClick={saveOrg}
-                disabled={!orgName.trim() || orgNameError}
+                onClick={() => void saveOrg()}
+                disabled={!orgName.trim() || orgNameError || saving}
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
                     !orgName.trim() || orgNameError
@@ -830,8 +924,8 @@ export default function ScholarshipEntities() {
 
               <button
                 type="button"
-                onClick={saveType}
-                disabled={!typeName.trim() || typeNameError || !typePayerOrgId || orgs.length === 0}
+                onClick={() => void saveType()}
+                disabled={!typeName.trim() || typeNameError || !typePayerOrgId || orgs.length === 0 || saving}
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
                     !typeName.trim() || typeNameError || !typePayerOrgId || orgs.length === 0

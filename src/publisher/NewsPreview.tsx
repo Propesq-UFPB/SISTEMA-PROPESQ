@@ -266,7 +266,6 @@ export default function NewsPreview() {
         <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <div className="bg-slate-100">
             {item.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={item.coverUrl} alt={item.title} className="w-full h-[320px] object-cover" />
             ) : (
               <div className="w-full h-[320px] flex items-center justify-center text-slate-500">

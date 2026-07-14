@@ -1,10 +1,10 @@
 // não to usando
 
-import { ArrowLeft, Download, ExternalLink, FileText, Info } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function DownloadWorkModel() {
-  const sigaaLink = "src\public\XXXIII-ENIC-NORMAS.pdf";
+  const sigaaLink = "/XXXIII-ENIC-NORMAS.pdf";
 
   return (
     <div className="min-h-screen bg-neutral-light">
