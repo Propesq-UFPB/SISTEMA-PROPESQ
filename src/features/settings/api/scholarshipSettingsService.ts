@@ -22,6 +22,11 @@ type Paginated<T> = {
   results: T[]
 }
 
+export type ScholarshipLookup = {
+  id: number
+  descricao: string
+}
+
 export type CreateScholarshipFromSettingsPayload = {
   descricao: string
   orgao_id: number
@@ -43,6 +48,9 @@ export const scholarshipSettingsService = {
     return apiRequest<Paginated<Scholarship>>(
       `${ENDPOINT}${buildQuery({ limit, offset })}`,
     )
+  },
+  lookup() {
+    return apiRequest<ScholarshipLookup[]>(`${ENDPOINT}/lookup`)
   },
   createFromSettings(payload: CreateScholarshipFromSettingsPayload) {
     return apiRequest<Scholarship>(`${ENDPOINT}/from-settings`, {
