@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link } from "react-router-dom"
 import {
@@ -17,6 +17,19 @@ import {
   Settings,
   Info,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import {
+  academicUnitService,
+  type AcademicUnit,
+} from "@/features/settings/api/academicUnitService"
+import {
+  departmentService,
+  type Department as ApiDepartment,
+} from "@/features/settings/api/departmentService"
+import {
+  editalService,
+  type EditalListItem,
+} from "@/features/settings/api/editalService"
 
 type Department = {
   id: string
@@ -37,84 +50,113 @@ type Notice = {
   enabledCenterIds: string[]
 }
 
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
-}
-
 function normalize(s: string) {
   return s.trim().toLowerCase()
 }
 
+function mapUnitToCenter(unit: AcademicUnit, departments: Department[] = []): UniversityCenter {
+  return {
+    id: String(unit.id),
+    code: unit.sigla,
+    name: unit.nome,
+    departments,
+  }
+}
+
+function mapDept(row: ApiDepartment): Department {
+  return {
+    id: String(row.id),
+    code: row.sigla,
+    name: row.nome,
+  }
+}
+
+function mapEditalToNotice(edital: EditalListItem): Notice {
+  return {
+    id: String(edital.id),
+    title: edital.descricao,
+    enabledCenterIds: (edital.unidade_ids ?? []).map(String),
+  }
+}
+
+function errorMessage(err: unknown, fallback: string) {
+  if (err instanceof ApiError) {
+    const msg = err.message
+    if (Array.isArray(msg)) return msg.join(", ")
+    return msg || fallback
+  }
+  return fallback
+}
+
 export default function AcademicUnits() {
-  // ===== Mock (trocar por API depois) =====
-  const [centers, setCenters] = useState<UniversityCenter[]>([
-    {
-      id: "cchla",
-      code: "CCHLA",
-      name: "Centro de Ciências Humanas, Letras e Artes",
-      departments: [
-        { id: "dep_hist", code: "HIST", name: "Departamento de História" },
-        { id: "dep_letras", code: "LETR", name: "Departamento de Letras" },
-      ],
-    },
-    {
-      id: "ci",
-      code: "CI",
-      name: "Centro de Informática",
-      departments: [
-        { id: "dep_cc", code: "DCC", name: "Departamento de Ciência da Computação" },
-        { id: "dep_si", code: "DSI", name: "Departamento de Sistemas de Informação" },
-      ],
-    },
-    {
-      id: "ct",
-      code: "CT",
-      name: "Centro de Tecnologia",
-      departments: [
-        { id: "dep_civil", code: "DEC", name: "Departamento de Engenharia Civil" },
-        { id: "dep_eletrica", code: "DEE", name: "Departamento de Engenharia Elétrica" },
-      ],
-    },
-  ])
+  const [centers, setCenters] = useState<UniversityCenter[]>([])
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const [notices, setNotices] = useState<Notice[]>([
-    {
-      id: "ed_2026_01",
-      title: "Edital PROPESQ 01/2026",
-      enabledCenterIds: ["cchla", "ci"],
-    },
-    {
-      id: "ed_2026_02",
-      title: "Edital Inovação 02/2026",
-      enabledCenterIds: ["ci", "ct"],
-    },
-  ])
-
-  // ===== UI State =====
   const [query, setQuery] = useState("")
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ cchla: true })
-
-  const [selectedNoticeId, setSelectedNoticeId] = useState(notices[0]?.id ?? "")
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [selectedNoticeId, setSelectedNoticeId] = useState("")
 
   const selectedNotice = useMemo(
     () => notices.find((n) => n.id === selectedNoticeId) ?? null,
-    [notices, selectedNoticeId]
+    [notices, selectedNoticeId],
   )
 
-  const [importModalOpen, setImportModalOpen] = useState(false)
-
-  // Centro modal
   const [centerModalOpen, setCenterModalOpen] = useState(false)
   const [centerEditingId, setCenterEditingId] = useState<string | null>(null)
   const [centerCode, setCenterCode] = useState("")
   const [centerName, setCenterName] = useState("")
 
-  // Departamento modal
   const [deptModalOpen, setDeptModalOpen] = useState(false)
-  const [deptCenterId, setDeptCenterId] = useState<string>("")
+  const [deptCenterId, setDeptCenterId] = useState("")
   const [deptEditingId, setDeptEditingId] = useState<string | null>(null)
   const [deptCode, setDeptCode] = useState("")
   const [deptName, setDeptName] = useState("")
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const [unitsPage, editaisPage] = await Promise.all([
+        academicUnitService.list(200, 0),
+        editalService.list(200, 0),
+      ])
+
+      const units = unitsPage.results
+      const deptLists = await Promise.all(
+        units.map((unit) => departmentService.list(unit.id).catch(() => [] as ApiDepartment[])),
+      )
+
+      const nextCenters = units.map((unit, index) =>
+        mapUnitToCenter(unit, deptLists[index].map(mapDept)),
+      )
+      const nextNotices = editaisPage.results.map(mapEditalToNotice)
+
+      setCenters(nextCenters)
+      setNotices(nextNotices)
+      setSelectedNoticeId((prev) => {
+        if (prev && nextNotices.some((n) => n.id === prev)) return prev
+        return nextNotices[0]?.id ?? ""
+      })
+      setExpanded((prev) => {
+        if (Object.keys(prev).length > 0) return prev
+        const first = nextCenters[0]?.id
+        return first ? { [first]: true } : {}
+      })
+    } catch (err) {
+      setLoadError(errorMessage(err, "Não foi possível carregar unidades acadêmicas."))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const q = normalize(query)
 
@@ -124,27 +166,27 @@ export default function AcademicUnits() {
     return centers
       .map((c) => {
         const centerMatch = normalize(c.code).includes(q) || normalize(c.name).includes(q)
-
         const deps = c.departments.filter(
-          (d) => normalize(d.name).includes(q) || normalize(d.code).includes(q)
+          (d) => normalize(d.name).includes(q) || normalize(d.code).includes(q),
         )
 
         if (centerMatch) return c
         if (deps.length > 0) return { ...c, departments: deps }
-
         return null
       })
       .filter(Boolean) as UniversityCenter[]
   }, [centers, q])
 
-  const enabledSet = useMemo(() => new Set(selectedNotice?.enabledCenterIds ?? []), [selectedNotice])
+  const enabledSet = useMemo(
+    () => new Set(selectedNotice?.enabledCenterIds ?? []),
+    [selectedNotice],
+  )
   const enabledCountInNotice = selectedNotice?.enabledCenterIds.length ?? 0
 
   const totalDepartments = useMemo(() => {
     return centers.reduce((acc, center) => acc + center.departments.length, 0)
   }, [centers])
 
-  // ===== Validations =====
   const centerCodeNorm = normalize(centerCode)
   const centerNameNorm = normalize(centerName)
 
@@ -158,74 +200,74 @@ export default function AcademicUnits() {
 
   const deptCodeError = useMemo(() => {
     if (!deptModalOpen || !deptCenterId) return false
-
     const code = deptCode.trim().toUpperCase()
-
     if (!code) return false
-
     const c = centers.find((x) => x.id === deptCenterId)
-
     if (!c) return false
-
     return c.departments.some((d) => d.code.toUpperCase() === code && d.id !== deptEditingId)
   }, [deptModalOpen, deptCenterId, deptCode, deptEditingId, centers])
 
   const deptNameError = useMemo(() => {
     if (!deptModalOpen || !deptCenterId) return false
-
     const name = deptName.trim()
-
     if (!name) return false
-
     const c = centers.find((x) => x.id === deptCenterId)
-
     if (!c) return false
-
-    return c.departments.some((d) => normalize(d.name) === normalize(name) && d.id !== deptEditingId)
+    return c.departments.some(
+      (d) => normalize(d.name) === normalize(name) && d.id !== deptEditingId,
+    )
   }, [deptModalOpen, deptCenterId, deptName, deptEditingId, centers])
 
-  // ===== UI helpers =====
   function toggleExpand(centerId: string) {
     setExpanded((prev) => ({ ...prev, [centerId]: !prev[centerId] }))
   }
 
-  // ===== Edital: habilitar/desabilitar centros universitários =====
-  function toggleCenterInNotice(centerId: string) {
-    if (!selectedNotice) return
+  async function persistNoticeUnits(noticeId: string, enabledCenterIds: string[]) {
+    setSaving(true)
+    setActionError(null)
 
-    setNotices((prev) =>
-      prev.map((n) => {
-        if (n.id !== selectedNotice.id) return n
+    try {
+      await editalService.setAcademicUnits(
+        Number(noticeId),
+        enabledCenterIds.map(Number),
+      )
+      setNotices((prev) =>
+        prev.map((n) => (n.id === noticeId ? { ...n, enabledCenterIds } : n)),
+      )
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível atualizar a habilitação do edital."))
+      await loadData()
+    } finally {
+      setSaving(false)
+    }
+  }
 
-        const has = n.enabledCenterIds.includes(centerId)
+  async function toggleCenterInNotice(centerId: string) {
+    if (!selectedNotice || saving) return
 
-        const next = has
-          ? n.enabledCenterIds.filter((id) => id !== centerId)
-          : [...n.enabledCenterIds, centerId]
+    const has = selectedNotice.enabledCenterIds.includes(centerId)
+    const next = has
+      ? selectedNotice.enabledCenterIds.filter((id) => id !== centerId)
+      : [...selectedNotice.enabledCenterIds, centerId]
 
-        return { ...n, enabledCenterIds: next }
-      })
+    await persistNoticeUnits(selectedNotice.id, next)
+  }
+
+  async function enableAllInNotice() {
+    if (!selectedNotice || saving) return
+    await persistNoticeUnits(
+      selectedNotice.id,
+      centers.map((c) => c.id),
     )
-
-    // TODO: API update edital -> centros habilitados
   }
 
-  function enableAllInNotice() {
-    if (!selectedNotice) return
-
-    const all = centers.map((c) => c.id)
-
-    setNotices((prev) => prev.map((n) => (n.id === selectedNotice.id ? { ...n, enabledCenterIds: all } : n)))
+  async function disableAllInNotice() {
+    if (!selectedNotice || saving) return
+    await persistNoticeUnits(selectedNotice.id, [])
   }
 
-  function disableAllInNotice() {
-    if (!selectedNotice) return
-
-    setNotices((prev) => prev.map((n) => (n.id === selectedNotice.id ? { ...n, enabledCenterIds: [] } : n)))
-  }
-
-  // ===== CRUD Centros =====
   function openCreateCenter() {
+    setActionError(null)
     setCenterEditingId(null)
     setCenterCode("")
     setCenterName("")
@@ -233,6 +275,7 @@ export default function AcademicUnits() {
   }
 
   function openEditCenter(c: UniversityCenter) {
+    setActionError(null)
     setCenterEditingId(c.id)
     setCenterCode(c.code)
     setCenterName(c.name)
@@ -246,41 +289,68 @@ export default function AcademicUnits() {
     setCenterName("")
   }
 
-  function saveCenter() {
+  async function saveCenter() {
     const code = centerCode.trim().toUpperCase()
     const name = centerName.trim()
 
-    if (!code || !name) return
+    if (!code || !name || saving) return
     if (centerCodeError || centerNameError) return
 
-    if (centerEditingId) {
-      setCenters((prev) => prev.map((c) => (c.id === centerEditingId ? { ...c, code, name } : c)))
-    } else {
-      const id = uid("center")
+    setSaving(true)
+    setActionError(null)
 
-      setCenters((prev) => [...prev, { id, code, name, departments: [] }])
-      setExpanded((prev) => ({ ...prev, [id]: true }))
+    try {
+      if (centerEditingId) {
+        const updated = await academicUnitService.update(Number(centerEditingId), {
+          sigla: code,
+          nome: name,
+        })
+        setCenters((prev) =>
+          prev.map((c) =>
+            c.id === centerEditingId
+              ? { ...c, code: updated.sigla, name: updated.nome }
+              : c,
+          ),
+        )
+      } else {
+        const created = await academicUnitService.create({ sigla: code, nome: name })
+        const mapped = mapUnitToCenter(created, [])
+        setCenters((prev) => [...prev, mapped])
+        setExpanded((prev) => ({ ...prev, [mapped.id]: true }))
+      }
+      closeCenterModal()
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível salvar o centro."))
+    } finally {
+      setSaving(false)
     }
-
-    // TODO: API save center
-    closeCenterModal()
   }
 
-  function deleteCenter(centerId: string) {
-    setCenters((prev) => prev.filter((c) => c.id !== centerId))
+  async function deleteCenter(centerId: string) {
+    if (saving) return
+    if (!window.confirm("Excluir este centro universitário?")) return
 
-    setNotices((prev) =>
-      prev.map((n) => ({
-        ...n,
-        enabledCenterIds: n.enabledCenterIds.filter((id) => id !== centerId),
-      }))
-    )
+    setSaving(true)
+    setActionError(null)
 
-    // TODO: API delete center
+    try {
+      await academicUnitService.remove(Number(centerId))
+      setCenters((prev) => prev.filter((c) => c.id !== centerId))
+      setNotices((prev) =>
+        prev.map((n) => ({
+          ...n,
+          enabledCenterIds: n.enabledCenterIds.filter((id) => id !== centerId),
+        })),
+      )
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível excluir o centro."))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // ===== CRUD Departamentos =====
   function openCreateDept(centerId: string) {
+    setActionError(null)
     setDeptCenterId(centerId)
     setDeptEditingId(null)
     setDeptCode("")
@@ -289,6 +359,7 @@ export default function AcademicUnits() {
   }
 
   function openEditDept(centerId: string, d: Department) {
+    setActionError(null)
     setDeptCenterId(centerId)
     setDeptEditingId(d.id)
     setDeptCode(d.code)
@@ -304,44 +375,79 @@ export default function AcademicUnits() {
     setDeptName("")
   }
 
-  function saveDept() {
+  async function saveDept() {
     const code = deptCode.trim().toUpperCase()
     const name = deptName.trim()
 
-    if (!deptCenterId) return
-    if (!code || !name) return
+    if (!deptCenterId || !code || !name || saving) return
     if (deptCodeError || deptNameError) return
 
-    setCenters((prev) =>
-      prev.map((c) => {
-        if (c.id !== deptCenterId) return c
+    setSaving(true)
+    setActionError(null)
 
-        if (deptEditingId) {
-          return {
-            ...c,
-            departments: c.departments.map((d) => (d.id === deptEditingId ? { ...d, code, name } : d)),
-          }
-        }
+    try {
+      const unitId = Number(deptCenterId)
 
-        return {
-          ...c,
-          departments: [...c.departments, { id: uid("dep"), code, name }],
-        }
-      })
-    )
+      if (deptEditingId) {
+        const updated = await departmentService.update(unitId, Number(deptEditingId), {
+          sigla: code,
+          nome: name,
+        })
+        const mapped = mapDept(updated)
+        setCenters((prev) =>
+          prev.map((c) =>
+            c.id !== deptCenterId
+              ? c
+              : {
+                  ...c,
+                  departments: c.departments.map((d) =>
+                    d.id === deptEditingId ? mapped : d,
+                  ),
+                },
+          ),
+        )
+      } else {
+        const created = await departmentService.create(unitId, { sigla: code, nome: name })
+        const mapped = mapDept(created)
+        setCenters((prev) =>
+          prev.map((c) =>
+            c.id !== deptCenterId
+              ? c
+              : { ...c, departments: [...c.departments, mapped] },
+          ),
+        )
+        setExpanded((prev) => ({ ...prev, [deptCenterId]: true }))
+      }
 
-    // TODO: API save dept
-    closeDeptModal()
+      closeDeptModal()
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível salvar o departamento."))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function deleteDept(centerId: string, deptId: string) {
-    setCenters((prev) =>
-      prev.map((c) =>
-        c.id === centerId ? { ...c, departments: c.departments.filter((d) => d.id !== deptId) } : c
-      )
-    )
+  async function deleteDept(centerId: string, deptId: string) {
+    if (saving) return
+    if (!window.confirm("Excluir este departamento?")) return
 
-    // TODO: API delete dept
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      await departmentService.remove(Number(centerId), Number(deptId))
+      setCenters((prev) =>
+        prev.map((c) =>
+          c.id === centerId
+            ? { ...c, departments: c.departments.filter((d) => d.id !== deptId) }
+            : c,
+        ),
+      )
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível excluir o departamento."))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -358,7 +464,6 @@ export default function AcademicUnits() {
         Voltar para bolsas
       </Link>
 
-      {/* ===== Header no mesmo estilo das outras páginas ===== */}
       <div className="rounded-2xl border border-neutral-light bg-white p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-3">
@@ -369,10 +474,9 @@ export default function AcademicUnits() {
 
             <div>
               <h1 className="text-2xl font-bold text-primary">Centros Universitários por Edital</h1>
-
               <p className="text-sm text-neutral mt-1 max-w-2xl">
-                Cadastre ou importe a estrutura institucional da UFPB e defina, por edital,
-                quais centros universitários podem participar.
+                Cadastre a estrutura institucional da UFPB e defina, por edital, quais centros
+                universitários podem participar.
               </p>
             </div>
           </div>
@@ -386,7 +490,8 @@ export default function AcademicUnits() {
             <button
               type="button"
               onClick={openCreateCenter}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
+              disabled={loading || saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors disabled:opacity-50"
             >
               <Plus size={16} />
               Novo centro
@@ -395,7 +500,21 @@ export default function AcademicUnits() {
         </div>
       </div>
 
-      {/* ===== Resumo ===== */}
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}{" "}
+          <button type="button" className="underline font-semibold" onClick={() => void loadData()}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
         <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
           <div className="space-y-1">
@@ -403,7 +522,6 @@ export default function AcademicUnits() {
               <Building2 size={18} />
               <h2 className="text-sm font-semibold text-primary">Estrutura UFPB</h2>
             </div>
-
             <p className="text-sm text-neutral">
               Estrutura institucional organizada em centros universitários e departamentos.
             </p>
@@ -411,8 +529,9 @@ export default function AcademicUnits() {
 
           <button
             type="button"
-            onClick={() => setImportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-primary hover:opacity-95"
+            disabled
+            title="Importação em massa fora do escopo atual"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-primary/40 cursor-not-allowed"
           >
             <Upload size={16} />
             Importar
@@ -422,30 +541,27 @@ export default function AcademicUnits() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Centros</p>
-            <p className="text-lg font-bold text-primary">{centers.length}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : centers.length}</p>
           </div>
-
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Departamentos</p>
-            <p className="text-lg font-bold text-primary">{totalDepartments}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : totalDepartments}</p>
           </div>
-
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Habilitados no edital</p>
-            <p className="text-lg font-bold text-primary">{enabledCountInNotice}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : enabledCountInNotice}</p>
           </div>
         </div>
 
         <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4 flex gap-2">
           <Info size={16} className="mt-0.5 text-neutral" />
-
           <p className="text-xs text-neutral">
-            A habilitação é feita por centro universitário. Os departamentos herdam o status do centro no edital selecionado.
+            A habilitação é feita por centro universitário. Os departamentos herdam o status do
+            centro no edital selecionado.
           </p>
         </div>
       </section>
 
-      {/* ===== Habilitação por Edital ===== */}
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -457,29 +573,34 @@ export default function AcademicUnits() {
             <select
               value={selectedNoticeId}
               onChange={(e) => setSelectedNoticeId(e.target.value)}
-              className="rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              disabled={loading || notices.length === 0}
+              className="rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
             >
-              {notices.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.title}
-                </option>
-              ))}
+              {notices.length === 0 ? (
+                <option value="">Nenhum edital disponível</option>
+              ) : (
+                notices.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.title}
+                  </option>
+                ))
+              )}
             </select>
 
             <button
               type="button"
-              onClick={enableAllInNotice}
-              className="px-3 py-2 rounded-lg text-sm font-semibold border border-green-200 bg-green-50 text-green-700 hover:opacity-95"
-              disabled={!selectedNotice || centers.length === 0}
+              onClick={() => void enableAllInNotice()}
+              className="px-3 py-2 rounded-lg text-sm font-semibold border border-green-200 bg-green-50 text-green-700 hover:opacity-95 disabled:opacity-50"
+              disabled={!selectedNotice || centers.length === 0 || saving}
             >
               Habilitar todos
             </button>
 
             <button
               type="button"
-              onClick={disableAllInNotice}
-              className="px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50"
-              disabled={!selectedNotice || centers.length === 0}
+              onClick={() => void disableAllInNotice()}
+              className="px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50 disabled:opacity-50"
+              disabled={!selectedNotice || centers.length === 0 || saving}
             >
               Desabilitar todos
             </button>
@@ -489,10 +610,9 @@ export default function AcademicUnits() {
         <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
           <p className="text-sm text-neutral">
             Neste edital:{" "}
-            <span className="font-semibold text-primary">{enabledCountInNotice}</span>{" "}
-            centro(s) habilitado(s).
+            <span className="font-semibold text-primary">{enabledCountInNotice}</span> centro(s)
+            habilitado(s).
           </p>
-
           <p className="text-xs text-neutral mt-1">
             Departamentos não são habilitados individualmente aqui; eles herdam o status do centro.
           </p>
@@ -506,9 +626,14 @@ export default function AcademicUnits() {
                 <th className="text-left font-semibold px-4 py-3 w-[220px]">No edital</th>
               </tr>
             </thead>
-
             <tbody>
-              {centers.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={2} className="px-4 py-4 text-neutral">
+                    Carregando…
+                  </td>
+                </tr>
+              ) : centers.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="px-4 py-4 text-neutral">
                     Nenhum centro cadastrado.
@@ -524,18 +649,18 @@ export default function AcademicUnits() {
                         <p className="font-semibold text-primary">
                           {c.code} — {c.name}
                         </p>
-
-                        <p className="text-xs text-neutral">{c.departments.length} departamento(s)</p>
+                        <p className="text-xs text-neutral">
+                          {c.departments.length} departamento(s)
+                        </p>
                       </td>
-
                       <td className="px-4 py-3">
                         <button
                           type="button"
-                          onClick={() => toggleCenterInNotice(c.id)}
-                          disabled={!selectedNotice}
+                          onClick={() => void toggleCenterInNotice(c.id)}
+                          disabled={!selectedNotice || saving}
                           className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border
                             ${
-                              !selectedNotice
+                              !selectedNotice || saving
                                 ? "border-neutral-light text-neutral/40 bg-neutral-50 cursor-not-allowed"
                                 : enabled
                                   ? "border-primary/30 bg-primary/10 text-primary hover:opacity-95"
@@ -555,7 +680,6 @@ export default function AcademicUnits() {
         </div>
       </section>
 
-      {/* ===== Cadastro/Consulta da árvore ===== */}
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -566,7 +690,6 @@ export default function AcademicUnits() {
           <div className="w-full max-w-md">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral" />
-
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -574,7 +697,6 @@ export default function AcademicUnits() {
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-light text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-
             <p className="mt-1 text-[11px] text-neutral">
               Busca por sigla/nome do centro e por código/nome do departamento.
             </p>
@@ -589,9 +711,14 @@ export default function AcademicUnits() {
                 <th className="text-right font-semibold px-4 py-3 w-[360px]">Ações</th>
               </tr>
             </thead>
-
             <tbody>
-              {filteredCenters.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={2} className="px-4 py-4 text-neutral">
+                    Carregando…
+                  </td>
+                </tr>
+              ) : filteredCenters.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="px-4 py-4 text-neutral">
                     Nenhum resultado.
@@ -620,10 +747,13 @@ export default function AcademicUnits() {
                               <p className="font-semibold text-primary truncate">
                                 {c.code} — {c.name}
                               </p>
-
                               <p className="text-xs text-neutral">
                                 {c.departments.length} departamento(s) • No edital selecionado:{" "}
-                                <span className={enabled ? "text-primary font-semibold" : "text-neutral"}>
+                                <span
+                                  className={
+                                    enabled ? "text-primary font-semibold" : "text-neutral"
+                                  }
+                                >
                                   {enabled ? "Sim" : "Não"}
                                 </span>
                               </p>
@@ -636,7 +766,8 @@ export default function AcademicUnits() {
                             <button
                               type="button"
                               onClick={() => openCreateDept(c.id)}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold"
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold disabled:opacity-50"
                             >
                               <Plus size={16} />
                               Novo dep.
@@ -645,7 +776,8 @@ export default function AcademicUnits() {
                             <button
                               type="button"
                               onClick={() => openEditCenter(c)}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold"
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold disabled:opacity-50"
                             >
                               <Pencil size={16} />
                               Editar
@@ -653,8 +785,9 @@ export default function AcademicUnits() {
 
                             <button
                               type="button"
-                              onClick={() => deleteCenter(c.id)}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold"
+                              onClick={() => void deleteCenter(c.id)}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
                             >
                               <Trash2 size={16} />
                               Excluir
@@ -667,7 +800,9 @@ export default function AcademicUnits() {
                         <tr className="border-t border-neutral-light bg-white">
                           <td colSpan={2} className="px-4 py-3">
                             {c.departments.length === 0 ? (
-                              <div className="text-sm text-neutral">Nenhum departamento cadastrado.</div>
+                              <div className="text-sm text-neutral">
+                                Nenhum departamento cadastrado.
+                              </div>
                             ) : (
                               <div className="space-y-2">
                                 {c.departments.map((d) => (
@@ -679,7 +814,6 @@ export default function AcademicUnits() {
                                       <p className="text-sm font-semibold text-primary truncate">
                                         {d.code} — {d.name}
                                       </p>
-
                                       <p className="text-xs text-neutral">Departamento</p>
                                     </div>
 
@@ -687,7 +821,8 @@ export default function AcademicUnits() {
                                       <button
                                         type="button"
                                         onClick={() => openEditDept(c.id, d)}
-                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold"
+                                        disabled={saving}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold disabled:opacity-50"
                                       >
                                         <Pencil size={16} />
                                         Editar
@@ -695,8 +830,9 @@ export default function AcademicUnits() {
 
                                       <button
                                         type="button"
-                                        onClick={() => deleteDept(c.id, d.id)}
-                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold"
+                                        onClick={() => void deleteDept(c.id, d.id)}
+                                        disabled={saving}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
                                       >
                                         <Trash2 size={16} />
                                         Excluir
@@ -718,72 +854,6 @@ export default function AcademicUnits() {
         </div>
       </section>
 
-      {/* ================= MODAIS ================= */}
-
-      {/* Import */}
-      {importModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setImportModalOpen(false)} />
-
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white border border-neutral-light shadow-lg p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-primary">Importar estrutura UFPB</h3>
-
-                <p className="text-xs text-neutral mt-1">
-                  CSV/JSON com campos:{" "}
-                  <span className="font-semibold">centerCode</span>,{" "}
-                  <span className="font-semibold">centerName</span>,{" "}
-                  <span className="font-semibold">departmentCode</span>,{" "}
-                  <span className="font-semibold">departmentName</span>.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setImportModalOpen(false)}
-                className="p-2 rounded-lg border border-neutral-light hover:bg-neutral-50"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
-                <p className="text-xs font-semibold text-primary">Exemplo CSV</p>
-
-                <pre className="mt-2 text-[11px] text-neutral overflow-auto">{`centerCode,centerName,departmentCode,departmentName
-CCHLA,Centro de Ciências Humanas, Letras e Artes,HIST,Departamento de História
-CI,Centro de Informática,DCC,Departamento de Ciência da Computação
-CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
-              </div>
-
-              <div className="rounded-xl border border-dashed border-neutral-light p-4">
-                <p className="text-sm font-semibold text-primary">Upload</p>
-
-                <p className="text-xs text-neutral mt-1">
-                  Placeholder: conecte aqui seu componente de upload e parse.
-                </p>
-
-                <button
-                  type="button"
-                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-primary hover:opacity-95"
-                  onClick={() => setImportModalOpen(false)}
-                >
-                  <Upload size={16} />
-                  Selecionar arquivo
-                </button>
-              </div>
-
-              <p className="text-[11px] text-neutral">
-                TODO: mesclar por código do centro e por código do departamento para evitar duplicatas.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Center modal */}
       {centerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeCenterModal} />
@@ -794,7 +864,6 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
                 <h3 className="text-sm font-bold text-primary">
                   {centerEditingId ? "Editar centro universitário" : "Novo centro universitário"}
                 </h3>
-
                 <p className="text-xs text-neutral mt-1">Ex.: CCHLA, CI, CT...</p>
               </div>
 
@@ -810,27 +879,23 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-1 space-y-2">
                 <label className="text-xs text-neutral">Sigla</label>
-
                 <input
                   value={centerCode}
                   onChange={(e) => setCenterCode(e.target.value.toUpperCase())}
                   placeholder="CI"
                   className="w-full rounded-lg border border-neutral-light px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
-
                 {centerCodeError && <p className="text-xs text-red-600">Sigla já cadastrada.</p>}
               </div>
 
               <div className="md:col-span-2 space-y-2">
                 <label className="text-xs text-neutral">Nome do centro</label>
-
                 <input
                   value={centerName}
                   onChange={(e) => setCenterName(e.target.value)}
                   placeholder="Centro de Informática"
                   className="w-full rounded-lg border border-neutral-light px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
-
                 {centerNameError && <p className="text-xs text-red-600">Nome já cadastrado.</p>}
               </div>
             </div>
@@ -846,24 +911,33 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
 
               <button
                 type="button"
-                onClick={saveCenter}
-                disabled={!centerCode.trim() || !centerName.trim() || centerCodeError || centerNameError}
+                onClick={() => void saveCenter()}
+                disabled={
+                  saving ||
+                  !centerCode.trim() ||
+                  !centerName.trim() ||
+                  centerCodeError ||
+                  centerNameError
+                }
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
-                    !centerCode.trim() || !centerName.trim() || centerCodeError || centerNameError
+                    saving ||
+                    !centerCode.trim() ||
+                    !centerName.trim() ||
+                    centerCodeError ||
+                    centerNameError
                       ? "bg-primary/40 cursor-not-allowed"
                       : "bg-primary hover:opacity-95"
                   }`}
               >
                 <Check size={16} />
-                Salvar
+                {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Dept modal */}
       {deptModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeDeptModal} />
@@ -874,7 +948,6 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
                 <h3 className="text-sm font-bold text-primary">
                   {deptEditingId ? "Editar departamento" : "Novo departamento"}
                 </h3>
-
                 <p className="text-xs text-neutral mt-1">
                   Centro:{" "}
                   <span className="font-semibold">
@@ -896,28 +969,28 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-1 space-y-2">
                 <label className="text-xs text-neutral">Código</label>
-
                 <input
                   value={deptCode}
                   onChange={(e) => setDeptCode(e.target.value.toUpperCase())}
                   placeholder="DCC"
                   className="w-full rounded-lg border border-neutral-light px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
-
-                {deptCodeError && <p className="text-xs text-red-600">Código já existe neste centro.</p>}
+                {deptCodeError && (
+                  <p className="text-xs text-red-600">Código já existe neste centro.</p>
+                )}
               </div>
 
               <div className="md:col-span-2 space-y-2">
                 <label className="text-xs text-neutral">Nome do departamento</label>
-
                 <input
                   value={deptName}
                   onChange={(e) => setDeptName(e.target.value)}
                   placeholder="Ex.: Departamento de Ciência da Computação"
                   className="w-full rounded-lg border border-neutral-light px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
-
-                {deptNameError && <p className="text-xs text-red-600">Departamento já existe neste centro.</p>}
+                {deptNameError && (
+                  <p className="text-xs text-red-600">Departamento já existe neste centro.</p>
+                )}
               </div>
             </div>
 
@@ -932,17 +1005,27 @@ CT,Centro de Tecnologia,DEE,Departamento de Engenharia Elétrica`}</pre>
 
               <button
                 type="button"
-                onClick={saveDept}
-                disabled={!deptCode.trim() || !deptName.trim() || deptCodeError || deptNameError}
+                onClick={() => void saveDept()}
+                disabled={
+                  saving ||
+                  !deptCode.trim() ||
+                  !deptName.trim() ||
+                  deptCodeError ||
+                  deptNameError
+                }
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
-                    !deptCode.trim() || !deptName.trim() || deptCodeError || deptNameError
+                    saving ||
+                    !deptCode.trim() ||
+                    !deptName.trim() ||
+                    deptCodeError ||
+                    deptNameError
                       ? "bg-primary/40 cursor-not-allowed"
                       : "bg-primary hover:opacity-95"
                   }`}
               >
                 <Check size={16} />
-                Salvar
+                {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
