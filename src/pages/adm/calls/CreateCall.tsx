@@ -63,6 +63,12 @@ function parseDecimal(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function toIsoDateTime(value: string) {
+  if (!value) return value;
+  if (value.includes("T")) return value;
+  return `${value}T00:00:00.000Z`;
+}
+
 function apiErrorMessage(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback;
 }
@@ -384,12 +390,12 @@ export default function CreateCall() {
             ]
           : [],
       periodo_submissao: {
-        inicio: submissionStart,
-        fim: submissionEnd,
+        inicio: toIsoDateTime(submissionStart),
+        fim: toIsoDateTime(submissionEnd),
       },
       periodo_execucao: {
-        inicio: executionStart,
-        fim: executionEnd,
+        inicio: toIsoDateTime(executionStart),
+        fim: toIsoDateTime(executionEnd),
       },
     };
   }
