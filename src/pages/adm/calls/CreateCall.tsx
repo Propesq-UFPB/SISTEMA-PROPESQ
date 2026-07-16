@@ -1,6 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Helmet } from "react-helmet"
-import { Link } from "react-router-dom"
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
 import {
   Upload,
   FileText,
@@ -17,25 +23,55 @@ import {
   Users,
   SlidersHorizontal,
   ListChecks,
-} from "lucide-react"
-import { ApiError } from "@/services/apiClient"
+} from "lucide-react";
+import { ApiError } from "@/services/apiClient";
 import {
   scholarshipSettingsService,
   type ScholarshipLookup,
-} from "@/features/settings/api/scholarshipSettingsService"
+} from "@/features/settings/api/scholarshipSettingsService";
+import {
+  editalService,
+  type CotaBolsaLookup,
+  type CreateEditalPayload,
+  type EditalTypeLookup,
+  type TipoEdital,
+  type TitulacaoMin,
+} from "@/features/editais";
+import {
+  categorySettingsService,
+  type CategoryLookup,
+} from "@/features/settings/api/categorySettingsService";
 
-type Status = "DRAFT" | "PUBLISHED"
-type YesNo = "SIM" | "NAO"
+type Status = "DRAFT" | "PUBLISHED";
+type YesNo = "SIM" | "NAO";
 
 function yearNow() {
-  return new Date().getFullYear()
+  return new Date().getFullYear();
+}
+
+function yesNoToBool(value: YesNo) {
+  return value === "SIM";
+}
+
+function parseInteger(value: string) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseDecimal(value: string) {
+  const parsed = Number(value.trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function apiErrorMessage(err: unknown, fallback: string) {
+  return err instanceof ApiError ? err.message : fallback;
 }
 
 type YesNoFieldProps = Readonly<{
-  label: string
-  value: YesNo
-  onChange: (v: YesNo) => void
-}>
+  label: string;
+  value: YesNo;
+  onChange: (v: YesNo) => void;
+}>;
 
 // Small reusable Sim/Não radio field, mirroring the legacy SIGAA widget.
 function YesNoField({ label, value, onChange }: YesNoFieldProps) {
@@ -67,125 +103,231 @@ function YesNoField({ label, value, onChange }: YesNoFieldProps) {
         </label>
       </div>
     </div>
-  )
+  );
 }
 
 export default function CreateCall() {
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // ===== File =====
-  const [file, setFile] = useState<File | null>(null)
-  const [fileError, setFileError] = useState<string>("")
-  const fileName = file?.name ?? ""
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string>("");
+  const fileName = file?.name ?? "";
 
   // ===== Dados do Edital (required) =====
-  const [editalYear, setEditalYear] = useState<string>(String(yearNow())) // Ano do Edital *
-  const [code, setCode] = useState("") // Código (não obrigatório)
-  const [descricao, setDescricao] = useState("") // Descrição *
+  const [editalYear, setEditalYear] = useState<string>(String(yearNow())); // Ano do Edital *
+  const [code, setCode] = useState(""); // Código (não obrigatório)
+  const [descricao, setDescricao] = useState(""); // Descrição *
 
-  const [submissionStart, setSubmissionStart] = useState("") // Período de Submissões *
-  const [submissionEnd, setSubmissionEnd] = useState("")
+  const [submissionStart, setSubmissionStart] = useState(""); // Período de Submissões *
+  const [submissionEnd, setSubmissionEnd] = useState("");
 
-  const [executionStart, setExecutionStart] = useState("") // Período de Execução do Projeto *
-  const [executionEnd, setExecutionEnd] = useState("")
+  const [executionStart, setExecutionStart] = useState(""); // Período de Execução do Projeto *
+  const [executionEnd, setExecutionEnd] = useState("");
 
-  const [titulacaoMinima, setTitulacaoMinima] = useState("") // Titulação mínima para solicitação de cotas *
-  const [periodoCota, setPeriodoCota] = useState("") // Período de Cota *
-  const [tipoEdital, setTipoEdital] = useState("PESQUISA") // Tipo Edital *
-  const [categoria, setCategoria] = useState("") // Categoria *
+  const [titulacaoMinima, setTitulacaoMinima] = useState(""); // Titulação mínima para solicitação de cotas *
+  const [periodoCota, setPeriodoCota] = useState(""); // Período de Cota *
+  const [tipoEdital, setTipoEdital] = useState("PESQUISA"); // Tipo Edital *
+  const [categoria, setCategoria] = useState(""); // Categoria *
 
-  const [limiteProjetosOrientador, setLimiteProjetosOrientador] = useState("0") // *
-  const [limitePlanosOrientador, setLimitePlanosOrientador] = useState("0") // *
+  const [limiteProjetosOrientador, setLimiteProjetosOrientador] = useState("0"); // *
+  const [limitePlanosOrientador, setLimitePlanosOrientador] = useState("0"); // *
 
   // ===== Regras do Edital (Sim/Não, todos obrigatórios) =====
-  const [editalVoluntarios, setEditalVoluntarios] = useState<YesNo>("NAO")
-  const [avaliacaoVigente, setAvaliacaoVigente] = useState<YesNo>("NAO")
-  const [apenasCoordenadorOrientaPlano, setApenasCoordenadorOrientaPlano] = useState<YesNo>("NAO")
-  const [apenasColaboradorVoluntarioCadastraProjeto, setApenasColaboradorVoluntarioCadastraProjeto] =
-    useState<YesNo>("NAO")
-  const [professorSubstitutoCadastraProjeto, setProfessorSubstitutoCadastraProjeto] = useState<YesNo>("NAO")
-  const [tecnicoAdministrativoPodeCoordenar, setTecnicoAdministrativoPodeCoordenar] = useState<YesNo>("NAO")
-  const [distribuicaoCotasBolsas, setDistribuicaoCotasBolsas] = useState<YesNo>("NAO")
+  const [editalVoluntarios, setEditalVoluntarios] = useState<YesNo>("NAO");
+  const [avaliacaoVigente, setAvaliacaoVigente] = useState<YesNo>("NAO");
+  const [apenasCoordenadorOrientaPlano, setApenasCoordenadorOrientaPlano] =
+    useState<YesNo>("NAO");
+  const [
+    apenasColaboradorVoluntarioCadastraProjeto,
+    setApenasColaboradorVoluntarioCadastraProjeto,
+  ] = useState<YesNo>("NAO");
+  const [
+    professorSubstitutoCadastraProjeto,
+    setProfessorSubstitutoCadastraProjeto,
+  ] = useState<YesNo>("NAO");
+  const [
+    tecnicoAdministrativoPodeCoordenar,
+    setTecnicoAdministrativoPodeCoordenar,
+  ] = useState<YesNo>("NAO");
+  const [distribuicaoCotasBolsas, setDistribuicaoCotasBolsas] =
+    useState<YesNo>("NAO");
 
   // ===== Parâmetros da Distribuição de Cotas (obrigatórios, somente se Distribuição = Sim) =====
-  const [tipoBolsa, setTipoBolsa] = useState("")
-  const [quantidadeCotas, setQuantidadeCotas] = useState("0")
-  const [fppiMinimo, setFppiMinimo] = useState("0,00")
-  const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState("0,0")
+  const [tipoBolsa, setTipoBolsa] = useState("");
+  const [quantidadeCotas, setQuantidadeCotas] = useState("0");
+  const [fppiMinimo, setFppiMinimo] = useState("0,00");
+  const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState("0,0");
 
-  const [bolsaOptions, setBolsaOptions] = useState<ScholarshipLookup[]>([])
-  const [bolsaLoading, setBolsaLoading] = useState(true)
-  const [bolsaError, setBolsaError] = useState<string | null>(null)
+  const [bolsaOptions, setBolsaOptions] = useState<ScholarshipLookup[]>([]);
+  const [bolsaLoading, setBolsaLoading] = useState(true);
+  const [bolsaError, setBolsaError] = useState<string | null>(null);
+
+  const [cotaBolsaOptions, setCotaBolsaOptions] = useState<CotaBolsaLookup[]>(
+    [],
+  );
+  const [cotaBolsaLoading, setCotaBolsaLoading] = useState(true);
+  const [cotaBolsaError, setCotaBolsaError] = useState<string | null>(null);
+
+  const [tipoEditalOptions, setTipoEditalOptions] = useState<
+    EditalTypeLookup[]
+  >([]);
+  const [tipoEditalLoading, setTipoEditalLoading] = useState(true);
+  const [tipoEditalError, setTipoEditalError] = useState<string | null>(null);
+
+  const [categoriaOptions, setCategoriaOptions] = useState<CategoryLookup[]>(
+    [],
+  );
+  const [categoriaLoading, setCategoriaLoading] = useState(true);
+  const [categoriaError, setCategoriaError] = useState<string | null>(null);
+
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ===== Status =====
-  const [status, setStatus] = useState<Status>("DRAFT")
+  const [status, setStatus] = useState<Status>("DRAFT");
 
   const loadBolsaOptions = useCallback(async () => {
-    setBolsaLoading(true)
-    setBolsaError(null)
+    setBolsaLoading(true);
+    setBolsaError(null);
 
     try {
-      const rows = await scholarshipSettingsService.lookup()
-      setBolsaOptions(rows)
+      const rows = await scholarshipSettingsService.lookup();
+      setBolsaOptions(rows);
     } catch (err) {
-      setBolsaOptions([])
+      setBolsaOptions([]);
       setBolsaError(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível carregar os tipos de bolsa.",
-      )
+        apiErrorMessage(err, "Não foi possível carregar os tipos de bolsa."),
+      );
     } finally {
-      setBolsaLoading(false)
+      setBolsaLoading(false);
     }
-  }, [])
+  }, []);
+
+  const loadCotaBolsaOptions = useCallback(async () => {
+    setCotaBolsaLoading(true);
+    setCotaBolsaError(null);
+
+    try {
+      const rows = await editalService.cotaBolsaLookup();
+      setCotaBolsaOptions(rows);
+    } catch (err) {
+      setCotaBolsaOptions([]);
+      setCotaBolsaError(
+        apiErrorMessage(err, "Não foi possível carregar os períodos de cota."),
+      );
+    } finally {
+      setCotaBolsaLoading(false);
+    }
+  }, []);
+
+  const loadTipoEditalOptions = useCallback(async () => {
+    setTipoEditalLoading(true);
+    setTipoEditalError(null);
+
+    try {
+      const rows = await editalService.typeLookup();
+      setTipoEditalOptions(rows);
+    } catch (err) {
+      setTipoEditalOptions([]);
+      setTipoEditalError(
+        apiErrorMessage(err, "Não foi possível carregar os tipos de edital."),
+      );
+    } finally {
+      setTipoEditalLoading(false);
+    }
+  }, []);
+
+  const loadCategoriaOptions = useCallback(async () => {
+    setCategoriaLoading(true);
+    setCategoriaError(null);
+
+    try {
+      const rows = await categorySettingsService.lookup();
+      setCategoriaOptions(rows);
+    } catch (err) {
+      setCategoriaOptions([]);
+      setCategoriaError(
+        apiErrorMessage(err, "Não foi possível carregar as categorias."),
+      );
+    } finally {
+      setCategoriaLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    void loadBolsaOptions()
-  }, [loadBolsaOptions])
+    void loadBolsaOptions();
+    void loadCotaBolsaOptions();
+    void loadTipoEditalOptions();
+    void loadCategoriaOptions();
+  }, [
+    loadBolsaOptions,
+    loadCotaBolsaOptions,
+    loadTipoEditalOptions,
+    loadCategoriaOptions,
+  ]);
 
   // ===== Derived =====
   const fileSizeMb = useMemo(() => {
-    if (!file) return 0
-    return Math.round((file.size / (1024 * 1024)) * 10) / 10
-  }, [file])
+    if (!file) return 0;
+    return Math.round((file.size / (1024 * 1024)) * 10) / 10;
+  }, [file]);
 
   const submissionDateError = useMemo(() => {
-    if (!submissionStart || !submissionEnd) return ""
-    if (submissionEnd < submissionStart) return "O fim do período de submissões não pode ser anterior ao início."
-    return ""
-  }, [submissionStart, submissionEnd])
+    if (!submissionStart || !submissionEnd) return "";
+    if (submissionEnd < submissionStart)
+      return "O fim do período de submissões não pode ser anterior ao início.";
+    return "";
+  }, [submissionStart, submissionEnd]);
 
   const executionDateError = useMemo(() => {
-    if (!executionStart || !executionEnd) return ""
-    if (executionEnd < executionStart) return "O fim do período de execução não pode ser anterior ao início."
-    return ""
-  }, [executionStart, executionEnd])
+    if (!executionStart || !executionEnd) return "";
+    if (executionEnd < executionStart)
+      return "O fim do período de execução não pode ser anterior ao início.";
+    return "";
+  }, [executionStart, executionEnd]);
 
-  const requiredErrors = useMemo(() => {
-    const errs: string[] = []
+  const createErrors = useMemo(() => {
+    const errs: string[] = [];
 
-    if (!editalYear.trim()) errs.push("Informe o ano do edital.")
-    if (!descricao.trim()) errs.push("Informe a descrição do edital.")
-    if (!submissionStart || !submissionEnd) errs.push("Informe o período de submissões.")
-    if (submissionDateError) errs.push(submissionDateError)
-    if (!executionStart || !executionEnd) errs.push("Informe o período de execução do projeto.")
-    if (executionDateError) errs.push(executionDateError)
-    if (!titulacaoMinima) errs.push("Informe a titulação mínima para solicitação de cotas.")
-    if (!periodoCota) errs.push("Selecione o período de cota.")
-    if (!tipoEdital) errs.push("Selecione o tipo de edital.")
-    if (!categoria) errs.push("Selecione a categoria do edital.")
-    if (!limiteProjetosOrientador.trim()) errs.push("Informe o limite de solicitações de projetos por orientador.")
-    if (!limitePlanosOrientador.trim()) errs.push("Informe o limite de planos de trabalho por orientador.")
-    if (!file) errs.push("Faça upload do PDF do edital.")
+    if (!editalYear.trim()) errs.push("Informe o ano do edital.");
+    if (!descricao.trim()) errs.push("Informe a descrição do edital.");
+    if (!submissionStart || !submissionEnd)
+      errs.push("Informe o período de submissões.");
+    if (submissionDateError) errs.push(submissionDateError);
+    if (!executionStart || !executionEnd)
+      errs.push("Informe o período de execução do projeto.");
+    if (executionDateError) errs.push(executionDateError);
+    if (!titulacaoMinima)
+      errs.push("Informe a titulação mínima para solicitação de cotas.");
+    if (!periodoCota) errs.push("Selecione o período de cota.");
+    if (!tipoEdital) errs.push("Selecione o tipo de edital.");
+    if (!categoria) errs.push("Selecione a categoria do edital.");
+    if (!limiteProjetosOrientador.trim())
+      errs.push("Informe o limite de solicitações de projetos por orientador.");
+    if (!limitePlanosOrientador.trim())
+      errs.push("Informe o limite de planos de trabalho por orientador.");
+    if (parseInteger(limiteProjetosOrientador) < 0)
+      errs.push("O limite de projetos não pode ser negativo.");
+    if (parseInteger(limitePlanosOrientador) < 0)
+      errs.push("O limite de planos não pode ser negativo.");
 
     if (distribuicaoCotasBolsas === "SIM") {
-      if (!tipoBolsa) errs.push("Selecione o tipo da bolsa.")
-      if (!quantidadeCotas.trim()) errs.push("Informe a quantidade de cotas.")
-      if (!fppiMinimo.trim()) errs.push("Informe o FPPI mínimo.")
-      if (!mediaMinimaProjetos.trim()) errs.push("Informe a média mínima dos projetos.")
+      if (!tipoBolsa) errs.push("Selecione o tipo da bolsa.");
+      if (!quantidadeCotas.trim()) errs.push("Informe a quantidade de cotas.");
+      if (!fppiMinimo.trim()) errs.push("Informe o FPPI mínimo.");
+      if (!mediaMinimaProjetos.trim())
+        errs.push("Informe a média mínima dos projetos.");
+      if (parseInteger(quantidadeCotas) < 0)
+        errs.push("A quantidade de cotas não pode ser negativa.");
+      if (parseDecimal(fppiMinimo) < 0)
+        errs.push("O FPPI mínimo não pode ser negativo.");
+      if (parseDecimal(mediaMinimaProjetos) < 0)
+        errs.push("A média mínima dos projetos não pode ser negativa.");
     }
 
-    return errs
+    return errs;
   }, [
     editalYear,
     descricao,
@@ -201,123 +343,181 @@ export default function CreateCall() {
     categoria,
     limiteProjetosOrientador,
     limitePlanosOrientador,
-    file,
     distribuicaoCotasBolsas,
     tipoBolsa,
     quantidadeCotas,
     fppiMinimo,
     mediaMinimaProjetos,
-  ])
+  ]);
 
-  const canSaveDraft = useMemo(() => !!descricao.trim(), [descricao])
-  const canPublish = requiredErrors.length === 0
+  const requiredErrors = useMemo(() => {
+    if (file) return createErrors;
+    return [...createErrors, "Faça upload do PDF do edital."];
+  }, [createErrors, file]);
+
+  const canSaveDraft = createErrors.length === 0 && !isSubmitting;
+  const canPublish = requiredErrors.length === 0;
+
+  function buildPayload(): CreateEditalPayload {
+    return {
+      codigo: code.trim() || undefined,
+      descricao: descricao.trim(),
+      titulacao_min: titulacaoMinima as TitulacaoMin,
+      tipo: tipoEdital as TipoEdital,
+      limite_solicitacoes_orientador: parseInteger(limiteProjetosOrientador),
+      cota_bolsa_id: parseInteger(periodoCota),
+      limite_planos_orientador: parseInteger(limitePlanosOrientador),
+      avaliacao_vigente: yesNoToBool(avaliacaoVigente),
+      apenas_orient_coordena_plano: yesNoToBool(apenasCoordenadorOrientaPlano),
+      tec_admin_coord_proj: yesNoToBool(tecnicoAdministrativoPodeCoordenar),
+      divulgar_resultado: false,
+      categoria_id: parseInteger(categoria),
+      edital_cota_distribuicao:
+        distribuicaoCotasBolsas === "SIM"
+          ? [
+              {
+                quantidade: parseInteger(quantidadeCotas),
+                fppi_min: parseDecimal(fppiMinimo),
+                media_min_proj: parseDecimal(mediaMinimaProjetos),
+                exige_doutorado: titulacaoMinima === "DOUTORADO",
+              },
+            ]
+          : [],
+      periodo_submissao: {
+        inicio: submissionStart,
+        fim: submissionEnd,
+      },
+      periodo_execucao: {
+        inicio: executionStart,
+        fim: executionEnd,
+      },
+    };
+  }
+
+  async function submitEdital(nextStatus: Status) {
+    const errors = nextStatus === "PUBLISHED" ? requiredErrors : createErrors;
+
+    if (errors.length > 0) {
+      setSubmitError(errors[0]);
+      setSuccessMessage(null);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSuccessMessage(null);
+
+    try {
+      const edital = await editalService.create(buildPayload());
+
+      if (nextStatus === "PUBLISHED" && file) {
+        await editalService.uploadAttachment(edital.id, file);
+      }
+
+      setStatus(nextStatus);
+      setSuccessMessage(
+        nextStatus === "PUBLISHED"
+          ? "Edital criado e PDF enviado com sucesso."
+          : "Edital criado com sucesso. O PDF pode ser enviado ao publicar.",
+      );
+    } catch (err) {
+      setSubmitError(apiErrorMessage(err, "Não foi possível criar o edital."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   // ===== Handlers =====
   function onPickFile(f?: File | null) {
-    setFileError("")
+    setFileError("");
 
     if (!f) {
-      setFile(null)
-      return
+      setFile(null);
+      return;
     }
 
     if (f.type !== "application/pdf") {
-      setFile(null)
-      setFileError("Formato inválido. Envie um arquivo PDF.")
-      return
+      setFile(null);
+      setFileError("Formato inválido. Envie um arquivo PDF.");
+      return;
     }
 
-    const maxMb = 25
-    const mb = f.size / (1024 * 1024)
+    const maxMb = 25;
+    const mb = f.size / (1024 * 1024);
 
     if (mb > maxMb) {
-      setFile(null)
-      setFileError(`Arquivo muito grande (${Math.round(mb)}MB). Limite: ${maxMb}MB.`)
-      return
+      setFile(null);
+      setFileError(
+        `Arquivo muito grande (${Math.round(mb)}MB). Limite: ${maxMb}MB.`,
+      );
+      return;
     }
 
-    setFile(f)
+    setFile(f);
   }
 
   function removeFile() {
-    setFile(null)
-    setFileError("")
-    if (inputRef.current) inputRef.current.value = ""
+    setFile(null);
+    setFileError("");
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   function autoCodeFromDescricao() {
-    const y = editalYear?.trim() || String(yearNow())
+    const y = editalYear?.trim() || String(yearNow());
 
     const clean = descricao
       .trim()
       .toUpperCase()
       .replace(/[^\p{L}\p{N}]+/gu, "_")
       .replace(/_+/g, "_")
-      .replace(/^_+|_+$/g, "")
+      .replace(/^_+|_+$/g, "");
 
-    setCode(`${clean}_${y}`.slice(0, 40))
+    setCode(`${clean}_${y}`.slice(0, 40));
   }
 
   function saveDraft() {
-    setStatus("DRAFT")
-
-    // TODO: integrar com API
-    // payload: {
-    //   editalYear, code, descricao,
-    //   submissionStart, submissionEnd,
-    //   executionStart, executionEnd,
-    //   titulacaoMinima, periodoCota, tipoEdital, categoria,
-    //   limiteProjetosOrientador, limitePlanosOrientador,
-    //   editalVoluntarios, avaliacaoVigente, apenasCoordenadorOrientaPlano,
-    //   apenasColaboradorVoluntarioCadastraProjeto, professorSubstitutoCadastraProjeto,
-    //   tecnicoAdministrativoPodeCoordenar, distribuicaoCotasBolsas,
-    //   tipoBolsa, quantidadeCotas, fppiMinimo, mediaMinimaProjetos,
-    //   status: "DRAFT", file,
-    // }
-
-    alert("Rascunho salvo (placeholder).")
+    void submitEdital("DRAFT");
   }
 
   function publish() {
-    if (!canPublish) return
-    setStatus("PUBLISHED")
-    // TODO: integrar com API
-    alert("Edital publicado (placeholder).")
+    void submitEdital("PUBLISHED");
   }
 
   function resetForm() {
-    setFile(null)
-    setFileError("")
-    if (inputRef.current) inputRef.current.value = ""
+    setFile(null);
+    setFileError("");
+    if (inputRef.current) inputRef.current.value = "";
 
-    setEditalYear(String(yearNow()))
-    setCode("")
-    setDescricao("")
-    setSubmissionStart("")
-    setSubmissionEnd("")
-    setExecutionStart("")
-    setExecutionEnd("")
-    setTitulacaoMinima("")
-    setPeriodoCota("")
-    setTipoEdital("PESQUISA")
-    setCategoria("")
-    setLimiteProjetosOrientador("0")
-    setLimitePlanosOrientador("0")
+    setEditalYear(String(yearNow()));
+    setCode("");
+    setDescricao("");
+    setSubmissionStart("");
+    setSubmissionEnd("");
+    setExecutionStart("");
+    setExecutionEnd("");
+    setTitulacaoMinima("");
+    setPeriodoCota("");
+    setTipoEdital("PESQUISA");
+    setCategoria("");
+    setLimiteProjetosOrientador("0");
+    setLimitePlanosOrientador("0");
 
-    setEditalVoluntarios("NAO")
-    setAvaliacaoVigente("NAO")
-    setApenasCoordenadorOrientaPlano("NAO")
-    setApenasColaboradorVoluntarioCadastraProjeto("NAO")
-    setProfessorSubstitutoCadastraProjeto("NAO")
-    setTecnicoAdministrativoPodeCoordenar("NAO")
-    setDistribuicaoCotasBolsas("NAO")
+    setEditalVoluntarios("NAO");
+    setAvaliacaoVigente("NAO");
+    setApenasCoordenadorOrientaPlano("NAO");
+    setApenasColaboradorVoluntarioCadastraProjeto("NAO");
+    setProfessorSubstitutoCadastraProjeto("NAO");
+    setTecnicoAdministrativoPodeCoordenar("NAO");
+    setDistribuicaoCotasBolsas("NAO");
 
-    setTipoBolsa("")
-    setQuantidadeCotas("0")
-    setFppiMinimo("0,00")
-    setMediaMinimaProjetos("0,0")
+    setTipoBolsa("");
+    setQuantidadeCotas("0");
+    setFppiMinimo("0,00");
+    setMediaMinimaProjetos("0,0");
 
-    setStatus("DRAFT")
+    setStatus("DRAFT");
+    setSubmitError(null);
+    setSuccessMessage(null);
   }
 
   return (
@@ -330,12 +530,12 @@ export default function CreateCall() {
       <div className="rounded-2xl border border-neutral-light bg-white p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-3">
-
             <div>
               <h1 className="text-2xl font-bold text-primary">Criar Edital</h1>
               <p className="text-sm text-neutral mt-1 max-w-2xl">
-                Registre um novo edital, envie o PDF oficial e informe os campos obrigatórios do
-                cadastro para controle de cotas, vigência, publicação e acompanhamento administrativo.
+                Registre um novo edital, envie o PDF oficial e informe os campos
+                obrigatórios do cadastro para controle de cotas, vigência,
+                publicação e acompanhamento administrativo.
               </p>
             </div>
           </div>
@@ -358,7 +558,7 @@ export default function CreateCall() {
                 ${!canSaveDraft ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-90"}`}
             >
               <Save size={16} />
-              Salvar
+              {isSubmitting ? "Salvando..." : "Salvar"}
             </button>
           </div>
         </div>
@@ -369,7 +569,9 @@ export default function CreateCall() {
         <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
           <div className="flex items-center gap-2">
             <Clock size={18} />
-            <h2 className="text-sm font-semibold text-primary">Status do registro</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              Status do registro
+            </h2>
           </div>
 
           <span
@@ -388,29 +590,51 @@ export default function CreateCall() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">PDF</p>
-            <p className="text-sm font-semibold text-primary">{file ? "OK" : "Pendente"}</p>
+            <p className="text-sm font-semibold text-primary">
+              {file ? "OK" : "Pendente"}
+            </p>
           </div>
 
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Descrição</p>
-            <p className="text-sm font-semibold text-primary">{descricao.trim() ? "OK" : "Pendente"}</p>
+            <p className="text-sm font-semibold text-primary">
+              {descricao.trim() ? "OK" : "Pendente"}
+            </p>
           </div>
 
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Ano do Edital</p>
-            <p className="text-sm font-semibold text-primary">{editalYear.trim() ? "OK" : "Pendente"}</p>
+            <p className="text-sm font-semibold text-primary">
+              {editalYear.trim() ? "OK" : "Pendente"}
+            </p>
           </div>
 
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Períodos</p>
             <p className="text-sm font-semibold text-primary">
-              {submissionStart && submissionEnd && executionStart && executionEnd && !submissionDateError && !executionDateError
+              {submissionStart &&
+              submissionEnd &&
+              executionStart &&
+              executionEnd &&
+              !submissionDateError &&
+              !executionDateError
                 ? "OK"
                 : "Pendente"}
             </p>
           </div>
         </div>
 
+        {submitError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {successMessage}
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-6">
@@ -418,7 +642,9 @@ export default function CreateCall() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Upload size={18} />
-            <h2 className="text-sm font-semibold text-primary">PDF do Edital</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              PDF do Edital
+            </h2>
           </div>
 
           <div className="rounded-lg border border-dashed border-neutral-light p-6">
@@ -439,11 +665,15 @@ export default function CreateCall() {
 
                   <div>
                     <p className="font-medium text-primary">
-                      {file ? "PDF selecionado" : "Clique para selecionar o PDF"}
+                      {file
+                        ? "PDF selecionado"
+                        : "Clique para selecionar o PDF"}
                     </p>
 
                     <p className="text-xs text-neutral mt-1">
-                      {file ? `${fileName} • ${fileSizeMb}MB` : "Somente PDF • limite sugerido: 25MB"}
+                      {file
+                        ? `${fileName} • ${fileSizeMb}MB`
+                        : "Somente PDF • limite sugerido: 25MB"}
                     </p>
                   </div>
                 </div>
@@ -454,7 +684,11 @@ export default function CreateCall() {
                       <button
                         type="button"
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-neutral-light text-neutral hover:bg-neutral-50"
-                        onClick={() => alert("Preview (placeholder). Aqui você pode abrir o PDF em um viewer.")}
+                        onClick={() =>
+                          alert(
+                            "Preview (placeholder). Aqui você pode abrir o PDF em um viewer.",
+                          )
+                        }
                       >
                         <Eye size={16} />
                         Visualizar
@@ -482,7 +716,9 @@ export default function CreateCall() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Layers size={18} />
-            <h2 className="text-sm font-semibold text-primary">Dados do Edital</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              Dados do Edital
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -516,7 +752,9 @@ export default function CreateCall() {
                   Gerar
                 </button>
               </div>
-              <p className="text-[11px] text-neutral mt-1">Campo não obrigatório. Pode ficar em branco.</p>
+              <p className="text-[11px] text-neutral mt-1">
+                Campo não obrigatório. Pode ficar em branco.
+              </p>
             </label>
 
             <label className="text-sm md:col-span-2">
@@ -560,12 +798,17 @@ export default function CreateCall() {
                   className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
-              {submissionDateError && <p className="text-xs text-red-600 mt-1">{submissionDateError}</p>}
+              {submissionDateError && (
+                <p className="text-xs text-red-600 mt-1">
+                  {submissionDateError}
+                </p>
+              )}
             </div>
 
             <div>
               <span className="block text-xs text-neutral mb-1">
-                Período de Execução do Projeto <span className="text-red-500">*</span>
+                Período de Execução do Projeto{" "}
+                <span className="text-red-500">*</span>
               </span>
               <div className="flex items-center gap-2">
                 <input
@@ -582,7 +825,11 @@ export default function CreateCall() {
                   className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
-              {executionDateError && <p className="text-xs text-red-600 mt-1">{executionDateError}</p>}
+              {executionDateError && (
+                <p className="text-xs text-red-600 mt-1">
+                  {executionDateError}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -591,13 +838,16 @@ export default function CreateCall() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <GraduationCap size={18} />
-            <h2 className="text-sm font-semibold text-primary">Classificação e Cotas</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              Classificação e Cotas
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="text-sm">
               <span className="block text-xs text-neutral mb-1">
-                Titulação mínima para a solicitação de cotas <span className="text-red-500">*</span>
+                Titulação mínima para a solicitação de cotas{" "}
+                <span className="text-red-500">*</span>
               </span>
               <select
                 value={titulacaoMinima}
@@ -619,12 +869,37 @@ export default function CreateCall() {
               <select
                 value={periodoCota}
                 onChange={(e) => setPeriodoCota(e.target.value)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={cotaBolsaLoading || Boolean(cotaBolsaError)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
               >
-                <option value="">-- SELECIONE --</option>
-                {/* TODO: popular via API com as cotas de bolsa já cadastradas */}
-                <option value="2026-2027_PIBIC_EM_CNPQ">2026-2027 PIBIC-EM-CNPq</option>
+                <option value="">
+                  {cotaBolsaLoading ? "Carregando..." : "-- SELECIONE --"}
+                </option>
+                {!cotaBolsaLoading &&
+                  !cotaBolsaError &&
+                  cotaBolsaOptions.length === 0 && (
+                    <option value="" disabled>
+                      Cadastre uma cota bolsa no backend
+                    </option>
+                  )}
+                {cotaBolsaOptions.map((opt) => (
+                  <option key={opt.id} value={String(opt.id)}>
+                    {opt.name}
+                  </option>
+                ))}
               </select>
+              {cotaBolsaError && (
+                <p className="mt-1 text-xs text-red-600 flex items-center gap-2 flex-wrap">
+                  <span>{cotaBolsaError}</span>
+                  <button
+                    type="button"
+                    onClick={() => void loadCotaBolsaOptions()}
+                    className="underline font-semibold"
+                  >
+                    Tentar novamente
+                  </button>
+                </p>
+              )}
             </label>
 
             <label className="text-sm">
@@ -634,14 +909,33 @@ export default function CreateCall() {
               <select
                 value={tipoEdital}
                 onChange={(e) => setTipoEdital(e.target.value)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={tipoEditalLoading || Boolean(tipoEditalError)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
               >
-                <option value="PESQUISA">Pesquisa</option>
-                <option value="EXTENSAO">Extensão</option>
-                <option value="ENSINO">Ensino</option>
-                <option value="POS_GRADUACAO">Pós-graduação</option>
-                <option value="OUTRO">Outro</option>
+                {tipoEditalLoading && (
+                  <option value={tipoEdital}>Carregando...</option>
+                )}
+                {!tipoEditalLoading && tipoEditalOptions.length === 0 && (
+                  <option value="PESQUISA">Pesquisa</option>
+                )}
+                {tipoEditalOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.name}
+                  </option>
+                ))}
               </select>
+              {tipoEditalError && (
+                <p className="mt-1 text-xs text-red-600 flex items-center gap-2 flex-wrap">
+                  <span>{tipoEditalError}</span>
+                  <button
+                    type="button"
+                    onClick={() => void loadTipoEditalOptions()}
+                    className="underline font-semibold"
+                  >
+                    Tentar novamente
+                  </button>
+                </p>
+              )}
             </label>
 
             <label className="text-sm">
@@ -651,15 +945,37 @@ export default function CreateCall() {
               <select
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={categoriaLoading || Boolean(categoriaError)}
+                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
               >
-                <option value="">-- SELECIONE --</option>
-                <option value="PIBIC">PIBIC</option>
-                <option value="PIVIC">PIVIC</option>
-                <option value="PIBIC_EM">PIBIC-EM</option>
-                <option value="PIBITI">PIBITI</option>
-                <option value="OUTRA">Outra</option>
+                <option value="">
+                  {categoriaLoading ? "Carregando..." : "-- SELECIONE --"}
+                </option>
+                {!categoriaLoading &&
+                  !categoriaError &&
+                  categoriaOptions.length === 0 && (
+                    <option value="" disabled>
+                      Cadastre uma categoria
+                    </option>
+                  )}
+                {categoriaOptions.map((opt) => (
+                  <option key={opt.id} value={String(opt.id)}>
+                    {opt.name}
+                  </option>
+                ))}
               </select>
+              {categoriaError && (
+                <p className="mt-1 text-xs text-red-600 flex items-center gap-2 flex-wrap">
+                  <span>{categoriaError}</span>
+                  <button
+                    type="button"
+                    onClick={() => void loadCategoriaOptions()}
+                    className="underline font-semibold"
+                  >
+                    Tentar novamente
+                  </button>
+                </p>
+              )}
             </label>
           </div>
         </div>
@@ -668,13 +984,16 @@ export default function CreateCall() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Users size={18} />
-            <h2 className="text-sm font-semibold text-primary">Limites por Orientador</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              Limites por Orientador
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="text-sm">
               <span className="block text-xs text-neutral mb-1">
-                Limite de solicitações de projetos por orientador <span className="text-red-500">*</span>
+                Limite de solicitações de projetos por orientador{" "}
+                <span className="text-red-500">*</span>
               </span>
               <input
                 value={limiteProjetosOrientador}
@@ -686,7 +1005,8 @@ export default function CreateCall() {
 
             <label className="text-sm">
               <span className="block text-xs text-neutral mb-1">
-                Limite de Planos de trabalho por orientador <span className="text-red-500">*</span>
+                Limite de Planos de trabalho por orientador{" "}
+                <span className="text-red-500">*</span>
               </span>
               <input
                 value={limitePlanosOrientador}
@@ -702,12 +1022,22 @@ export default function CreateCall() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-2">
             <ListChecks size={18} />
-            <h2 className="text-sm font-semibold text-primary">Regras do Edital</h2>
+            <h2 className="text-sm font-semibold text-primary">
+              Regras do Edital
+            </h2>
           </div>
 
           <div className="rounded-xl border border-neutral-light px-4">
-            <YesNoField label="Edital para Voluntários?" value={editalVoluntarios} onChange={setEditalVoluntarios} />
-            <YesNoField label="Avaliação Vigente?" value={avaliacaoVigente} onChange={setAvaliacaoVigente} />
+            <YesNoField
+              label="Edital para Voluntários?"
+              value={editalVoluntarios}
+              onChange={setEditalVoluntarios}
+            />
+            <YesNoField
+              label="Avaliação Vigente?"
+              value={avaliacaoVigente}
+              onChange={setAvaliacaoVigente}
+            />
             <YesNoField
               label="Apenas Coordenador Orienta Plano"
               value={apenasCoordenadorOrientaPlano}
@@ -741,7 +1071,9 @@ export default function CreateCall() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <SlidersHorizontal size={18} />
-              <h2 className="text-sm font-semibold text-primary">Parâmetros da Distribuição de Cotas</h2>
+              <h2 className="text-sm font-semibold text-primary">
+                Parâmetros da Distribuição de Cotas
+              </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -758,11 +1090,13 @@ export default function CreateCall() {
                   <option value="">
                     {bolsaLoading ? "Carregando..." : "-- SELECIONE --"}
                   </option>
-                  {!bolsaLoading && !bolsaError && bolsaOptions.length === 0 && (
-                    <option value="" disabled>
-                      Cadastre um tipo de bolsa nas configurações
-                    </option>
-                  )}
+                  {!bolsaLoading &&
+                    !bolsaError &&
+                    bolsaOptions.length === 0 && (
+                      <option value="" disabled>
+                        Cadastre um tipo de bolsa nas configurações
+                      </option>
+                    )}
                   {bolsaOptions.map((opt) => (
                     <option key={opt.id} value={String(opt.id)}>
                       {opt.descricao}
@@ -820,7 +1154,8 @@ export default function CreateCall() {
 
               <label className="text-sm">
                 <span className="block text-xs text-neutral mb-1">
-                  Média Mínima dos Projetos <span className="text-red-500">*</span>
+                  Média Mínima dos Projetos{" "}
+                  <span className="text-red-500">*</span>
                 </span>
                 <input
                   value={mediaMinimaProjetos}
@@ -852,26 +1187,26 @@ export default function CreateCall() {
                 ${!canSaveDraft ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-90"}`}
             >
               <Save size={16} />
-              Salvar rascunho
+              {isSubmitting ? "Salvando..." : "Salvar rascunho"}
             </button>
 
             <button
               type="button"
               onClick={publish}
-              disabled={!canPublish}
+              disabled={!canPublish || isSubmitting}
               className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border w-full md:w-auto
                 ${
-                  !canPublish
+                  !canPublish || isSubmitting
                     ? "border-neutral-light text-neutral/40 bg-neutral-50 cursor-not-allowed"
                     : "border-green-200 bg-green-50 text-green-700 hover:opacity-95"
                 }`}
             >
               <Check size={16} />
-              Publicar
+              {isSubmitting ? "Publicando..." : "Publicar"}
             </button>
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }
