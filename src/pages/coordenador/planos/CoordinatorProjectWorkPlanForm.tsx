@@ -1,7 +1,12 @@
 // src/pages/coordenador/planos/CoordinatorProjectWorkPlanForm.tsx
 
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { projectService } from "@/features/projects/api/projectService";
+import type { ResearchProject } from "@/features/projects/types/project";
+import { workPlanService } from "@/features/work-plans/api/workPlanService";
+import type { CreateWorkPlanPayload, WorkPlan as ApiWorkPlan } from "@/features/work-plans/types/workPlan";
+import { ApiError } from "@/services/apiClient";
 import {
   AlertCircle,
   ArrowLeft,
@@ -371,15 +376,69 @@ function AnexoTextarea({
   );
 }
 
+function mapProject(project: ResearchProject): Project {
+  return {
+    id: String(project.id),
+    codigo: project.codigo || `PROJETO-${project.id}`,
+    titulo: project.titulo,
+    edital: "Edital não informado",
+    coordenador: "Usuário autenticado",
+    unidade: project.unidade || "Unidade não informada",
+    centro: project.unidade || "Centro não informado",
+    periodo: project.vigencia || [project.data_inicio, project.data_fim].filter(Boolean).join(" → "),
+    status: (project.situacao || "APROVADO") as ProjectStatus,
+    modalidadeBolsa: "PIBIC",
+    totalPlanos: 0,
+  };
+}
+
+function mapApiPlan(plan: ApiWorkPlan): WorkPlan {
+  const body = plan.corpo_plano_trabalho;
+  return {
+    id: String(plan.id),
+    modalidade: (plan.modalidade || "") as WorkPlanModalidade | "",
+    titulo: body?.titulo || `Plano de trabalho ${plan.id}`,
+    title: body?.titulo || "",
+    solicitarAcaoAfirmativa: plan.direcionamento_plano === "ACAO_AFIRMATIVA",
+    periodoIni: "",
+    periodoFim: "",
+    introducaoJustificativa: body?.introducao || "",
+    objetivos: body?.objetivos || "",
+    metodologia: body?.metodologia || "",
+    cronogramaAtividades: (plan.atividades || []).map((activity, index) => ({
+      id: String(activity.id ?? `atividade-${index}`),
+      atividade: activity.descricao,
+      mesInicio: 1,
+      mesFim: Math.max(1, activity.meses?.length || 1),
+    })),
+    referencias: body?.referencias || "",
+  };
+}
+
+function monthDates(periodStart: string, startMonth: number, endMonth: number) {
+  const start = new Date(`${periodStart}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return [];
+
+  return Array.from({ length: endMonth - startMonth + 1 }, (_, index) => {
+    const date = new Date(start.getFullYear(), start.getMonth() + startMonth - 1 + index, 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return { data: `${year}-${month}-01` };
+  });
+}
+
 /* ================= PÁGINA ================= */
 
 export default function CoordinatorProjectWorkPlanForm() {
+  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [plansByProject, setPlansByProject] = useState<
-    Record<string, WorkPlan[]>
-  >(initialPlansByProject);
+  const [plansByProject, setPlansByProject] = useState<Record<string, WorkPlan[]>>({});
 
   const [draft, setDraft] = useState<WorkPlan>(createEmptyDraft());
   const [cronogramaAtividade, setCronogramaAtividade] = useState("");
@@ -392,9 +451,51 @@ export default function CoordinatorProjectWorkPlanForm() {
     modalidade: "Todas",
   });
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadData() {
+      setLoading(true);
+      setLoadError("");
+
+      try {
+        const [projectResponse, workPlanResponse] = await Promise.all([
+          projectService.list({ limit: 100, offset: 0 }),
+          workPlanService.list({ limit: 200, offset: 0 }),
+        ]);
+
+        if (!active) return;
+
+        const mappedProjects = projectResponse.results.map(mapProject);
+        const groupedPlans = workPlanResponse.results.reduce<Record<string, WorkPlan[]>>(
+          (accumulator, plan) => {
+            const projectId = String(plan.pesquisa_id ?? plan.projeto_pesquisa?.id ?? "");
+            if (!projectId) return accumulator;
+            accumulator[projectId] = [...(accumulator[projectId] || []), mapApiPlan(plan)];
+            return accumulator;
+          },
+          {},
+        );
+
+        setProjects(mappedProjects);
+        setPlansByProject(groupedPlans);
+      } catch (error) {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : "Não foi possível carregar projetos e planos.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadData();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectedProject = useMemo(() => {
     return (
-      projectsMock.find((project) => project.id === selectedProjectId) || null
+      projects.find((project) => project.id === selectedProjectId) || null
     );
   }, [selectedProjectId]);
 
@@ -415,7 +516,7 @@ export default function CoordinatorProjectWorkPlanForm() {
   const totalPlanosCoordenadorNoAno = useMemo(() => {
     if (!selectedProject || !selectedProjectYear) return 0;
 
-    return projectsMock
+    return projects
       .filter((project) => {
         const projectYear =
           project.edital.match(/\d{4}/)?.[0] ||
@@ -433,7 +534,7 @@ export default function CoordinatorProjectWorkPlanForm() {
           total + (plansByProject[project.id]?.length || project.totalPlanos)
         );
       }, 0);
-  }, [plansByProject, selectedProject, selectedProjectYear]);
+  }, [plansByProject, projects, selectedProject, selectedProjectYear]);
 
   const limitePlanosAtingido =
     totalPlanosCoordenadorNoAno >= MAX_PLANOS_POR_ANO;
@@ -464,7 +565,7 @@ export default function CoordinatorProjectWorkPlanForm() {
     const nome = filters.nome.trim().toLowerCase();
     const modalidade = filters.modalidade;
 
-    return projectsMock.filter((project) => {
+    return projects.filter((project) => {
       const statusPermitido = PROJECT_ALLOWED_STATUSES.includes(project.status);
 
       const matchCodigo = codigo
@@ -480,7 +581,7 @@ export default function CoordinatorProjectWorkPlanForm() {
 
       return statusPermitido && matchCodigo && matchNome && matchModalidade;
     });
-  }, [filters]);
+  }, [filters, projects]);
 
   const canAddCronogramaItem = Boolean(
     cronogramaAtividade.trim() &&
@@ -597,26 +698,49 @@ export default function CoordinatorProjectWorkPlanForm() {
     if (!selectedProject || !canSavePlan) return;
 
     setSaving(true);
+    setSaveError("");
+
+    const payload: CreateWorkPlanPayload = {
+      pesquisa_id: Number(selectedProject.id),
+      modalidade: draft.modalidade,
+      status: "RASCUNHO",
+      tipo_bolsa: draft.modalidade.startsWith("PIV") ? "VOLUNTARIO" : "BOLSISTA",
+      // O backend exige este campo, embora ainda não exista um recurso de cronograma próprio.
+      cronograma_id: Number(selectedProject.id),
+      direcionamento_plano: draft.solicitarAcaoAfirmativa
+        ? "ACAO_AFIRMATIVA"
+        : "AMPLA_CONCORRENCIA",
+      corpo_plano_trabalho: {
+        titulo: draft.titulo.trim(),
+        introducao: draft.introducaoJustificativa.trim(),
+        objetivos: draft.objetivos.trim(),
+        metodologia: draft.metodologia.trim(),
+        referencias: draft.referencias.trim(),
+      },
+      atividades: draft.cronogramaAtividades.map((item) => ({
+        descricao: item.atividade,
+        meses: monthDates(draft.periodoIni, item.mesInicio, item.mesFim),
+      })),
+    };
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-
+      const created = await workPlanService.create(payload);
       setPlansByProject((current) => ({
         ...current,
         [selectedProject.id]: [
           ...(current[selectedProject.id] || []),
-          {
-            ...draft,
-            id: draft.id || createId("plano"),
-          },
+          mapApiPlan(created),
         ],
       }));
 
       setSaved(true);
-      setDraft(createEmptyDraft());
-      setCronogramaAtividade("");
-      setCronogramaMesInicio(1);
-    setCronogramaMesFim(1);
+      resetDraft();
+      navigate(`/coordenador/planos/${created.id}`);
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error
+        ? error.message
+        : "Não foi possível salvar o plano de trabalho.";
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -624,6 +748,8 @@ export default function CoordinatorProjectWorkPlanForm() {
 
   return (
     <main className="min-h-screen bg-[#F3F4F6]">
+      {loadError && <div className="mx-auto max-w-7xl px-6 pt-5"><div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError}</div></div>}
+      {saveError && <div className="mx-auto max-w-7xl px-6 pt-5"><div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{saveError}</div></div>}
       <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
         <div className="flex items-center justify-between">
           <Link
@@ -738,7 +864,9 @@ export default function CoordinatorProjectWorkPlanForm() {
               <span className="col-span-1 text-right">Ação</span>
             </div>
 
-            {filteredProjects.length === 0 ? (
+            {loading ? (
+              <div className="p-8 text-center text-sm text-neutral">Carregando projetos e planos...</div>
+            ) : filteredProjects.length === 0 ? (
               <div className="p-6 text-center">
                 <p className="text-sm font-semibold text-primary">
                   Nenhum projeto aprovado ou validado encontrado.

@@ -1,274 +1,72 @@
-import React from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { Helmet } from "react-helmet"
-import {
-  ArrowLeft,
-  FolderKanban,
-  UserRound,
-  BadgeCheck,
-  CalendarDays,
-  Eye,
-  CheckCircle2,
-  Clock3,
-  BookOpen,
-} from "lucide-react"
-
-type PlanStatus = "DISPONIVEL" | "EM_SELECAO" | "ENCERRADO"
-type PlanArea =
-  | "CIENCIA_DADOS"
-  | "INTELIGENCIA_ARTIFICIAL"
-  | "SISTEMAS_INFORMACAO"
-  | "ENGENHARIA_SOFTWARE"
-  | "EXTENSAO"
-
-type AvailablePlan = {
-  id: string
-  titulo: string
-  projetoId: string
-  projetoTitulo: string
-  orientador: string
-  edital: string
-  area: PlanArea
-  status: PlanStatus
-  periodo: string
-  vigencia: string
-  resumo: string
-  palavrasChave: string[]
-}
-
-const PLANS: AvailablePlan[] = [
-  {
-    id: "plan_001",
-    titulo: "Desenvolvimento da Interface Web e Dashboards Interativos",
-    projetoId: "proj_001",
-    projetoTitulo: "Plataforma Digital para Gestão de Pesquisa Acadêmica",
-    orientador: "Prof. André Silva",
-    edital: "PIBIC 2026",
-    area: "CIENCIA_DADOS",
-    status: "DISPONIVEL",
-    periodo: "2026.1",
-    vigencia: "01/05/2026 a 31/12/2026",
-    resumo:
-      "Plano voltado ao apoio na modelagem de dados, estruturação de indicadores e desenvolvimento de fluxos analíticos para a plataforma acadêmica.",
-    palavrasChave: ["dados", "dashboards", "indicadores"],
-  },
-  {
-    id: "plan_002",
-    titulo: "Plano de Trabalho em Inteligência Artificial para Sistemas Acadêmicos",
-    projetoId: "proj_002",
-    projetoTitulo: "Soluções Inteligentes para Apoio à Gestão Universitária",
-    orientador: "Profa. Marina Costa",
-    edital: "PIBITI 2026",
-    area: "INTELIGENCIA_ARTIFICIAL",
-    status: "EM_SELECAO",
-    periodo: "2026.1",
-    vigencia: "01/06/2026 a 31/12/2026",
-    resumo:
-      "Plano direcionado ao desenvolvimento de modelos e fluxos de IA aplicados à automação de processos, análise de dados institucionais e apoio à tomada de decisão.",
-    palavrasChave: ["ia", "automação", "análise preditiva"],
-  },
-]
-
-function getStatusLabel(status: PlanStatus) {
-  switch (status) {
-    case "DISPONIVEL":
-      return "Disponível"
-    case "EM_SELECAO":
-      return "Em seleção"
-    case "ENCERRADO":
-      return "Encerrado"
-    default:
-      return status
-  }
-}
-
-function getStatusClasses(status: PlanStatus) {
-  switch (status) {
-    case "DISPONIVEL":
-      return "border-success/30 bg-success/10 text-success"
-    case "EM_SELECAO":
-      return "border-warning/30 bg-warning/10 text-warning"
-    case "ENCERRADO":
-      return "border-neutral/30 bg-neutral/10 text-neutral"
-    default:
-      return "border-neutral/30 bg-neutral/10 text-neutral"
-  }
-}
-
-function getAreaLabel(area: PlanArea) {
-  switch (area) {
-    case "CIENCIA_DADOS":
-      return "Ciência de Dados"
-    case "INTELIGENCIA_ARTIFICIAL":
-      return "Inteligência Artificial"
-    case "SISTEMAS_INFORMACAO":
-      return "Sistemas de Informação"
-    case "ENGENHARIA_SOFTWARE":
-      return "Engenharia de Software"
-    case "EXTENSAO":
-      return "Extensão"
-    default:
-      return area
-  }
-}
-
-function getAreaClasses(area: PlanArea) {
-  switch (area) {
-    case "CIENCIA_DADOS":
-      return "border-primary/30 bg-primary/10 text-primary"
-    case "INTELIGENCIA_ARTIFICIAL":
-      return "border-success/30 bg-success/10 text-success"
-    case "SISTEMAS_INFORMACAO":
-      return "border-warning/30 bg-warning/10 text-warning"
-    case "ENGENHARIA_SOFTWARE":
-      return "border-primary/30 bg-primary/10 text-primary"
-    case "EXTENSAO":
-      return "border-neutral/30 bg-neutral/10 text-neutral"
-    default:
-      return "border-neutral/30 bg-neutral/10 text-neutral"
-  }
-}
+import { CalendarDays, Eye, FolderKanban, Search } from "lucide-react"
+import { workPlanService } from "@/features/work-plans/api/workPlanService"
+import type { WorkPlan } from "@/features/work-plans/types/workPlan"
 
 export default function AvailablePlans() {
+  const [plans, setPlans] = useState<WorkPlan[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    let active = true
+    workPlanService.list({ limit: 100, offset: 0 })
+      .then((response) => active && setPlans(response.results))
+      .catch((requestError: unknown) => active && setError(requestError instanceof Error ? requestError.message : "Não foi possível carregar os planos."))
+      .finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [])
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return plans
+    return plans.filter((plan) => [
+      plan.corpo_plano_trabalho?.titulo,
+      plan.projeto_pesquisa?.titulo,
+      plan.projeto_pesquisa?.codigo,
+      plan.modalidade,
+      plan.status,
+    ].some((value) => String(value || "").toLowerCase().includes(term)))
+  }, [plans, search])
+
   return (
-    <div className="min-h-screen bg-neutral-light">
-      <Helmet>
-        <title>Planos Disponíveis • PROPESQ</title>
-      </Helmet>
-
-      <div className="mx-auto max-w-7xl space-y-5 px-6 py-5">
-
-        <header className="rounded-2xl border border-neutral/20 bg-white px-6 py-6">
-          <h1 className="text-2xl font-bold text-primary">
-            Planos de Trabalho Disponíveis
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral">
-            Consulte os planos disponíveis para seleção e visualize as oportunidades
-            vinculadas a projetos e editais.
-          </p>
+    <main className="min-h-screen bg-neutral-light">
+      <div className="mx-auto max-w-7xl space-y-6 px-6 py-6">
+        <header>
+          <h1 className="text-2xl font-bold text-primary">Planos de trabalho</h1>
+          <p className="mt-2 text-sm text-neutral">Listagem conectada ao endpoint <code>GET /work-plans</code>.</p>
         </header>
 
-        <section className="rounded-2xl border border-neutral/20 bg-white p-6 md:p-8">
-          {PLANS.length === 0 ? (
-            <div className="rounded-2xl border border-neutral/20 bg-neutral/5 px-4 py-8 text-center">
-              <div className="text-base font-semibold text-primary">
-                Nenhum plano encontrado
-              </div>
-              <p className="mt-1 text-sm text-neutral">
-                Não há planos disponíveis no momento.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {PLANS.map((item) => (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-neutral/20 bg-white p-5 transition hover:border-primary/20"
-                >
-                  <div className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-semibold text-primary">
-                            {item.titulo}
-                          </h3>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          O backend ainda não possui filtro de planos disponíveis por discente. Por enquanto, esta página mostra todos os planos cadastrados.
+        </div>
 
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${getAreaClasses(
-                              item.area
-                            )}`}
-                          >
-                            <BookOpen size={14} />
-                            {getAreaLabel(item.area)}
-                          </span>
+        <label className="relative block max-w-xl">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral" size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título, projeto ou modalidade" className="w-full rounded-xl border border-neutral/30 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-primary" />
+        </label>
 
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                              item.status
-                            )}`}
-                          >
-                            {item.status === "DISPONIVEL" ? (
-                              <CheckCircle2 size={14} />
-                            ) : (
-                              <Clock3 size={14} />
-                            )}
-                            {getStatusLabel(item.status)}
-                          </span>
-                        </div>
-
-                        <p className="max-w-4xl text-sm leading-6 text-neutral">
-                          {item.resumo}
-                        </p>
-                      </div>
-
-                      <Link
-                        to={`/discente/planos-disponiveis/${item.id}`}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary px-4 py-3 text-sm font-medium text-primary transition hover:bg-primary/5 xl:min-w-[180px]"
-                      >
-                        <Eye size={16} />
-                        Visualizar
-                      </Link>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-xl border border-neutral/20 bg-neutral/5 px-4 py-3">
-                        <div className="flex items-center gap-2 text-neutral">
-                          <FolderKanban size={15} />
-                          Projeto
-                        </div>
-                        <div className="mt-1 font-medium text-primary">
-                          {item.projetoTitulo}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-neutral/20 bg-neutral/5 px-4 py-3">
-                        <div className="flex items-center gap-2 text-neutral">
-                          <UserRound size={15} />
-                          Orientador(a)
-                        </div>
-                        <div className="mt-1 font-medium text-primary">
-                          {item.orientador}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-neutral/20 bg-neutral/5 px-4 py-3">
-                        <div className="flex items-center gap-2 text-neutral">
-                          <BadgeCheck size={15} />
-                          Edital
-                        </div>
-                        <div className="mt-1 font-medium text-primary">
-                          {item.edital}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-neutral/20 bg-neutral/5 px-4 py-3">
-                        <div className="flex items-center gap-2 text-neutral">
-                          <CalendarDays size={15} />
-                          Vigência
-                        </div>
-                        <div className="mt-1 font-medium text-primary">
-                          {item.vigencia}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {item.palavrasChave.map((keyword) => (
-                        <span
-                          key={keyword}
-                          className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                        >
-                          {keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+        {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
+        {loading ? <div className="py-10 text-center text-sm text-neutral">Carregando planos...</div> : filtered.length === 0 ? <div className="rounded-2xl border border-dashed border-neutral/30 bg-white p-10 text-center text-sm text-neutral">Nenhum plano encontrado.</div> : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {filtered.map((plan) => (
+              <article key={plan.id} className="rounded-2xl border border-neutral/30 bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">{plan.modalidade}</span>
+                  <span className="rounded-full bg-neutral/10 px-2.5 py-1 text-neutral">{plan.status}</span>
+                  <span className="rounded-full bg-neutral/10 px-2.5 py-1 text-neutral">{plan.tipo_bolsa}</span>
+                </div>
+                <h2 className="mt-4 text-lg font-bold text-primary">{plan.corpo_plano_trabalho?.titulo || `Plano ${plan.id}`}</h2>
+                <p className="mt-2 flex items-start gap-2 text-sm text-neutral"><FolderKanban size={16} className="mt-0.5 shrink-0" />{plan.projeto_pesquisa?.codigo || plan.pesquisa_id} — {plan.projeto_pesquisa?.titulo || "Projeto vinculado"}</p>
+                <p className="mt-2 flex items-center gap-2 text-sm text-neutral"><CalendarDays size={16} />{plan.atividades.length} atividade(s)</p>
+                <Link to={`/discente/planos-disponiveis/${plan.id}`} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"><Eye size={16} />Visualizar</Link>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   )
 }
