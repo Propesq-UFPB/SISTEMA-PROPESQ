@@ -11,6 +11,17 @@ export type TipoEdital =
 export type TitulacaoMin =
   "GRADUACAO" | "ESPECIALIZACAO" | "MESTRADO" | "DOUTORADO";
 
+export type StatusEdital =
+  | "RASCUNHO"
+  | "PUBLICADO"
+  | "ENCERRADO"
+  | "ARQUIVADO";
+
+export type StatusInicialEdital = Extract<
+  StatusEdital,
+  "RASCUNHO" | "PUBLICADO"
+>;
+
 export type PeriodoEditalPayload = {
   inicio: string;
   fim: string;
@@ -52,6 +63,7 @@ export type Edital = {
   id: number;
   codigo: string | null;
   descricao: string;
+  status: StatusEdital;
   titulacao_min: TitulacaoMin;
   tipo: TipoEdital;
   limite_solicitacoes_orientador: number;
@@ -68,11 +80,10 @@ export type Edital = {
 };
 
 export type EditalListItem = {
-  id?: number;
-  descricao: string;
-  periodo_submissoes_inicio: string;
-  periodo_submissoes_fim: string;
-  titulacao_min: string;
+  id: number;
+  titulo: string;
+  periodo_execucao: string;
+  status: StatusEdital;
 };
 
 export type EditalLookup = {
@@ -87,6 +98,11 @@ export type EditalTypeLookup = {
   name: string;
 };
 
+export type EditalStatusLookup = {
+  id: StatusEdital;
+  name: string;
+};
+
 export type CotaBolsaLookup = {
   id: number;
   codigo: string | null;
@@ -97,6 +113,7 @@ export type CotaBolsaLookup = {
 export type CreateEditalPayload = {
   codigo?: string;
   descricao: string;
+  status: StatusInicialEdital;
   titulacao_min: TitulacaoMin;
   tipo: TipoEdital;
   limite_solicitacoes_orientador: number;
@@ -112,23 +129,10 @@ export type CreateEditalPayload = {
   periodo_execucao: PeriodoEditalPayload;
 };
 
-export type UpdateEditalCotaDistribuicaoPayload =
-  Partial<EditalCotaDistribuicaoPayload> & {
-    id?: number;
-  };
-
-export type UpdateEditalPayload = Partial<
-  Omit<
-    CreateEditalPayload,
-    "edital_cota_distribuicao" | "periodo_submissao" | "periodo_execucao"
-  >
-> & {
-  periodo_submissao?: Partial<PeriodoEditalPayload>;
+export type UpdateEditalPayload = {
+  titulo?: string;
   periodo_execucao?: Partial<PeriodoEditalPayload>;
-  update_edital_cota_distribuicao?:
-    UpdateEditalCotaDistribuicaoPayload[] | null;
-  create_edital_cota_distribuicao?: EditalCotaDistribuicaoPayload[];
-  delete_cota_distribuicao?: number[];
+  status?: StatusEdital;
 };
 
 export type EditalAttachmentResponse = {
@@ -141,4 +145,5 @@ export type EditalAttachmentResponse = {
 export type EditalListParams = {
   limit?: number;
   offset?: number;
+  search?: string;
 };

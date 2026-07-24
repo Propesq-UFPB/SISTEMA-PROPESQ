@@ -12,6 +12,7 @@ import type {
   EditalListItem,
   EditalListParams,
   EditalLookup,
+  EditalStatusLookup,
   EditalTypeLookup,
   PaginatedResponse,
   UpdateEditalPayload,
@@ -65,7 +66,11 @@ async function uploadPdf(
 export const editalService = {
   list(params: EditalListParams = {}) {
     return apiRequest<PaginatedResponse<EditalListItem>>(
-      `${ENDPOINT}${buildQuery({ limit: params.limit ?? 10, offset: params.offset ?? 0 })}`,
+      `${ENDPOINT}${buildQuery({
+        limit: params.limit ?? 10,
+        offset: params.offset ?? 0,
+        search: params.search,
+      })}`,
     );
   },
 
@@ -75,6 +80,10 @@ export const editalService = {
 
   typeLookup() {
     return apiRequest<EditalTypeLookup[]>(`${ENDPOINT}/tipo/lookup`);
+  },
+
+  statusLookup() {
+    return apiRequest<EditalStatusLookup[]>(`${ENDPOINT}/status/lookup`);
   },
 
   cotaBolsaLookup() {

@@ -71,11 +71,14 @@ function mapDept(row: ApiDepartment): Department {
   }
 }
 
-function mapEditalToNotice(edital: EditalListItem): Notice {
+function mapEditalToNotice(
+  edital: EditalListItem,
+  enabledCenterIds: number[],
+): Notice {
   return {
     id: String(edital.id),
-    title: edital.descricao,
-    enabledCenterIds: (edital.unidade_ids ?? []).map(String),
+    title: edital.titulo,
+    enabledCenterIds: enabledCenterIds.map(String),
   }
 }
 
@@ -130,11 +133,16 @@ export default function AcademicUnits() {
       const deptLists = await Promise.all(
         units.map((unit) => departmentService.list(unit.id).catch(() => [] as ApiDepartment[])),
       )
+      const editalDetails = await Promise.all(
+        editaisPage.results.map((edital) => editalService.getOne(edital.id)),
+      )
 
       const nextCenters = units.map((unit, index) =>
         mapUnitToCenter(unit, deptLists[index].map(mapDept)),
       )
-      const nextNotices = editaisPage.results.map(mapEditalToNotice)
+      const nextNotices = editaisPage.results.map((edital, index) =>
+        mapEditalToNotice(edital, editalDetails[index].unidade_ids ?? []),
+      )
 
       setCenters(nextCenters)
       setNotices(nextNotices)

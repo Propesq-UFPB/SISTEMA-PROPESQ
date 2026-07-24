@@ -34,6 +34,7 @@ import {
   type CotaBolsaLookup,
   type CreateEditalPayload,
   type EditalTypeLookup,
+  type StatusInicialEdital,
   type TipoEdital,
   type TitulacaoMin,
 } from "@/features/editais";
@@ -42,7 +43,6 @@ import {
   type CategoryLookup,
 } from "@/features/settings/api/categorySettingsService";
 
-type Status = "DRAFT" | "PUBLISHED";
 type YesNo = "SIM" | "NAO";
 
 function yearNow() {
@@ -67,6 +67,10 @@ function toIsoDateTime(value: string) {
   if (!value) return value;
   if (value.includes("T")) return value;
   return `${value}T00:00:00.000Z`;
+}
+
+function fileSignature(value: File) {
+  return `${value.name}:${value.size}:${value.lastModified}:${value.type}`;
 }
 
 function apiErrorMessage(err: unknown, fallback: string) {
@@ -190,9 +194,11 @@ export default function CreateCall() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedEditalId, setSavedEditalId] = useState<number | null>(null);
+  const uploadedFileSignatureRef = useRef<string | null>(null);
 
   // ===== Status =====
-  const [status, setStatus] = useState<Status>("DRAFT");
+  const [status, setStatus] = useState<StatusInicialEdital>("RASCUNHO");
 
   const loadBolsaOptions = useCallback(async () => {
     setBolsaLoading(true);
@@ -361,13 +367,20 @@ export default function CreateCall() {
     return [...createErrors, "Faça upload do PDF do edital."];
   }, [createErrors, file]);
 
-  const canSaveDraft = createErrors.length === 0 && !isSubmitting;
-  const canPublish = requiredErrors.length === 0;
+  const canSaveDraft =
+    createErrors.length === 0 &&
+    !isSubmitting &&
+    status !== "PUBLICADO";
+  const canPublish =
+    requiredErrors.length === 0 &&
+    !isSubmitting &&
+    status !== "PUBLICADO";
 
-  function buildPayload(): CreateEditalPayload {
+  function buildPayload(nextStatus: StatusInicialEdital): CreateEditalPayload {
     return {
       codigo: code.trim() || undefined,
       descricao: descricao.trim(),
+      status: nextStatus,
       titulacao_min: titulacaoMinima as TitulacaoMin,
       tipo: tipoEdital as TipoEdital,
       limite_solicitacoes_orientador: parseInteger(limiteProjetosOrientador),
@@ -400,8 +413,9 @@ export default function CreateCall() {
     };
   }
 
-  async function submitEdital(nextStatus: Status) {
-    const errors = nextStatus === "PUBLISHED" ? requiredErrors : createErrors;
+  async function submitEdital(nextStatus: StatusInicialEdital) {
+    const errors =
+      nextStatus === "PUBLICADO" ? requiredErrors : createErrors;
 
     if (errors.length > 0) {
       setSubmitError(errors[0]);
@@ -414,20 +428,57 @@ export default function CreateCall() {
     setSuccessMessage(null);
 
     try {
-      const edital = await editalService.create(buildPayload());
+      const isExistingEdital = savedEditalId !== null;
+      const updatePayload = {
+        titulo: descricao.trim(),
+        periodo_execucao: {
+          inicio: toIsoDateTime(executionStart),
+          fim: toIsoDateTime(executionEnd),
+        },
+        status: nextStatus,
+      };
+      let editalId = savedEditalId;
 
-      if (nextStatus === "PUBLISHED" && file) {
-        await editalService.uploadAttachment(edital.id, file);
+      if (editalId === null) {
+        const edital = await editalService.create(buildPayload(nextStatus));
+        editalId = edital.id;
+        setSavedEditalId(editalId);
+      } else if (nextStatus === "RASCUNHO") {
+        await editalService.update(editalId, updatePayload);
+      }
+
+      if (file) {
+        const signature = fileSignature(file);
+
+        if (uploadedFileSignatureRef.current !== signature) {
+          await editalService.uploadAttachment(editalId, file);
+          uploadedFileSignatureRef.current = signature;
+        }
+      }
+
+      if (isExistingEdital && nextStatus === "PUBLICADO") {
+        await editalService.update(editalId, updatePayload);
       }
 
       setStatus(nextStatus);
       setSuccessMessage(
-        nextStatus === "PUBLISHED"
-          ? "Edital criado e PDF enviado com sucesso."
-          : "Edital criado com sucesso. O PDF pode ser enviado ao publicar.",
+        nextStatus === "PUBLICADO"
+          ? !isExistingEdital
+            ? "Edital cadastrado e publicado com sucesso."
+            : "Edital publicado com sucesso."
+          : !isExistingEdital
+            ? "Rascunho cadastrado com sucesso. A publicação nesta aba reutilizará este registro."
+            : "Rascunho atualizado com sucesso.",
       );
     } catch (err) {
-      setSubmitError(apiErrorMessage(err, "Não foi possível criar o edital."));
+      setSubmitError(
+        apiErrorMessage(
+          err,
+          nextStatus === "PUBLICADO"
+            ? "Não foi possível publicar o edital."
+            : "Não foi possível salvar o rascunho.",
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -482,11 +533,11 @@ export default function CreateCall() {
   }
 
   function saveDraft() {
-    void submitEdital("DRAFT");
+    void submitEdital("RASCUNHO");
   }
 
   function publish() {
-    void submitEdital("PUBLISHED");
+    void submitEdital("PUBLICADO");
   }
 
   function resetForm() {
@@ -521,7 +572,9 @@ export default function CreateCall() {
     setFppiMinimo("0,00");
     setMediaMinimaProjetos("0,0");
 
-    setStatus("DRAFT");
+    setStatus("RASCUNHO");
+    setSavedEditalId(null);
+    uploadedFileSignatureRef.current = null;
     setSubmitError(null);
     setSuccessMessage(null);
   }
@@ -555,17 +608,6 @@ export default function CreateCall() {
               <RotateCcw size={16} />
               Limpar
             </button>
-
-            <button
-              type="button"
-              onClick={saveDraft}
-              disabled={!canSaveDraft}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white transition-colors
-                ${!canSaveDraft ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-90"}`}
-            >
-              <Save size={16} />
-              {isSubmitting ? "Salvando..." : "Salvar"}
-            </button>
           </div>
         </div>
       </div>
@@ -583,13 +625,13 @@ export default function CreateCall() {
           <span
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border
               ${
-                status === "PUBLISHED"
+                status === "PUBLICADO"
                   ? "bg-green-50 text-green-700 border-green-200"
                   : "bg-neutral-50 text-neutral border-neutral-light"
               }`}
           >
-            {status === "PUBLISHED" ? <Check size={14} /> : <Info size={14} />}
-            {status === "PUBLISHED" ? "Publicado" : "Rascunho"}
+            {status === "PUBLICADO" ? <Check size={14} /> : <Info size={14} />}
+            {status === "PUBLICADO" ? "Publicado" : "Rascunho"}
           </span>
         </div>
 
@@ -630,17 +672,6 @@ export default function CreateCall() {
           </div>
         </div>
 
-        {submitError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {submitError}
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
       </section>
 
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-6">
@@ -1212,6 +1243,24 @@ export default function CreateCall() {
             </button>
           </div>
         </div>
+
+        {submitError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {submitError}
+          </div>
+        )}
+
+        {successMessage && (
+          <div
+            role="status"
+            className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+          >
+            {successMessage}
+          </div>
+        )}
       </section>
     </div>
   );
