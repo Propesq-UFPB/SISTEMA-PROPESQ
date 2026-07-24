@@ -1,13 +1,7 @@
 import { apiRequest, buildQuery } from "@/services/apiClient"
+import type { EditalListItem } from "@/features/editais"
 
-export type EditalListItem = {
-  id: number
-  descricao: string
-  periodo_submissoes_inicio?: string
-  periodo_submissoes_fim?: string
-  titulacao_min?: string
-  unidade_ids?: number[]
-}
+export type { EditalListItem } from "@/features/editais"
 
 export type EditalDetail = {
   id: number
