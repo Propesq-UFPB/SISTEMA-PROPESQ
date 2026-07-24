@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link } from "react-router-dom"
 import {
@@ -14,14 +14,14 @@ import {
   ShieldCheck,
   Settings,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import {
+  userTypeService,
+  type UserTypeApi,
+  type UserTypeAudience,
+} from "@/features/settings/api/userTypeService"
 
-type Audience =
-  | "DOCENTE"
-  | "TECNICO_ADMINISTRATIVO"
-  | "POS_DOUTORANDO"
-  | "DISCENTE_UFPB_MEDIO"
-  | "DISCENTE_UFPB_SUPERIOR"
-  | "DISCENTE_EXTERNO_SEM_SIGAA"
+type Audience = UserTypeAudience
 
 type UserType = {
   id: string
@@ -40,38 +40,37 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
   DISCENTE_EXTERNO_SEM_SIGAA: "Discentes de outras instituições (sem SIGAA)",
 }
 
-function uid(prefix = "ut") {
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
-}
-
 function normalize(s: string) {
   return s.trim().toLowerCase()
 }
 
+function mapUserType(row: UserTypeApi): UserType {
+  return {
+    id: String(row.id),
+    name: row.nome,
+    description: row.descricao ?? undefined,
+    audiences: row.publicos,
+    active: row.ativo,
+  }
+}
+
+function errorMessage(err: unknown, fallback: string) {
+  if (err instanceof ApiError) {
+    return err.message || fallback
+  }
+  return fallback
+}
+
+function pill(active: boolean) {
+  return active ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-50 text-neutral border-neutral-light"
+}
+
 export default function UserTypes() {
-  const [userTypes, setUserTypes] = useState<UserType[]>([
-    {
-      id: "ut_coord",
-      name: "Coordenador de Projeto",
-      description: "Pode criar/gerenciar projetos e submeter propostas em editais.",
-      audiences: ["DOCENTE", "TECNICO_ADMINISTRATIVO", "POS_DOUTORANDO"],
-      active: true,
-    },
-    {
-      id: "ut_discente",
-      name: "Discente",
-      description: "Participação em projetos como bolsista/voluntário.",
-      audiences: ["DISCENTE_UFPB_MEDIO", "DISCENTE_UFPB_SUPERIOR", "DISCENTE_EXTERNO_SEM_SIGAA"],
-      active: true,
-    },
-    {
-      id: "ut_gestor",
-      name: "Gestor",
-      description: "Gestão de editais, relatórios e acompanhamento institucional.",
-      audiences: ["TECNICO_ADMINISTRATIVO", "DOCENTE"],
-      active: true,
-    },
-  ])
+  const [userTypes, setUserTypes] = useState<UserType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE")
@@ -83,6 +82,24 @@ export default function UserTypes() {
   const [description, setDescription] = useState("")
   const [audiences, setAudiences] = useState<Audience[]>([])
   const [active, setActive] = useState(true)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const page = await userTypeService.list(200, 0)
+      setUserTypes(page.results.map(mapUserType))
+    } catch (err) {
+      setLoadError(errorMessage(err, "Não foi possível carregar os tipos de usuário."))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const q = normalize(query)
 
@@ -136,6 +153,7 @@ export default function UserTypes() {
   ]
 
   function openCreate() {
+    setActionError(null)
     setEditingId(null)
     setName("")
     setDescription("")
@@ -145,6 +163,7 @@ export default function UserTypes() {
   }
 
   function openEdit(t: UserType) {
+    setActionError(null)
     setEditingId(t.id)
     setName(t.name)
     setDescription(t.description ?? "")
@@ -166,39 +185,76 @@ export default function UserTypes() {
     setAudiences((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]))
   }
 
-  function save() {
+  async function save() {
     const n = name.trim()
 
-    if (!n || nameError) return
+    if (!n || nameError || saving) return
     if (audiences.length === 0) return
 
-    const payload: UserType = {
-      id: editingId ?? uid("ut"),
-      name: n,
-      description: description.trim() ? description.trim() : undefined,
-      audiences,
-      active,
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      if (editingId) {
+        const updated = await userTypeService.update(Number(editingId), {
+          nome: n,
+          descricao: description.trim(),
+          publicos: audiences,
+          ativo: active,
+        })
+        const mapped = mapUserType(updated)
+        setUserTypes((prev) => prev.map((t) => (t.id === editingId ? mapped : t)))
+      } else {
+        const created = await userTypeService.create({
+          nome: n,
+          descricao: description.trim() ? description.trim() : undefined,
+          publicos: audiences,
+        })
+        setUserTypes((prev) => [mapUserType(created), ...prev])
+      }
+
+      closeModal()
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível salvar o tipo de usuário."))
+    } finally {
+      setSaving(false)
     }
+  }
 
-    if (editingId) {
-      setUserTypes((prev) => prev.map((t) => (t.id === editingId ? payload : t)))
-    } else {
-      setUserTypes((prev) => [payload, ...prev])
+  async function toggleActiveRow(id: string) {
+    const current = userTypes.find((t) => t.id === id)
+
+    if (!current || saving) return
+
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      const updated = await userTypeService.update(Number(id), { ativo: !current.active })
+      const mapped = mapUserType(updated)
+      setUserTypes((prev) => prev.map((t) => (t.id === id ? mapped : t)))
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível alterar o status."))
+    } finally {
+      setSaving(false)
     }
-
-    closeModal()
   }
 
-  function toggleActiveRow(id: string) {
-    setUserTypes((prev) => prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t)))
-  }
+  async function remove(id: string) {
+    if (saving) return
+    if (!window.confirm("Excluir este tipo de usuário?")) return
 
-  function remove(id: string) {
-    setUserTypes((prev) => prev.filter((t) => t.id !== id))
-  }
+    setSaving(true)
+    setActionError(null)
 
-  function pill(active: boolean) {
-    return active ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-50 text-neutral border-neutral-light"
+    try {
+      await userTypeService.remove(Number(id))
+      setUserTypes((prev) => prev.filter((t) => t.id !== id))
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível excluir o tipo de usuário."))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -243,7 +299,8 @@ export default function UserTypes() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
+              disabled={loading || saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors disabled:opacity-50"
             >
               <Plus size={16} />
               Novo tipo
@@ -251,6 +308,21 @@ export default function UserTypes() {
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}{" "}
+          <button type="button" className="underline font-semibold" onClick={() => void loadData()}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
 
       {/* ===== Resumo ===== */}
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
@@ -268,17 +340,17 @@ export default function UserTypes() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Total</p>
-            <p className="text-lg font-bold text-primary">{stats.total}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : stats.total}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Ativos</p>
-            <p className="text-lg font-bold text-primary">{stats.activeCount}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : stats.activeCount}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
             <p className="text-xs text-neutral">Inativos</p>
-            <p className="text-lg font-bold text-primary">{stats.inactiveCount}</p>
+            <p className="text-lg font-bold text-primary">{loading ? "…" : stats.inactiveCount}</p>
           </div>
         </div>
 
@@ -350,7 +422,13 @@ export default function UserTypes() {
           </thead>
 
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-5 py-6 text-neutral">
+                  Carregando…
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-5 py-6 text-neutral">
                   Nenhum tipo encontrado.
@@ -390,8 +468,9 @@ export default function UserTypes() {
 
                       <button
                         type="button"
-                        onClick={() => toggleActiveRow(t.id)}
-                        className="text-xs font-semibold text-primary hover:underline"
+                        onClick={() => void toggleActiveRow(t.id)}
+                        disabled={saving}
+                        className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                       >
                         {t.active ? "Desativar" : "Ativar"}
                       </button>
@@ -403,7 +482,8 @@ export default function UserTypes() {
                       <button
                         type="button"
                         onClick={() => openEdit(t)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold"
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold disabled:opacity-50"
                       >
                         <Pencil size={16} />
                         Editar
@@ -411,8 +491,9 @@ export default function UserTypes() {
 
                       <button
                         type="button"
-                        onClick={() => remove(t.id)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold"
+                        onClick={() => void remove(t.id)}
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold disabled:opacity-50"
                       >
                         <Trash2 size={16} />
                         Excluir
@@ -561,17 +642,17 @@ export default function UserTypes() {
 
               <button
                 type="button"
-                onClick={save}
-                disabled={!name.trim() || nameError || audiences.length === 0}
+                onClick={() => void save()}
+                disabled={saving || !name.trim() || nameError || audiences.length === 0}
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
-                    !name.trim() || nameError || audiences.length === 0
+                    saving || !name.trim() || nameError || audiences.length === 0
                       ? "bg-primary/40 cursor-not-allowed"
                       : "bg-primary hover:opacity-95"
                   }`}
               >
                 <Check size={16} />
-                Salvar
+                {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>

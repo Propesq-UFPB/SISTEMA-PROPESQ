@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link } from "react-router-dom"
 import {
@@ -11,41 +11,13 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import {
+  researchParametersService,
+  type ResearchModuleParametersPayload,
+} from "@/features/settings/api/researchParametersService"
 
-type Params = {
-  // 1) tolerância após prazo do edital
-  lateSubmissionToleranceDays: number
-
-  // 2) máximo de renovações por projeto
-  maxRenewalsPerProject: number
-
-  // 3) duração máxima para novos projetos (meses)
-  maxProjectDurationMonths: number
-
-  // 4) limite de solicitações de cotas por projeto
-  maxQuotaRequestsPerProject: number
-
-  // 5) limite de planos de trabalho por orientador
-  maxWorkPlansPerAdvisor: number
-
-  // 6) dia limite para alterações de bolsistas valerem no mês corrente (1..28/30/31)
-  scholarshipChangeCutoffDay: number
-
-  // 7) email notificação alterações de bolsistas
-  emailScholarshipChanges: string
-
-  // 8) email notificação de invenção
-  emailInventionNotifications: string
-
-  // 9) permite relatórios parciais IC?
-  allowPartialReportsIC: boolean
-
-  // 10) permite resumos ENIC independentes?
-  allowIndependentENICSummaries: boolean
-
-  // 11) quantidade de resumos distribuídos por avaliador no ENIC
-  enicSummariesPerReviewer: number
-}
+type Params = ResearchModuleParametersPayload
 
 function clampInt(v: number, min: number, max: number) {
   if (Number.isNaN(v)) return min
@@ -54,8 +26,40 @@ function clampInt(v: number, min: number, max: number) {
 }
 
 function isEmailValid(email: string) {
-  // validação simples para UI; backend deve validar também
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const value = email.trim()
+  const at = value.indexOf("@")
+  if (at <= 0 || value.includes("@", at + 1)) return false
+
+  const local = value.slice(0, at)
+  const domain = value.slice(at + 1)
+  const dot = domain.indexOf(".")
+  if (dot <= 0 || dot === domain.length - 1) return false
+
+  // Mesma regra do antigo [^\s@]+ em cada parte, sem backtracking.
+  return !/[\s@]/.test(local) && !/[\s@]/.test(domain)
+}
+
+function errorMessage(err: unknown, fallback: string) {
+  if (err instanceof ApiError) {
+    return err.message || fallback
+  }
+  return fallback
+}
+
+function toParams(data: Params & { updatedAt?: string }): Params {
+  return {
+    lateSubmissionToleranceDays: data.lateSubmissionToleranceDays,
+    maxRenewalsPerProject: data.maxRenewalsPerProject,
+    maxProjectDurationMonths: data.maxProjectDurationMonths,
+    maxQuotaRequestsPerProject: data.maxQuotaRequestsPerProject,
+    maxWorkPlansPerAdvisor: data.maxWorkPlansPerAdvisor,
+    scholarshipChangeCutoffDay: data.scholarshipChangeCutoffDay,
+    emailScholarshipChanges: data.emailScholarshipChanges,
+    emailInventionNotifications: data.emailInventionNotifications,
+    allowPartialReportsIC: data.allowPartialReportsIC,
+    allowIndependentENICSummaries: data.allowIndependentENICSummaries,
+    enicSummariesPerReviewer: data.enicSummariesPerReviewer,
+  }
 }
 
 const DEFAULTS: Params = {
@@ -73,13 +77,18 @@ const DEFAULTS: Params = {
 }
 
 export default function AdmResearchModuleParameters() {
-  // Depois: trocar por fetch/GET
-  const [initial] = useState<Params>(DEFAULTS)
+  const [initial, setInitial] = useState<Params>(DEFAULTS)
   const [form, setForm] = useState<Params>(DEFAULTS)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
 
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial])
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(initial),
+    [form, initial],
+  )
 
   const errors = useMemo(() => {
     const e: Partial<Record<keyof Params, string>> = {}
@@ -112,7 +121,10 @@ export default function AdmResearchModuleParameters() {
       e.emailScholarshipChanges = "Email inválido."
     }
 
-    if (form.emailInventionNotifications.trim() && !isEmailValid(form.emailInventionNotifications)) {
+    if (
+      form.emailInventionNotifications.trim() &&
+      !isEmailValid(form.emailInventionNotifications)
+    ) {
       e.emailInventionNotifications = "Email inválido."
     }
 
@@ -125,15 +137,43 @@ export default function AdmResearchModuleParameters() {
 
   const hasErrors = Object.keys(errors).length > 0
 
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const data = await researchParametersService.get()
+      const params = toParams(data)
+      setInitial(params)
+      setForm(params)
+      if (data.updatedAt) {
+        setSavedAt(new Date(data.updatedAt))
+      }
+    } catch (err) {
+      setLoadError(errorMessage(err, "Não foi possível carregar os parâmetros."))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
   async function onSave() {
     if (hasErrors) return
 
     setSaving(true)
+    setActionError(null)
 
     try {
-      // trocar por POST/PUT
-      await new Promise((r) => setTimeout(r, 450))
-      setSavedAt(new Date())
+      const saved = await researchParametersService.update(form)
+      const params = toParams(saved)
+      setInitial(params)
+      setForm(params)
+      setSavedAt(saved.updatedAt ? new Date(saved.updatedAt) : new Date())
+    } catch (err) {
+      setActionError(errorMessage(err, "Não foi possível salvar os parâmetros."))
     } finally {
       setSaving(false)
     }
@@ -142,6 +182,48 @@ export default function AdmResearchModuleParameters() {
   function onReset() {
     setForm(initial)
     setSavedAt(null)
+    setActionError(null)
+  }
+
+  let statusBadge: React.ReactNode
+  if (loading) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral">
+        Carregando…
+      </span>
+    )
+  } else if (hasErrors) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+        <AlertTriangle size={14} />
+        Corrigir campos
+      </span>
+    )
+  } else if (dirty) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+        <AlertTriangle size={14} />
+        Alterações não salvas
+      </span>
+    )
+  } else {
+    statusBadge = (
+      <span className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+        <CheckCircle2 size={14} />
+        Sem alterações
+      </span>
+    )
+  }
+
+  let statusMessage: string
+  if (loading) {
+    statusMessage = "Carregando parâmetros do servidor…"
+  } else if (hasErrors) {
+    statusMessage = "Corrija os campos marcados para salvar."
+  } else if (dirty) {
+    statusMessage = "Há alterações não salvas."
+  } else {
+    statusMessage = "Sem alterações."
   }
 
   return (
@@ -158,7 +240,6 @@ export default function AdmResearchModuleParameters() {
         Voltar para bolsas
       </Link>
 
-      {/* ===== Header no mesmo estilo das outras páginas ===== */}
       <div className="rounded-2xl border border-neutral-light bg-white p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-3">
@@ -168,7 +249,9 @@ export default function AdmResearchModuleParameters() {
             </span>
 
             <div>
-              <h1 className="text-2xl font-bold text-primary">Parâmetros do Módulo de Pesquisa</h1>
+              <h1 className="text-2xl font-bold text-primary">
+                Parâmetros do Módulo de Pesquisa
+              </h1>
 
               <p className="text-sm text-neutral mt-1 max-w-2xl">
                 Defina regras globais que afetam submissões, projetos, bolsas, relatórios,
@@ -181,7 +264,7 @@ export default function AdmResearchModuleParameters() {
             <button
               type="button"
               onClick={onReset}
-              disabled={!dirty || saving}
+              disabled={!dirty || saving || loading}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-neutral-light text-primary hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RotateCcw size={16} />
@@ -190,8 +273,8 @@ export default function AdmResearchModuleParameters() {
 
             <button
               type="button"
-              onClick={onSave}
-              disabled={!dirty || hasErrors || saving}
+              onClick={() => void onSave()}
+              disabled={!dirty || hasErrors || saving || loading}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={16} />
@@ -201,7 +284,25 @@ export default function AdmResearchModuleParameters() {
         </div>
       </div>
 
-      {/* ===== Status ===== */}
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-4">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            className="shrink-0 rounded-lg border border-red-300 px-3 py-1.5 font-medium hover:bg-red-100"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
         <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
           <div className="space-y-1">
@@ -216,22 +317,7 @@ export default function AdmResearchModuleParameters() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {hasErrors ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                <AlertTriangle size={14} />
-                Corrigir campos
-              </span>
-            ) : dirty ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                <AlertTriangle size={14} />
-                Alterações não salvas
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                <CheckCircle2 size={14} />
-                Sem alterações
-              </span>
-            )}
+            {statusBadge}
           </div>
         </div>
 
@@ -239,19 +325,13 @@ export default function AdmResearchModuleParameters() {
           <Info size={16} className="mt-0.5 text-neutral" />
 
           <p className="text-xs text-neutral">
-            {hasErrors
-              ? "Corrija os campos marcados para salvar."
-              : dirty
-                ? "Há alterações não salvas."
-                : "Sem alterações."}
+            {statusMessage}
             {savedAt ? ` • Último salvamento: ${savedAt.toLocaleString()}` : ""}
           </p>
         </div>
       </section>
 
-      {/* ===== GRID ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ====== BLOCO 1: Submissões e Projetos ====== */}
         <section className="bg-white border border-neutral-light rounded-2xl p-5 space-y-4 shadow-sm">
           <h2 className="text-sm font-bold text-primary">Submissões e Projetos</h2>
 
@@ -260,6 +340,7 @@ export default function AdmResearchModuleParameters() {
             value={form.lateSubmissionToleranceDays}
             min={0}
             max={365}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, lateSubmissionToleranceDays: v }))}
             error={errors.lateSubmissionToleranceDays}
             hint="Ex.: 0 (não permite), 2 (até 2 dias após encerrar)."
@@ -270,6 +351,7 @@ export default function AdmResearchModuleParameters() {
             value={form.maxRenewalsPerProject}
             min={0}
             max={20}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, maxRenewalsPerProject: v }))}
             error={errors.maxRenewalsPerProject}
             hint="Quantas vezes um projeto pode ser renovado."
@@ -280,6 +362,7 @@ export default function AdmResearchModuleParameters() {
             value={form.maxProjectDurationMonths}
             min={1}
             max={120}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, maxProjectDurationMonths: v }))}
             error={errors.maxProjectDurationMonths}
             hint="Ex.: 12, 18, 24."
@@ -290,13 +373,13 @@ export default function AdmResearchModuleParameters() {
             value={form.maxQuotaRequestsPerProject}
             min={1}
             max={99}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, maxQuotaRequestsPerProject: v }))}
             error={errors.maxQuotaRequestsPerProject}
             hint="Controla quantas solicitações de cota o projeto pode fazer."
           />
         </section>
 
-        {/* ====== BLOCO 2: Bolsas, Relatórios e ENIC ====== */}
         <section className="bg-white border border-neutral-light rounded-2xl p-5 space-y-4 shadow-sm">
           <h2 className="text-sm font-bold text-primary">Bolsas, Relatórios e ENIC</h2>
 
@@ -305,6 +388,7 @@ export default function AdmResearchModuleParameters() {
             value={form.maxWorkPlansPerAdvisor}
             min={1}
             max={200}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, maxWorkPlansPerAdvisor: v }))}
             error={errors.maxWorkPlansPerAdvisor}
             hint="Ex.: 5, 10, 20."
@@ -315,6 +399,7 @@ export default function AdmResearchModuleParameters() {
             value={form.scholarshipChangeCutoffDay}
             min={1}
             max={31}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, scholarshipChangeCutoffDay: v }))}
             error={errors.scholarshipChangeCutoffDay}
             hint="Ex.: 20 significa: mudanças até dia 20 valem no mês atual."
@@ -324,6 +409,7 @@ export default function AdmResearchModuleParameters() {
             label="Email para recebimento de notificação de alterações de bolsistas"
             value={form.emailScholarshipChanges}
             placeholder="ex.: bolsas@ufpb.br"
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, emailScholarshipChanges: v }))}
             error={errors.emailScholarshipChanges}
             hint="Pode ser um email institucional ou lista de distribuição."
@@ -333,6 +419,7 @@ export default function AdmResearchModuleParameters() {
             label="Email para recebimento de notificações de invenção"
             value={form.emailInventionNotifications}
             placeholder="ex.: inovacao@ufpb.br"
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, emailInventionNotifications: v }))}
             error={errors.emailInventionNotifications}
             hint="Usado quando houver fluxo/registro de invenção."
@@ -341,12 +428,14 @@ export default function AdmResearchModuleParameters() {
           <FieldToggle
             label="Permite envio de relatórios parciais pelos alunos de iniciação científica?"
             value={form.allowPartialReportsIC}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, allowPartialReportsIC: v }))}
           />
 
           <FieldToggle
             label="Permite envio de resumos do ENIC independentes?"
             value={form.allowIndependentENICSummaries}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, allowIndependentENICSummaries: v }))}
           />
 
@@ -355,6 +444,7 @@ export default function AdmResearchModuleParameters() {
             value={form.enicSummariesPerReviewer}
             min={1}
             max={100}
+            disabled={loading}
             onChange={(v) => setForm((p) => ({ ...p, enicSummariesPerReviewer: v }))}
             error={errors.enicSummariesPerReviewer}
             hint="Quantos resumos cada avaliador recebe na distribuição automática."
@@ -365,9 +455,7 @@ export default function AdmResearchModuleParameters() {
   )
 }
 
-/* ================= COMPONENTES DE CAMPO ================= */
-
-function FieldNumber(props: {
+function FieldNumber(props: Readonly<{
   label: string
   value: number
   min: number
@@ -375,8 +463,9 @@ function FieldNumber(props: {
   onChange: (value: number) => void
   hint?: string
   error?: string
-}) {
-  const { label, value, min, max, onChange, hint, error } = props
+  disabled?: boolean
+}>) {
+  const { label, value, min, max, onChange, hint, error, disabled } = props
 
   return (
     <div className="space-y-1.5">
@@ -387,9 +476,10 @@ function FieldNumber(props: {
         value={value}
         min={min}
         max={max}
+        disabled={disabled}
         onChange={(e) => onChange(clampInt(Number(e.target.value), min, max))}
         className={`
-          w-full px-3 py-2 rounded-lg border text-sm outline-none
+          w-full px-3 py-2 rounded-lg border text-sm outline-none disabled:opacity-60
           ${
             error
               ? "border-red-400 focus:ring-2 focus:ring-red-200"
@@ -404,15 +494,16 @@ function FieldNumber(props: {
   )
 }
 
-function FieldText(props: {
+function FieldText(props: Readonly<{
   label: string
   value: string
   placeholder?: string
   onChange: (value: string) => void
   hint?: string
   error?: string
-}) {
-  const { label, value, placeholder, onChange, hint, error } = props
+  disabled?: boolean
+}>) {
+  const { label, value, placeholder, onChange, hint, error, disabled } = props
 
   return (
     <div className="space-y-1.5">
@@ -422,9 +513,10 @@ function FieldText(props: {
         type="email"
         value={value}
         placeholder={placeholder}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         className={`
-          w-full px-3 py-2 rounded-lg border text-sm outline-none
+          w-full px-3 py-2 rounded-lg border text-sm outline-none disabled:opacity-60
           ${
             error
               ? "border-red-400 focus:ring-2 focus:ring-red-200"
@@ -439,12 +531,13 @@ function FieldText(props: {
   )
 }
 
-function FieldToggle(props: {
+function FieldToggle(props: Readonly<{
   label: string
   value: boolean
   onChange: (v: boolean) => void
-}) {
-  const { label, value, onChange } = props
+  disabled?: boolean
+}>) {
+  const { label, value, onChange, disabled } = props
 
   return (
     <div className="flex items-center justify-between gap-3 border border-neutral-light rounded-xl p-3">
@@ -452,9 +545,11 @@ function FieldToggle(props: {
 
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange(!value)}
         className={`
           relative inline-flex h-7 w-12 items-center rounded-full transition-colors
+          disabled:opacity-60 disabled:cursor-not-allowed
           ${value ? "bg-primary" : "bg-neutral-light"}
           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20
         `}
