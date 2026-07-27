@@ -58,13 +58,14 @@ function badgeClass(active: boolean) {
     : "bg-neutral-50 text-neutral border-neutral-light"
 }
 
-export default function RolesDictionary() {
+export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}) {
   const [roles, setRoles] = useState<RoleEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  // ===== UI state =====
   const [query, setQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<RoleEntry["category"] | "ALL">("ALL")
   const [activeFilter, setActiveFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE")
@@ -247,7 +248,7 @@ export default function RolesDictionary() {
       </Helmet>
 
       <Link
-        to="/adm/settings/scholarships"
+        to={`${basePath}/settings/scholarships`}
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

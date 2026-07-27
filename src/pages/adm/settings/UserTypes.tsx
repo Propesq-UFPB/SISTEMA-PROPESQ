@@ -65,13 +65,12 @@ function pill(active: boolean) {
   return active ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-50 text-neutral border-neutral-light"
 }
 
-export default function UserTypes() {
+export default function UserTypes({basePath = "/adm"}: {basePath?: string}) {
   const [userTypes, setUserTypes] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE")
 
@@ -264,7 +263,7 @@ export default function UserTypes() {
       </Helmet>
 
       <Link
-        to="/adm/settings/scholarships"
+        to={`${basePath}/settings/scholarships`}
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

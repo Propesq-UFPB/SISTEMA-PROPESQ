@@ -91,7 +91,7 @@ function errorMessage(err: unknown, fallback: string) {
   return fallback
 }
 
-export default function AcademicUnits() {
+export default function AcademicUnits({basePath = "/adm"}: {basePath?: string}) {
   const [centers, setCenters] = useState<UniversityCenter[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
   const [loading, setLoading] = useState(true)
@@ -465,7 +465,7 @@ export default function AcademicUnits() {
       </Helmet>
 
       <Link
-        to="/adm/settings/scholarships"
+        to={`${basePath}/settings/scholarships`}
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

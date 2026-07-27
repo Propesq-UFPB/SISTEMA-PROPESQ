@@ -31,10 +31,12 @@ function normalizeRole(role?: BackendRole): Role {
     case "COORDENADOR":
       return "COORDENADOR"
 
-    case "GESTOR":
     case "ADMIN":
     case "ADMINISTRADOR":
       return "ADMINISTRADOR"
+    
+    case "GESTOR":
+      return "GESTOR"
 
     default:
       return "DISCENTE"
@@ -43,6 +45,7 @@ function normalizeRole(role?: BackendRole): Role {
 
 function destination(role: Role) {
   switch (role) {
+    case "GESTOR":
     case "ADMINISTRADOR":
       return "/dashboard"
 
@@ -197,6 +200,10 @@ export default function Login() {
 
                 <option value="ADMINISTRADOR">
                   Administrador
+                </option>
+
+                <option value="GESTOR">
+                  Gestor
                 </option>
               </select>
             </label>
