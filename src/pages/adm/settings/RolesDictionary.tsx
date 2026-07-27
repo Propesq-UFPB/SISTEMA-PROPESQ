@@ -39,7 +39,7 @@ const CATEGORY_LABEL: Record<RoleEntry["category"], string> = {
   OUTRO: "Outro",
 }
 
-export default function RolesDictionary() {
+export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}) {
   // ===== Mock inicial (trocar por API depois) =====
   const [roles, setRoles] = useState<RoleEntry[]>([
     {
@@ -210,7 +210,7 @@ export default function RolesDictionary() {
       </Helmet>
 
       <Link
-        to="/adm/settings/scholarships"
+        to={`${basePath}/settings/scholarships`}
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

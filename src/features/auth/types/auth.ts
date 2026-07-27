@@ -1,5 +1,5 @@
 export type BackendRole = "DISCENTE" | "COORDENADOR" | "GESTOR" | "ADMIN" | string
-export type AppRole = "DISCENTE" | "COORDENADOR" | "ADMINISTRADOR"
+export type AppRole = "DISCENTE" | "COORDENADOR" | "ADMINISTRADOR" | "GESTOR"
 
 export type AuthUser = {
   id: number

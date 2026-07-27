@@ -122,6 +122,12 @@ import CoordinatorReportReview from "./pages/coordenador/relatorios/CoordinatorR
 import CoordinatorProductionIPI from "./pages/coordenador/producao/CoordinatorProductionIPI"
 import CoordinatorProductionResult from "./pages/coordenador/producao/CoordinatorProductionResult"
 
+// gestor pages
+import GestorUserTypes from "./pages/gestor/settings/GestorUserTypes"
+import GestorScholarships from "./pages/gestor/settings/GestorScholarships"
+// import GestorProjects from "./pages/gestor/projetos/GestorProjects"
+// import GestorProjectViewEdit from "./pages/gestor/projetos/GestorProjectViewEdit"
+
 
 import NotFound from "./pages/NotFound"
 
@@ -167,6 +173,9 @@ const PublisherProtected: React.FC<{ children: React.ReactNode }> = ({
 
 
 import PublisherHeader from "./publisher/PublisherHeader"
+import GestorAcademicUnits from "./pages/gestor/settings/GestorAcademicUnits"
+import GestorRoles from "./pages/gestor/settings/GestorRoles"
+import GestorParameters from "./pages/gestor/settings/GestorParameters"
 const PublisherShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-slate-100">
     <PublisherHeader />
@@ -302,6 +311,15 @@ export default function App() {
 
         <Route path="/coordenador/producao/ipi" element={<Protected><Shell><CoordinatorProductionIPI /></Shell></Protected>} />
         <Route path="/coordenador/producao/resultado" element={<Protected><Shell><CoordinatorProductionResult /></Shell></Protected>} />
+
+        {/* Gestor */}
+        <Route path="/gestor/settings/user-types" element={<Protected><Shell><GestorUserTypes /></Shell></Protected>} />
+        <Route path="/gestor/settings/scholarships" element={<Protected><Shell><GestorScholarships /></Shell></Protected>} />
+        <Route path="/gestor/settings/academic-units" element={<Protected><Shell><GestorAcademicUnits /></Shell></Protected>} />
+        <Route path="/gestor/settings/roles" element={<Protected><Shell><GestorRoles /></Shell></Protected>} />
+        <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorParameters /></Shell></Protected>} />
+        {/* <Route path="/gestor/projetos" element={<Protected><Shell><GestorProjects /></Shell></Protected>} /> */}
+
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

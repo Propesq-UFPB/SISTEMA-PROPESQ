@@ -34,7 +34,7 @@ export default function Dashboard() {
             Painel Administrativo
           </h1>
           <p className="mt-1 text-base text-neutral">
-            Olá, Admistrador.
+            Olá, Administrador.
           </p>
         </header>
 

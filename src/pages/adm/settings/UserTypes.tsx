@@ -48,7 +48,7 @@ function normalize(s: string) {
   return s.trim().toLowerCase()
 }
 
-export default function UserTypes() {
+export default function UserTypes({basePath = "/adm"}: {basePath?: string}) {
   const [userTypes, setUserTypes] = useState<UserType[]>([
     {
       id: "ut_coord",
@@ -208,7 +208,7 @@ export default function UserTypes() {
       </Helmet>
 
       <Link
-        to="/adm/settings/scholarships"
+        to={`${basePath}/settings/scholarships`}
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />
