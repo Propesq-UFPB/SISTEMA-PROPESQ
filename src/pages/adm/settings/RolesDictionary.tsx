@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link } from "react-router-dom"
 import {
@@ -14,21 +14,34 @@ import {
   Info,
   Settings,
 } from "lucide-react"
+import { ApiError } from "@/services/apiClient"
+import {
+  projectRoleService,
+  type ProjectRole,
+  type ProjectRoleCategory,
+} from "@/features/settings/api/projectRoleService"
 
 type RoleEntry = {
   id: string
   name: string
-  category: "ACADEMICO" | "BOLSA" | "EXTERNO" | "GESTAO" | "OUTRO"
+  category: ProjectRoleCategory
   description?: string
   active: boolean
 }
 
-function uid(prefix = "role") {
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
-}
-
 function normalize(s: string) {
   return s.trim().toLowerCase()
+}
+
+function mapApiToRole(row: ProjectRole): RoleEntry {
+  return {
+    id: String(row.id),
+    name: row.nome,
+    category: row.categoria,
+
+    description: row.descricao ?? undefined,
+    active: row.ativo,
+  }
 }
 
 const CATEGORY_LABEL: Record<RoleEntry["category"], string> = {
@@ -39,45 +52,18 @@ const CATEGORY_LABEL: Record<RoleEntry["category"], string> = {
   OUTRO: "Outro",
 }
 
+function badgeClass(active: boolean) {
+  return active
+    ? "bg-green-50 text-green-700 border-green-200"
+    : "bg-neutral-50 text-neutral border-neutral-light"
+}
+
 export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}) {
-  // ===== Mock inicial (trocar por API depois) =====
-  const [roles, setRoles] = useState<RoleEntry[]>([
-    {
-      id: "r_orientador",
-      name: "Orientador",
-      category: "ACADEMICO",
-      description: "Docente responsável pela orientação do projeto.",
-      active: true,
-    },
-    {
-      id: "r_coorientador",
-      name: "Coorientador",
-      category: "ACADEMICO",
-      description: "Apoia a orientação do projeto.",
-      active: true,
-    },
-    {
-      id: "r_bolsista",
-      name: "Bolsista",
-      category: "BOLSA",
-      description: "Discente com bolsa vinculada ao projeto.",
-      active: true,
-    },
-    {
-      id: "r_voluntario",
-      name: "Voluntário",
-      category: "BOLSA",
-      description: "Discente sem bolsa, com participação voluntária.",
-      active: true,
-    },
-    {
-      id: "r_externo",
-      name: "Colaborador Externo",
-      category: "EXTERNO",
-      description: "Participante sem vínculo institucional direto.",
-      active: true,
-    },
-  ])
+  const [roles, setRoles] = useState<RoleEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // ===== UI state =====
   const [query, setQuery] = useState("")
@@ -91,6 +77,26 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
   const [category, setCategory] = useState<RoleEntry["category"]>("ACADEMICO")
   const [description, setDescription] = useState("")
   const [active, setActive] = useState(true)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const response = await projectRoleService.list(200, 0)
+      setRoles(response.results.map(mapApiToRole))
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Não foi possível carregar as funções."
+      setLoadError(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const q = normalize(query)
 
@@ -129,8 +135,8 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
     }
   }, [roles])
 
-  // ===== Modal helpers =====
   function openCreate() {
+    setActionError(null)
     setEditingId(null)
     setName("")
     setCategory("ACADEMICO")
@@ -140,6 +146,7 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
   }
 
   function openEdit(r: RoleEntry) {
+    setActionError(null)
     setEditingId(r.id)
     setName(r.name)
     setCategory(r.category)
@@ -161,46 +168,77 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
     name.trim().length > 0 &&
     roles.some((r) => normalize(r.name) === normalize(name) && r.id !== editingId)
 
-  function save() {
+  async function save() {
     const n = name.trim()
 
-    if (!n || nameError) return
+    if (!n || nameError || saving) return
 
-    const payload: RoleEntry = {
-      id: editingId ?? uid("role"),
-      name: n,
-      category,
-      description: description.trim() ? description.trim() : undefined,
-      active,
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      const payload = {
+        nome: n,
+        categoria: category,
+        descricao: description.trim() ? description.trim() : undefined,
+        ativo: active,
+      }
+
+      if (editingId) {
+        const updated = await projectRoleService.update(Number(editingId), payload)
+        setRoles((prev) => prev.map((r) => (r.id === editingId ? mapApiToRole(updated) : r)))
+      } else {
+        const created = await projectRoleService.create(payload)
+        setRoles((prev) => [mapApiToRole(created), ...prev])
+      }
+
+      closeModal()
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Não foi possível salvar a função."
+      setActionError(message)
+    } finally {
+      setSaving(false)
     }
+  }
 
-    if (editingId) {
-      setRoles((prev) => prev.map((r) => (r.id === editingId ? payload : r)))
-    } else {
-      setRoles((prev) => [payload, ...prev])
+  async function toggleActive(id: string) {
+    const current = roles.find((r) => r.id === id)
+    if (!current || saving) return
+
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      const updated = await projectRoleService.update(Number(id), {
+        ativo: !current.active,
+      })
+      setRoles((prev) => prev.map((r) => (r.id === id ? mapApiToRole(updated) : r)))
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Não foi possível atualizar o status."
+      setActionError(message)
+    } finally {
+      setSaving(false)
     }
-
-    // TODO: chamar API (POST/PUT)
-    closeModal()
   }
 
-  function toggleActive(id: string) {
-    setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)))
+  async function remove(id: string) {
+    if (saving) return
 
-    // TODO: API patch active
-  }
+    setSaving(true)
+    setActionError(null)
 
-  function remove(id: string) {
-    // Em produção, bloquear exclusão se a função estiver em uso em projetos, inscrições ou certificados.
-    setRoles((prev) => prev.filter((r) => r.id !== id))
-
-    // TODO: API delete
-  }
-
-  function badgeClass(active: boolean) {
-    return active
-      ? "bg-green-50 text-green-700 border-green-200"
-      : "bg-neutral-50 text-neutral border-neutral-light"
+    try {
+      await projectRoleService.remove(Number(id))
+      setRoles((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Não foi possível excluir a função."
+      setActionError(message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -217,7 +255,6 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
         Voltar para bolsas
       </Link>
 
-      {/* ===== Header no mesmo estilo das outras páginas ===== */}
       <div className="rounded-2xl border border-neutral-light bg-white p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-3">
@@ -245,7 +282,8 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
+              disabled={loading || saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors disabled:opacity-50"
             >
               <Plus size={16} />
               Nova função
@@ -254,193 +292,218 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
         </div>
       </div>
 
-      {/* ===== Resumo ===== */}
-      <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
-        <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <BookUser size={18} />
-              <h2 className="text-sm font-semibold text-primary">Funções cadastradas</h2>
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+
+      {loading && (
+        <div className="rounded-xl border border-neutral-light bg-white px-5 py-6 text-sm text-neutral">
+          Carregando funções...
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-col md:flex-row md:items-center">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <BookUser size={18} />
+                  <h2 className="text-sm font-semibold text-primary">Funções cadastradas</h2>
+                </div>
+
+                <p className="text-sm text-neutral">
+                  As funções impactam permissões, certificados, relatórios e composição de equipes.
+                </p>
+              </div>
             </div>
 
-            <p className="text-sm text-neutral">
-              As funções impactam permissões, certificados, relatórios e composição de equipes.
-            </p>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+                <p className="text-xs text-neutral">Total</p>
+                <p className="text-lg font-bold text-primary">{stats.total}</p>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
-            <p className="text-xs text-neutral">Total</p>
-            <p className="text-lg font-bold text-primary">{stats.total}</p>
-          </div>
+              <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+                <p className="text-xs text-neutral">Ativas</p>
+                <p className="text-lg font-bold text-primary">{stats.activeCount}</p>
+              </div>
 
-          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
-            <p className="text-xs text-neutral">Ativas</p>
-            <p className="text-lg font-bold text-primary">{stats.activeCount}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
-            <p className="text-xs text-neutral">Inativas</p>
-            <p className="text-lg font-bold text-primary">{stats.inactiveCount}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4 flex gap-2">
-          <Info size={16} className="mt-0.5 text-neutral" />
-
-          <p className="text-xs text-neutral">
-            Dica: em vez de excluir funções usadas em registros antigos, prefira{" "}
-            <span className="font-semibold">desativar</span> para preservar histórico.
-          </p>
-        </div>
-      </section>
-
-      {/* ===== Filtros ===== */}
-      <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-col md:flex-row">
-          <div className="w-full md:max-w-md">
-            <label className="text-xs text-neutral">Buscar</label>
-
-            <div className="relative mt-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral" />
-
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ex.: orientador, bolsa, externo..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-light text-sm outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-end gap-3 flex-wrap justify-end">
-            <div>
-              <label className="text-xs text-neutral">Categoria</label>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value as any)}
-                className="mt-1 rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="ALL">Todas</option>
-                <option value="ACADEMICO">Acadêmico</option>
-                <option value="BOLSA">Bolsa</option>
-                <option value="EXTERNO">Externo</option>
-                <option value="GESTAO">Gestão</option>
-                <option value="OUTRO">Outro</option>
-              </select>
+              <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4">
+                <p className="text-xs text-neutral">Inativas</p>
+                <p className="text-lg font-bold text-primary">{stats.inactiveCount}</p>
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs text-neutral">Status</label>
+            <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4 flex gap-2">
+              <Info size={16} className="mt-0.5 text-neutral" />
 
-              <select
-                value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value as any)}
-                className="mt-1 rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="ACTIVE">Ativas</option>
-                <option value="INACTIVE">Inativas</option>
-                <option value="ALL">Todas</option>
-              </select>
+              <p className="text-xs text-neutral">
+                Dica: em vez de excluir funções usadas em registros antigos, prefira{" "}
+                <span className="font-semibold">desativar</span> para preservar histórico.
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-col md:flex-row">
+              <div className="w-full md:max-w-md">
+                <label className="text-xs text-neutral">Buscar</label>
+
+                <div className="relative mt-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral" />
+
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Ex.: orientador, bolsa, externo..."
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-light text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-end gap-3 flex-wrap justify-end">
+                <div>
+                  <label className="text-xs text-neutral">Categoria</label>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) =>
+                      setCategoryFilter(e.target.value as RoleEntry["category"] | "ALL")
+                    }
+                    className="mt-1 rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="ALL">Todas</option>
+                    <option value="ACADEMICO">Acadêmico</option>
+                    <option value="BOLSA">Bolsa</option>
+                    <option value="EXTERNO">Externo</option>
+                    <option value="GESTAO">Gestão</option>
+                    <option value="OUTRO">Outro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-neutral">Status</label>
+
+                  <select
+                    value={activeFilter}
+                    onChange={(e) =>
+                      setActiveFilter(e.target.value as "ALL" | "ACTIVE" | "INACTIVE")
+                    }
+                    className="mt-1 rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="ACTIVE">Ativas</option>
+                    <option value="INACTIVE">Inativas</option>
+                    <option value="ALL">Todas</option>
+                  </select>
+                </div>
+
+                <div className="text-xs text-neutral md:text-right pb-2">
+                  {filtered.length} de {roles.length}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-neutral-light bg-white overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-light flex items-center gap-2">
+              <ShieldCheck size={18} />
+              <h3 className="text-sm font-semibold text-primary">Lista de funções</h3>
             </div>
 
-            <div className="text-xs text-neutral md:text-right pb-2">
-              {filtered.length} de {roles.length}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Tabela ===== */}
-      <section className="rounded-xl border border-neutral-light bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-neutral-light flex items-center gap-2">
-          <ShieldCheck size={18} />
-          <h3 className="text-sm font-semibold text-primary">Lista de funções</h3>
-        </div>
-
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-neutral">
-            <tr>
-              <th className="text-left font-semibold px-5 py-3">Função</th>
-              <th className="text-left font-semibold px-5 py-3">Categoria</th>
-              <th className="text-left font-semibold px-5 py-3">Descrição</th>
-              <th className="text-left font-semibold px-5 py-3 w-[200px]">Status</th>
-              <th className="text-right font-semibold px-5 py-3 w-[260px]">Ações</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-neutral">
-                  Nenhuma função encontrada.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((r) => (
-                <tr key={r.id} className="border-t border-neutral-light">
-                  <td className="px-5 py-3">
-                    <p className="font-semibold text-primary">{r.name}</p>
-                  </td>
-
-                  <td className="px-5 py-3 text-neutral">{CATEGORY_LABEL[r.category]}</td>
-
-                  <td className="px-5 py-3 text-neutral">
-                    {r.description ? r.description : <span className="text-neutral/60">—</span>}
-                  </td>
-
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${badgeClass(
-                          r.active
-                        )}`}
-                      >
-                        {r.active ? <Check size={14} /> : <X size={14} />}
-                        {r.active ? "Ativa" : "Inativa"}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => toggleActive(r.id)}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        {r.active ? "Desativar" : "Ativar"}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(r)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold"
-                      >
-                        <Pencil size={16} />
-                        Editar
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => remove(r.id)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold"
-                      >
-                        <Trash2 size={16} />
-                        Excluir
-                      </button>
-                    </div>
-                  </td>
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50 text-neutral">
+                <tr>
+                  <th className="text-left font-semibold px-5 py-3">Função</th>
+                  <th className="text-left font-semibold px-5 py-3">Categoria</th>
+                  <th className="text-left font-semibold px-5 py-3">Descrição</th>
+                  <th className="text-left font-semibold px-5 py-3 w-[200px]">Status</th>
+                  <th className="text-right font-semibold px-5 py-3 w-[260px]">Ações</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
+              </thead>
 
-      {/* ===== Modal Create/Edit ===== */}
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-6 text-neutral">
+                      Nenhuma função encontrada.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((r) => (
+                    <tr key={r.id} className="border-t border-neutral-light">
+                      <td className="px-5 py-3">
+                        <p className="font-semibold text-primary">{r.name}</p>
+                      </td>
+
+                      <td className="px-5 py-3 text-neutral">{CATEGORY_LABEL[r.category]}</td>
+
+                      <td className="px-5 py-3 text-neutral">
+                        {r.description ? r.description : <span className="text-neutral/60">—</span>}
+                      </td>
+
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${badgeClass(
+                              r.active,
+                            )}`}
+                          >
+                            {r.active ? <Check size={14} /> : <X size={14} />}
+                            {r.active ? "Ativa" : "Inativa"}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => void toggleActive(r.id)}
+                            disabled={saving}
+                            className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                          >
+                            {r.active ? "Desativar" : "Ativar"}
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(r)}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold disabled:opacity-50"
+                          >
+                            <Pencil size={16} />
+                            Editar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => void remove(r.id)}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold disabled:opacity-50"
+                          >
+                            <Trash2 size={16} />
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </section>
+        </>
+      )}
+
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
@@ -465,6 +528,12 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
                 <X size={16} />
               </button>
             </div>
+
+            {actionError && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {actionError}
+              </div>
+            )}
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -560,24 +629,25 @@ export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 text-sm font-semibold disabled:opacity-50"
               >
                 Cancelar
               </button>
 
               <button
                 type="button"
-                onClick={save}
-                disabled={!name.trim() || nameError}
+                onClick={() => void save()}
+                disabled={!name.trim() || nameError || saving}
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white
                   ${
-                    !name.trim() || nameError
+                    !name.trim() || nameError || saving
                       ? "bg-primary/40 cursor-not-allowed"
                       : "bg-primary hover:opacity-95"
                   }`}
               >
                 <Check size={16} />
-                Salvar
+                {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </div>
