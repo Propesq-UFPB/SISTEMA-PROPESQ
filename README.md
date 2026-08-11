@@ -8,10 +8,6 @@ O projeto foi desenvolvido com **React + Vite + TypeScript**, com navegação se
 - **Coordenador**
 - **Administrador / PROPESQ**
 
-> [!NOTE]
-> XXX
-
-
 ### Tecnologias utilizadas
 
 - React
