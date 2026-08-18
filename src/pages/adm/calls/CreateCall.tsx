@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import { Helmet } from "react-helmet";
-import { Link } from "react-router-dom";
 import {
   Upload,
   FileText,
@@ -23,12 +22,10 @@ import {
   Users,
   SlidersHorizontal,
   ListChecks,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { ApiError } from "@/services/apiClient";
-import {
-  scholarshipSettingsService,
-  type ScholarshipLookup,
-} from "@/features/settings/api/scholarshipSettingsService";
 import {
   editalService,
   type CotaBolsaLookup,
@@ -44,6 +41,24 @@ import {
 } from "@/features/settings/api/categorySettingsService";
 
 type YesNo = "SIM" | "NAO";
+
+type QuotaDistributionForm = {
+  id: number;
+  quantidade: string;
+  fppiMin: string;
+  mediaMinProj: string;
+};
+
+let nextQuotaDistributionId = 1;
+
+function createQuotaDistribution(): QuotaDistributionForm {
+  return {
+    id: nextQuotaDistributionId++,
+    quantidade: "0",
+    fppiMin: "0,00",
+    mediaMinProj: "0,0",
+  };
+}
 
 function yearNow() {
   return new Date().getFullYear();
@@ -164,14 +179,9 @@ export default function CreateCall() {
     useState<YesNo>("NAO");
 
   // ===== Parâmetros da Distribuição de Cotas (obrigatórios, somente se Distribuição = Sim) =====
-  const [tipoBolsa, setTipoBolsa] = useState("");
-  const [quantidadeCotas, setQuantidadeCotas] = useState("0");
-  const [fppiMinimo, setFppiMinimo] = useState("0,00");
-  const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState("0,0");
-
-  const [bolsaOptions, setBolsaOptions] = useState<ScholarshipLookup[]>([]);
-  const [bolsaLoading, setBolsaLoading] = useState(true);
-  const [bolsaError, setBolsaError] = useState<string | null>(null);
+  const [quotaDistributions, setQuotaDistributions] = useState<
+    QuotaDistributionForm[]
+  >(() => [createQuotaDistribution()]);
 
   const [cotaBolsaOptions, setCotaBolsaOptions] = useState<CotaBolsaLookup[]>(
     [],
@@ -199,23 +209,6 @@ export default function CreateCall() {
 
   // ===== Status =====
   const [status, setStatus] = useState<StatusInicialEdital>("RASCUNHO");
-
-  const loadBolsaOptions = useCallback(async () => {
-    setBolsaLoading(true);
-    setBolsaError(null);
-
-    try {
-      const rows = await scholarshipSettingsService.lookup();
-      setBolsaOptions(rows);
-    } catch (err) {
-      setBolsaOptions([]);
-      setBolsaError(
-        apiErrorMessage(err, "Não foi possível carregar os tipos de bolsa."),
-      );
-    } finally {
-      setBolsaLoading(false);
-    }
-  }, []);
 
   const loadCotaBolsaOptions = useCallback(async () => {
     setCotaBolsaLoading(true);
@@ -269,16 +262,10 @@ export default function CreateCall() {
   }, []);
 
   useEffect(() => {
-    void loadBolsaOptions();
     void loadCotaBolsaOptions();
     void loadTipoEditalOptions();
     void loadCategoriaOptions();
-  }, [
-    loadBolsaOptions,
-    loadCotaBolsaOptions,
-    loadTipoEditalOptions,
-    loadCategoriaOptions,
-  ]);
+  }, [loadCotaBolsaOptions, loadTipoEditalOptions, loadCategoriaOptions]);
 
   // ===== Derived =====
   const fileSizeMb = useMemo(() => {
@@ -326,17 +313,30 @@ export default function CreateCall() {
       errs.push("O limite de planos não pode ser negativo.");
 
     if (distribuicaoCotasBolsas === "SIM") {
-      if (!tipoBolsa) errs.push("Selecione o tipo da bolsa.");
-      if (!quantidadeCotas.trim()) errs.push("Informe a quantidade de cotas.");
-      if (!fppiMinimo.trim()) errs.push("Informe o FPPI mínimo.");
-      if (!mediaMinimaProjetos.trim())
-        errs.push("Informe a média mínima dos projetos.");
-      if (parseInteger(quantidadeCotas) < 0)
-        errs.push("A quantidade de cotas não pode ser negativa.");
-      if (parseDecimal(fppiMinimo) < 0)
-        errs.push("O FPPI mínimo não pode ser negativo.");
-      if (parseDecimal(mediaMinimaProjetos) < 0)
-        errs.push("A média mínima dos projetos não pode ser negativa.");
+      if (quotaDistributions.length === 0) {
+        errs.push("Adicione pelo menos uma distribuição de cotas.");
+      }
+
+      quotaDistributions.forEach((distribution, index) => {
+        const label = `distribuição ${index + 1}`;
+
+        if (!distribution.quantidade.trim())
+          errs.push(`Informe a quantidade de cotas da ${label}.`);
+        if (!distribution.fppiMin.trim())
+          errs.push(`Informe o FPPI mínimo da ${label}.`);
+        if (!distribution.mediaMinProj.trim())
+          errs.push(`Informe a média mínima dos projetos da ${label}.`);
+        if (parseInteger(distribution.quantidade) <= 0)
+          errs.push(
+            `A quantidade de cotas da ${label} deve ser maior que zero.`,
+          );
+        if (parseDecimal(distribution.fppiMin) <= 0)
+          errs.push(`O FPPI mínimo da ${label} deve ser maior que zero.`);
+        if (parseDecimal(distribution.mediaMinProj) <= 0)
+          errs.push(
+            `A média mínima dos projetos da ${label} deve ser maior que zero.`,
+          );
+      });
     }
 
     return errs;
@@ -356,10 +356,7 @@ export default function CreateCall() {
     limiteProjetosOrientador,
     limitePlanosOrientador,
     distribuicaoCotasBolsas,
-    tipoBolsa,
-    quantidadeCotas,
-    fppiMinimo,
-    mediaMinimaProjetos,
+    quotaDistributions,
   ]);
 
   const requiredErrors = useMemo(() => {
@@ -368,13 +365,9 @@ export default function CreateCall() {
   }, [createErrors, file]);
 
   const canSaveDraft =
-    createErrors.length === 0 &&
-    !isSubmitting &&
-    status !== "PUBLICADO";
+    createErrors.length === 0 && !isSubmitting && status !== "PUBLICADO";
   const canPublish =
-    requiredErrors.length === 0 &&
-    !isSubmitting &&
-    status !== "PUBLICADO";
+    requiredErrors.length === 0 && !isSubmitting && status !== "PUBLICADO";
 
   function buildPayload(nextStatus: StatusInicialEdital): CreateEditalPayload {
     return {
@@ -393,14 +386,12 @@ export default function CreateCall() {
       categoria_id: parseInteger(categoria),
       edital_cota_distribuicao:
         distribuicaoCotasBolsas === "SIM"
-          ? [
-              {
-                quantidade: parseInteger(quantidadeCotas),
-                fppi_min: parseDecimal(fppiMinimo),
-                media_min_proj: parseDecimal(mediaMinimaProjetos),
-                exige_doutorado: titulacaoMinima === "DOUTORADO",
-              },
-            ]
+          ? quotaDistributions.map((distribution) => ({
+              quantidade: parseInteger(distribution.quantidade),
+              fppi_min: parseDecimal(distribution.fppiMin),
+              media_min_proj: parseDecimal(distribution.mediaMinProj),
+              exige_doutorado: titulacaoMinima === "DOUTORADO",
+            }))
           : [],
       periodo_submissao: {
         inicio: toIsoDateTime(submissionStart),
@@ -414,8 +405,7 @@ export default function CreateCall() {
   }
 
   async function submitEdital(nextStatus: StatusInicialEdital) {
-    const errors =
-      nextStatus === "PUBLICADO" ? requiredErrors : createErrors;
+    const errors = nextStatus === "PUBLICADO" ? requiredErrors : createErrors;
 
     if (errors.length > 0) {
       setSubmitError(errors[0]);
@@ -540,6 +530,32 @@ export default function CreateCall() {
     void submitEdital("PUBLICADO");
   }
 
+  function addQuotaDistribution() {
+    setQuotaDistributions((current) => [...current, createQuotaDistribution()]);
+  }
+
+  function updateQuotaDistribution(
+    id: number,
+    field: keyof Omit<QuotaDistributionForm, "id">,
+    value: string,
+  ) {
+    setQuotaDistributions((current) =>
+      current.map((distribution) =>
+        distribution.id === id
+          ? { ...distribution, [field]: value }
+          : distribution,
+      ),
+    );
+  }
+
+  function removeQuotaDistribution(id: number) {
+    setQuotaDistributions((current) =>
+      current.length > 1
+        ? current.filter((distribution) => distribution.id !== id)
+        : current,
+    );
+  }
+
   function resetForm() {
     setFile(null);
     setFileError("");
@@ -567,10 +583,7 @@ export default function CreateCall() {
     setTecnicoAdministrativoPodeCoordenar("NAO");
     setDistribuicaoCotasBolsas("NAO");
 
-    setTipoBolsa("");
-    setQuantidadeCotas("0");
-    setFppiMinimo("0,00");
-    setMediaMinimaProjetos("0,0");
+    setQuotaDistributions([createQuotaDistribution()]);
 
     setStatus("RASCUNHO");
     setSavedEditalId(null);
@@ -671,7 +684,6 @@ export default function CreateCall() {
             </p>
           </div>
         </div>
-
       </section>
 
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-6">
@@ -1106,101 +1118,104 @@ export default function CreateCall() {
         {/* ===== Parâmetros da Distribuição de Cotas (condicional) ===== */}
         {distribuicaoCotasBolsas === "SIM" && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal size={18} />
-              <h2 className="text-sm font-semibold text-primary">
-                Parâmetros da Distribuição de Cotas
-              </h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal size={18} />
+                <h2 className="text-sm font-semibold text-primary">
+                  Parâmetros da Distribuição de Cotas
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={addQuotaDistribution}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+              >
+                <Plus size={16} />
+                Adicionar distribuição
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="text-sm">
-                <span className="block text-xs text-neutral mb-1">
-                  Tipo da bolsa <span className="text-red-500">*</span>
-                </span>
-                <select
-                  value={tipoBolsa}
-                  onChange={(e) => setTipoBolsa(e.target.value)}
-                  disabled={bolsaLoading || Boolean(bolsaError)}
-                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+            <div className="space-y-3">
+              {quotaDistributions.map((distribution, index) => (
+                <div
+                  key={distribution.id}
+                  className="space-y-3 rounded-xl border border-neutral-light bg-neutral-50/40 p-4"
                 >
-                  <option value="">
-                    {bolsaLoading ? "Carregando..." : "-- SELECIONE --"}
-                  </option>
-                  {!bolsaLoading &&
-                    !bolsaError &&
-                    bolsaOptions.length === 0 && (
-                      <option value="" disabled>
-                        Cadastre um tipo de bolsa nas configurações
-                      </option>
-                    )}
-                  {bolsaOptions.map((opt) => (
-                    <option key={opt.id} value={String(opt.id)}>
-                      {opt.descricao}
-                    </option>
-                  ))}
-                </select>
-                {bolsaError && (
-                  <p className="mt-1 text-xs text-red-600 flex items-center gap-2 flex-wrap">
-                    <span>{bolsaError}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-primary">
+                      Distribuição {index + 1}
+                    </h3>
                     <button
                       type="button"
-                      onClick={() => void loadBolsaOptions()}
-                      className="underline font-semibold"
+                      onClick={() => removeQuotaDistribution(distribution.id)}
+                      disabled={quotaDistributions.length === 1}
+                      aria-label={`Remover distribuição ${index + 1}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Tentar novamente
+                      <Trash2 size={14} />
+                      Remover
                     </button>
-                  </p>
-                )}
-                {!bolsaLoading && !bolsaError && bolsaOptions.length === 0 && (
-                  <p className="mt-1 text-xs text-neutral">
-                    Nenhum tipo cadastrado.{" "}
-                    <Link
-                      to="/adm/settings/scholarships"
-                      className="text-primary font-semibold underline"
-                    >
-                      Ir para Entidades & Tipos de Bolsa
-                    </Link>
-                  </p>
-                )}
-              </label>
+                  </div>
 
-              <label className="text-sm">
-                <span className="block text-xs text-neutral mb-1">
-                  Quantidade <span className="text-red-500">*</span>
-                </span>
-                <input
-                  value={quantidadeCotas}
-                  onChange={(e) => setQuantidadeCotas(e.target.value)}
-                  inputMode="numeric"
-                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <label className="text-sm">
+                      <span className="mb-1 block text-xs text-neutral">
+                        Quantidade <span className="text-red-500">*</span>
+                      </span>
+                      <input
+                        value={distribution.quantidade}
+                        onChange={(e) =>
+                          updateQuotaDistribution(
+                            distribution.id,
+                            "quantidade",
+                            e.target.value,
+                          )
+                        }
+                        inputMode="numeric"
+                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </label>
 
-              <label className="text-sm">
-                <span className="block text-xs text-neutral mb-1">
-                  FPPI Mínimo <span className="text-red-500">*</span>
-                </span>
-                <input
-                  value={fppiMinimo}
-                  onChange={(e) => setFppiMinimo(e.target.value)}
-                  inputMode="decimal"
-                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
+                    <label className="text-sm">
+                      <span className="mb-1 block text-xs text-neutral">
+                        FPPI Mínimo <span className="text-red-500">*</span>
+                      </span>
+                      <input
+                        value={distribution.fppiMin}
+                        onChange={(e) =>
+                          updateQuotaDistribution(
+                            distribution.id,
+                            "fppiMin",
+                            e.target.value,
+                          )
+                        }
+                        inputMode="decimal"
+                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </label>
 
-              <label className="text-sm">
-                <span className="block text-xs text-neutral mb-1">
-                  Média Mínima dos Projetos{" "}
-                  <span className="text-red-500">*</span>
-                </span>
-                <input
-                  value={mediaMinimaProjetos}
-                  onChange={(e) => setMediaMinimaProjetos(e.target.value)}
-                  inputMode="decimal"
-                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
+                    <label className="text-sm">
+                      <span className="mb-1 block text-xs text-neutral">
+                        Média Mínima dos Projetos{" "}
+                        <span className="text-red-500">*</span>
+                      </span>
+                      <input
+                        value={distribution.mediaMinProj}
+                        onChange={(e) =>
+                          updateQuotaDistribution(
+                            distribution.id,
+                            "mediaMinProj",
+                            e.target.value,
+                          )
+                        }
+                        inputMode="decimal"
+                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
