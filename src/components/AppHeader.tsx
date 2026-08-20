@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { NavLink, useLocation } from "react-router-dom"
 import {
@@ -6,10 +6,8 @@ import {
   FolderKanban,
   LineChart,
   ShieldCheck,
-  GraduationCap,
   FileText,
   Notebook,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -18,7 +16,6 @@ import {
   ClipboardList,
   Building2,
   BookUser,
-  BadgeCheck,
   FileSignature,
   Pencil,
   Megaphone,
@@ -29,11 +26,8 @@ import {
   User,
   FileBadge,
   Mail,
-  Wallet,
   History,
-  Folder,
   Search,
-  ClipboardCheck,
   GitBranch,
   Gavel,
 } from "lucide-react"
@@ -48,133 +42,73 @@ type NavItem = { to: string; label: string; icon?: React.ReactNode; end?: boolea
 
 /* ================= MATCHERS ================= */
 
+function matchesPrefix(pathname: string, base: string) {
+  return pathname === base || pathname.startsWith(`${base}/`)
+}
+
+function matchesAny(pathname: string, candidates: string[]) {
+  return candidates.includes(pathname)
+}
+
+/** Rotas cujo "to" do menu deve ativar também em outras paths. */
+const SPECIAL_ACTIVE_MATCHERS: Record<string, (pathname: string) => boolean> = {
+  "/adm/admprojetos": (pathname) =>
+    matchesPrefix(pathname, "/adm/admprojetos") || pathname.startsWith("/adm/projetos"),
+
+  "/adm/avaliacao/avaliadores": (pathname) => matchesPrefix(pathname, "/adm/avaliacao"),
+  "/adm/resultados/ranking": (pathname) => matchesPrefix(pathname, "/adm/resultados"),
+  "/adm/monitoring/replacements": (pathname) => matchesPrefix(pathname, "/adm/monitoring"),
+  "/adm/calls/CreateCall": (pathname) => matchesPrefix(pathname, "/adm/calls"),
+  "/adm/settings/scholarships": (pathname) => matchesPrefix(pathname, "/adm/settings"),
+
+  "gestor/settings/scholarships": (pathname) =>
+    pathname === "gestor/settings" || pathname.startsWith("/gestor/settings/"),
+
+  "/discente/projetos": (pathname) =>
+    matchesPrefix(pathname, "/discente/projetos") || pathname === "/discente/vinculo",
+
+  "/discente/editais": (pathname) => matchesPrefix(pathname, "/discente/editais"),
+  "/discente/planos-disponiveis": (pathname) =>
+    matchesPrefix(pathname, "/discente/planos-disponiveis"),
+  "/discente/relatorios": (pathname) => matchesPrefix(pathname, "/discente/relatorios"),
+  "/discente/enic/submissions": (pathname) => pathname.startsWith("/discente/enic/"),
+  "/discente/notificacoes": (pathname) => matchesPrefix(pathname, "/discente/notificacoes"),
+
+  "/discente/certificados": (pathname) =>
+    matchesPrefix(pathname, "/discente/certificados") ||
+    pathname === "/discente/historico-participacao",
+
+  "/discente/perfil": (pathname) => matchesPrefix(pathname, "/discente/perfil"),
+  "/discente/configuracoes": (pathname) => matchesPrefix(pathname, "/discente/configuracoes"),
+  "/dashboard": (pathname) => matchesPrefix(pathname, "/dashboard"),
+
+  "/coordenador/planos/indicacoes": (pathname) =>
+    matchesPrefix(pathname, "/coordenador/planos/indicacoes") ||
+    matchesPrefix(pathname, "/coordenador/planos/novo"),
+
+  "/coordenador/projetos": (pathname) =>
+    pathname === "/coordenador/projetos" ||
+    (pathname.startsWith("/coordenador/projetos/") &&
+      !pathname.startsWith("/coordenador/planos/indicacoes/")),
+
+  "/coordenador/editais": (pathname) => matchesPrefix(pathname, "/coordenador/editais"),
+  "/coordenador/avaliacoes": (pathname) => matchesPrefix(pathname, "/coordenador/avaliacoes"),
+  "/coordenador/indicacoes": (pathname) => matchesPrefix(pathname, "/coordenador/indicacoes"),
+  "/coordenador/relatorios": (pathname) => matchesPrefix(pathname, "/coordenador/relatorios"),
+
+  "/coordenador/producao/ipi": (pathname) =>
+    matchesAny(pathname, ["/coordenador/producao", "/coordenador/producao/ipi"]) ||
+    pathname.startsWith("/coordenador/producao/"),
+}
+
 function isActive(pathname: string, to: string, end?: boolean) {
   if (to === "/") return pathname === "/"
-
   if (end) return pathname === to
 
-  if (to === "/adm/admprojetos") {
-    return (
-      pathname === "/adm/admprojetos" ||
-      pathname.startsWith("/adm/admprojetos/") ||
-      pathname.startsWith("/adm/projetos")
-    )
-  }
+  const special = SPECIAL_ACTIVE_MATCHERS[to]
+  if (special) return special(pathname)
 
-  if (to === "/adm/avaliacao/avaliadores") {
-    return pathname === "/adm/avaliacao" || pathname.startsWith("/adm/avaliacao/")
-  }
-
-  if (to === "/adm/resultados/ranking") {
-    return pathname === "/adm/resultados" || pathname.startsWith("/adm/resultados/")
-  }
-
-  if (to === "/adm/monitoring/replacements") {
-    return pathname === "/adm/monitoring" || pathname.startsWith("/adm/monitoring/")
-  }
-
-  if (to === "/adm/calls/CreateCall") {
-    return pathname === "/adm/calls" || pathname.startsWith("/adm/calls/")
-  }
-
-  if (to === "/adm/settings/scholarships") {
-    return pathname === "/adm/settings" || pathname.startsWith("/adm/settings/")
-  }
-
-  if (to === "gestor/settings/scholarships") {
-    return pathname === "gestor/settings" || pathname.startsWith("/gestor/settings/")
-  }
-
-  if (to === "/discente/projetos") {
-    return (
-      pathname === "/discente/projetos" ||
-      pathname.startsWith("/discente/projetos/") ||
-      pathname === "/discente/vinculo"
-    )
-  }
-
-  if (to === "/discente/editais")
-    return pathname === "/discente/editais" || pathname.startsWith("/discente/editais/")
-
-  if (to === "/discente/planos-disponiveis")
-    return pathname === "/discente/planos-disponiveis" || pathname.startsWith("/discente/planos-disponiveis/")
-
-  if (to === "/discente/relatorios")
-    return pathname === "/discente/relatorios" || pathname.startsWith("/discente/relatorios/")
-
-  if (to === "/discente/enic/submissions")
-    return pathname.startsWith("/discente/enic/")
-
-  if (to === "/discente/notificacoes")
-    return pathname === "/discente/notificacoes" || pathname.startsWith("/discente/notificacoes/")
-
-  if (to === "/discente/certificados")
-    return (
-      pathname === "/discente/certificados" ||
-      pathname.startsWith("/discente/certificados/") ||
-      pathname === "/discente/historico-participacao"
-    )
-
-  if (to === "/discente/perfil")
-    return pathname === "/discente/perfil" || pathname.startsWith("/discente/perfil/")
-
-  if (to === "/discente/configuracoes")
-    return pathname === "/discente/configuracoes" || pathname.startsWith("/discente/configuracoes/")
-
-  if (to === "/dashboard")
-    return pathname === "/dashboard" || pathname.startsWith("/dashboard/")
-
-  /* Coordenador */
-
-  if (to === "/coordenador/planos/indicacoes") {
-    return (
-      pathname === "/coordenador/planos/indicacoes" ||
-      pathname.startsWith("/coordenador/planos/indicacoes/") ||
-      pathname === "/coordenador/planos/novo" ||
-      pathname.startsWith("/coordenador/planos/novo/")
-    )
-  }
-
-  if (to === "/coordenador/projetos") {
-    return (
-      pathname === "/coordenador/projetos" ||
-      (
-        pathname.startsWith("/coordenador/projetos/") &&
-        !pathname.startsWith("/coordenador/planos/indicacoes/")
-      )
-    )
-  }
-
-  if (to === "/coordenador/avaliacoes") {
-    return (
-      pathname === "/coordenador/avaliacoes" ||
-      pathname.startsWith("/coordenador/avaliacoes/")
-    )
-  }
-
-  if (to === "/coordenador/indicacoes") {
-    return (
-      pathname === "/coordenador/indicacoes" ||
-      pathname.startsWith("/coordenador/indicacoes/")
-    )
-  }
-
-  if (to === "/coordenador/relatorios") {
-    return (
-      pathname === "/coordenador/relatorios" ||
-      pathname.startsWith("/coordenador/relatorios/")
-    )
-  }
-
-  if (to === "/coordenador/producao/ipi") {
-    return (
-      pathname === "/coordenador/producao" ||
-      pathname === "/coordenador/producao/ipi" ||
-      pathname.startsWith("/coordenador/producao/")
-    )
-  }
-
-  return pathname === to || pathname.startsWith(to + "/")
+  return matchesPrefix(pathname, to)
 }
 
 function pickActivePrimary(pathname: string, primary: NavItem[], fallback: string) {
@@ -193,90 +127,76 @@ type ThemeTokens = {
   appBg: string
 }
 
+type ThemeOverride = Pick<ThemeTokens, "page" | "pageSoft">
+
+const THEME_BASE: ThemeTokens = {
+  page: "#2563EB",
+  pageSoft: "#DBEAFE",
+  sidebarBg: "#0B1220",
+  sidebarFg: "#E5E7EB",
+  appBg: "#F3F4F6",
+}
+
+const THEME_BY_PATH: Array<{ match: (pathname: string) => boolean; theme: ThemeOverride }> = [
+  { match: (p) => p.startsWith("/dashboard"), theme: { page: "#2563EB", pageSoft: "#DBEAFE" } },
+  {
+    match: (p) => p.startsWith("/adm/admprojetos") || p.startsWith("/adm/projetos"),
+    theme: { page: "#059669", pageSoft: "#D1FAE5" },
+  },
+  {
+    match: (p) => p.startsWith("/adm/avaliacao") || p.startsWith("/avaliacoes"),
+    theme: { page: "#7C3AED", pageSoft: "#EDE9FE" },
+  },
+  { match: (p) => p.startsWith("/adm/resultados"), theme: { page: "#0891B2", pageSoft: "#CFFAFE" } },
+  { match: (p) => p.startsWith("/adm/monitoring"), theme: { page: "#D97706", pageSoft: "#FFEDD5" } },
+  { match: (p) => p.startsWith("/adm/calls"), theme: { page: "#DB2777", pageSoft: "#FCE7F3" } },
+  { match: (p) => p.startsWith("/adm/settings"), theme: { page: "#334155", pageSoft: "#E2E8F0" } },
+  {
+    match: (p) => p.startsWith("/discente/projetos") || p === "/discente/vinculo",
+    theme: { page: "#059669", pageSoft: "#D1FAE5" },
+  },
+  { match: (p) => p.startsWith("/discente/editais"), theme: { page: "#DB2777", pageSoft: "#FCE7F3" } },
+  {
+    match: (p) => p.startsWith("/discente/planos-disponiveis"),
+    theme: { page: "#0EA5E9", pageSoft: "#E0F2FE" },
+  },
+  { match: (p) => p.startsWith("/discente/relatorios"), theme: { page: "#7C3AED", pageSoft: "#EDE9FE" } },
+  { match: (p) => p.startsWith("/discente/enic"), theme: { page: "#D97706", pageSoft: "#FFEDD5" } },
+  { match: (p) => p.startsWith("/discente/notificacoes"), theme: { page: "#DC2626", pageSoft: "#FEE2E2" } },
+  {
+    match: (p) => p.startsWith("/discente/certificados") || p === "/discente/historico-participacao",
+    theme: { page: "#DB2777", pageSoft: "#FCE7F3" },
+  },
+  { match: (p) => p.startsWith("/discente/perfil"), theme: { page: "#2563EB", pageSoft: "#DBEAFE" } },
+  {
+    match: (p) => p.startsWith("/discente/configuracoes"),
+    theme: { page: "#334155", pageSoft: "#E2E8F0" },
+  },
+  {
+    match: (p) =>
+      p.startsWith("/coordenador/planos/indicacoes") || p.startsWith("/coordenador/planos/novo"),
+    theme: { page: "#0EA5E9", pageSoft: "#E0F2FE" },
+  },
+  { match: (p) => p.startsWith("/coordenador/projetos"), theme: { page: "#059669", pageSoft: "#D1FAE5" } },
+  { match: (p) => p.startsWith("/coordenador/editais"), theme: { page: "#DB2777", pageSoft: "#FCE7F3" } },
+  {
+    match: (p) => p.startsWith("/coordenador/avaliacoes"),
+    theme: { page: "#7C3AED", pageSoft: "#EDE9FE" },
+  },
+  {
+    match: (p) => p.startsWith("/coordenador/indicacoes"),
+    theme: { page: "#DB2777", pageSoft: "#FCE7F3" },
+  },
+  {
+    match: (p) => p.startsWith("/coordenador/relatorios"),
+    theme: { page: "#D97706", pageSoft: "#FFEDD5" },
+  },
+  { match: (p) => p.startsWith("/coordenador/producao"), theme: { page: "#2563EB", pageSoft: "#DBEAFE" } },
+]
+
 function themeFromPath(pathname: string): ThemeTokens {
-  const base: ThemeTokens = {
-    page: "#2563EB",
-    pageSoft: "#DBEAFE",
-    sidebarBg: "#0B1220",
-    sidebarFg: "#E5E7EB",
-    appBg: "#F3F4F6",
-  }
-
-  if (pathname.startsWith("/dashboard"))
-    return { ...base, page: "#2563EB", pageSoft: "#DBEAFE" }
-
-  if (pathname.startsWith("/adm/admprojetos") || pathname.startsWith("/adm/projetos"))
-    return { ...base, page: "#059669", pageSoft: "#D1FAE5" }
-
-  if (pathname.startsWith("/adm/avaliacao") || pathname.startsWith("/avaliacoes"))
-    return { ...base, page: "#7C3AED", pageSoft: "#EDE9FE" }
-
-  if (pathname.startsWith("/adm/resultados"))
-    return { ...base, page: "#0891B2", pageSoft: "#CFFAFE" }
-
-  if (pathname.startsWith("/adm/monitoring"))
-    return { ...base, page: "#D97706", pageSoft: "#FFEDD5" }
-
-  if (pathname.startsWith("/adm/calls"))
-    return { ...base, page: "#DB2777", pageSoft: "#FCE7F3" }
-
-  if (pathname.startsWith("/adm/settings"))
-    return { ...base, page: "#334155", pageSoft: "#E2E8F0" }
-
-  if (pathname.startsWith("/discente/projetos") || pathname === "/discente/vinculo")
-    return { ...base, page: "#059669", pageSoft: "#D1FAE5" }
-
-  if (pathname.startsWith("/discente/editais"))
-    return { ...base, page: "#DB2777", pageSoft: "#FCE7F3" }
-
-  if (pathname.startsWith("/discente/planos-disponiveis"))
-    return { ...base, page: "#0EA5E9", pageSoft: "#E0F2FE" }
-
-  if (pathname.startsWith("/discente/relatorios"))
-    return { ...base, page: "#7C3AED", pageSoft: "#EDE9FE" }
-
-  if (pathname.startsWith("/discente/enic"))
-    return { ...base, page: "#D97706", pageSoft: "#FFEDD5" }
-
-  if (pathname.startsWith("/discente/notificacoes"))
-    return { ...base, page: "#DC2626", pageSoft: "#FEE2E2" }
-
-  if (pathname.startsWith("/discente/certificados") || pathname === "/discente/historico-participacao")
-    return { ...base, page: "#DB2777", pageSoft: "#FCE7F3" }
-
-  if (pathname.startsWith("/discente/perfil"))
-    return { ...base, page: "#2563EB", pageSoft: "#DBEAFE" }
-
-  if (pathname.startsWith("/discente/configuracoes"))
-    return { ...base, page: "#334155", pageSoft: "#E2E8F0" }
-
-  /* Coordenador */
-  if (
-    pathname.startsWith("/coordenador/planos/indicacoes")
-  )
-    return { ...base, page: "#0EA5E9", pageSoft: "#E0F2FE" }
-
-  if (
-    pathname.startsWith("/coordenador/planos/novo")
-  )
-    return { ...base, page: "#0EA5E9", pageSoft: "#E0F2FE" }
-
-  if (pathname.startsWith("/coordenador/projetos"))
-    return { ...base, page: "#059669", pageSoft: "#D1FAE5" }
-
-  if (pathname.startsWith("/coordenador/avaliacoes"))
-    return { ...base, page: "#7C3AED", pageSoft: "#EDE9FE" }
-
-  if (pathname.startsWith("/coordenador/indicacoes"))
-    return { ...base, page: "#DB2777", pageSoft: "#FCE7F3" }
-
-  if (pathname.startsWith("/coordenador/relatorios"))
-    return { ...base, page: "#D97706", pageSoft: "#FFEDD5" }
-
-  if (pathname.startsWith("/coordenador/producao"))
-    return { ...base, page: "#2563EB", pageSoft: "#DBEAFE" }
-
-  return base
+  const matched = THEME_BY_PATH.find((rule) => rule.match(pathname))
+  return matched ? { ...THEME_BASE, ...matched.theme } : THEME_BASE
 }
 
 /* ================= MOBILE DRAWER ================= */
@@ -298,18 +218,24 @@ function MobileDrawer({
   pathname,
   logout,
 }: MobileDrawerProps) {
-  const [mounted, setMounted] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
     if (open) {
-      setMounted(true)
+      if (!dialog.open) dialog.showModal()
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
-    } else {
-      setVisible(false)
-      const t = setTimeout(() => setMounted(false), 300)
-      return () => clearTimeout(t)
+      return
     }
+
+    setVisible(false)
+    const t = setTimeout(() => {
+      if (dialog.open) dialog.close()
+    }, 300)
+    return () => clearTimeout(t)
   }, [open])
 
   useEffect(() => {
@@ -319,19 +245,39 @@ function MobileDrawer({
     }
   }, [open])
 
-  if (!mounted) return null
-
   return createPortal(
-    <div
-      aria-modal="true"
-      role="dialog"
-      style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex" }}
+    <dialog
+      ref={dialogRef}
+      aria-label="Menu de navegação"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        margin: 0,
+        padding: 0,
+        border: "none",
+        width: "100%",
+        maxWidth: "100%",
+        height: "100%",
+        maxHeight: "100%",
+        background: "transparent",
+        display: open || visible ? "flex" : "none",
+      }}
     >
-      <div
+      <button
+        type="button"
+        aria-label="Fechar menu"
         onClick={onClose}
         style={{
           position: "absolute",
           inset: 0,
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
           background: "rgba(0,0,0,0.5)",
           transition: "opacity 300ms ease",
           opacity: visible ? 1 : 0,
@@ -367,6 +313,7 @@ function MobileDrawer({
           <img src={LogoImg} alt="PROPESQ" style={{ height: 28, opacity: 0.95 }} />
 
           <button
+            type="button"
             onClick={onClose}
             aria-label="Fechar menu"
             style={{
@@ -503,6 +450,7 @@ function MobileDrawer({
           }}
         >
           <button
+            type="button"
             onClick={() => {
               onClose()
               logout()
@@ -529,9 +477,43 @@ function MobileDrawer({
           </button>
         </div>
       </aside>
-    </div>,
+    </dialog>,
     document.body
   )
+}
+
+function desktopLinkClass(active: boolean) {
+  return `
+    relative inline-flex items-center gap-2 text-sm font-medium pb-2 transition-colors
+    ${active ? "text-[color:var(--page)]" : "text-neutral hover:text-[color:var(--page)]"}
+    after:content-[''] after:absolute after:left-0 after:bottom-0
+    after:h-[3px] after:w-full after:rounded-full after:bg-[color:var(--page)]
+    after:transform after:origin-center after:transition-transform after:duration-300
+    ${active ? "after:scale-x-100" : "after:scale-x-0"}
+  `
+}
+
+function subSegmentClass(active: boolean) {
+  return `
+    relative inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full transition-all
+    ${
+      active
+        ? "bg-[color:var(--page)] text-white shadow-sm"
+        : "text-neutral hover:text-[color:var(--page)] hover:bg-[color:var(--page-soft)]"
+    }
+    focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--page)]/40
+  `
+}
+
+function applyThemeToDocument(pathname: string) {
+  const t = themeFromPath(pathname)
+  const root = document.documentElement
+  root.style.setProperty("--page", t.page)
+  root.style.setProperty("--page-soft", t.pageSoft)
+  root.style.setProperty("--sidebar-bg", t.sidebarBg)
+  root.style.setProperty("--sidebar-fg", t.sidebarFg)
+  root.style.setProperty("--app-bg", t.appBg)
+  document.body.style.backgroundColor = "var(--app-bg)"
 }
 
 /* ================= APP HEADER ================= */
@@ -556,16 +538,7 @@ export default function AppHeader() {
   }, [location.pathname])
 
   useEffect(() => {
-    const t = themeFromPath(location.pathname)
-    const root = document.documentElement
-
-    root.style.setProperty("--page", t.page)
-    root.style.setProperty("--page-soft", t.pageSoft)
-    root.style.setProperty("--sidebar-bg", t.sidebarBg)
-    root.style.setProperty("--sidebar-fg", t.sidebarFg)
-    root.style.setProperty("--app-bg", t.appBg)
-
-    document.body.style.backgroundColor = "var(--app-bg)"
+    applyThemeToDocument(location.pathname)
   }, [location.pathname])
 
   /* ---- menus ---- */
@@ -732,6 +705,7 @@ export default function AppHeader() {
 
   const coordinatorPrimary: NavItem[] = [
     { to: "/coordenador/projetos", label: "Projetos", icon: <FolderKanban size={16} /> },
+    { to: "/coordenador/editais", label: "Editais", icon: <LineChart size={16} /> },
     { to: "/coordenador/planos/indicacoes", label: "Planos", icon: <Notebook size={16} /> },
     { to: "/coordenador/avaliacoes", label: "Avaliações", icon: <FileSignature size={16} /> },
     { to: "/coordenador/relatorios", label: "Relatórios", icon: <FileText size={16} /> },
@@ -743,6 +717,10 @@ export default function AppHeader() {
       { to: "/coordenador/projetos", label: "Lista de Projetos", icon: <FolderKanban size={16} />, end: true },
       { to: "/coordenador/projetos/novo", label: "Novo Projeto", icon: <Plus size={16} />, end: true },
       //{to: "/coordenador/projetos/1", label: "Visualizar Projeto", icon: <Eye size={16} />, end: true,},
+    ],
+
+    "/coordenador/editais": [
+      { to: "/coordenador/editais", label: "Lista de Editais", icon: <LineChart size={16} />, end: true },
     ],
 
     "/coordenador/planos/indicacoes": [
@@ -766,86 +744,41 @@ export default function AppHeader() {
     ],
   }
 
-  const adminActivePrimary = useMemo(
-    () => pickActivePrimary(location.pathname, adminPrimary, "/dashboard"),
-    [location.pathname]
+  const navByRole = {
+    ADMINISTRADOR: {
+      primary: adminPrimary,
+      secondaryByPrimary: adminSecondaryByPrimary,
+      homeLink: "/dashboard",
+      fallbackPrimary: "/dashboard",
+    },
+    GESTOR: {
+      primary: gestorPrimary,
+      secondaryByPrimary: gestorSecondaryByPrimary,
+      homeLink: "/gestor/projetos",
+      fallbackPrimary: "/dashboard",
+    },
+    DISCENTE: {
+      primary: studentPrimary,
+      secondaryByPrimary: studentSecondaryByPrimary,
+      homeLink: "/discente/projetos",
+      fallbackPrimary: "/discente/projetos",
+    },
+    COORDENADOR: {
+      primary: coordinatorPrimary,
+      secondaryByPrimary: coordinatorSecondaryByPrimary,
+      homeLink: "/coordenador/projetos",
+      fallbackPrimary: "/coordenador/projetos",
+    },
+  } as const
+
+  const nav = navByRole[role]
+  const activePrimary = useMemo(
+    () => pickActivePrimary(location.pathname, nav.primary, nav.fallbackPrimary),
+    [location.pathname, nav.fallbackPrimary, nav.primary],
   )
-
-  const gestorActivePrimary = useMemo(
-    () => pickActivePrimary(location.pathname, gestorPrimary, "/dashboard"),
-    [location.pathname]
-  )
-
-  const studentActivePrimary = useMemo(
-    () => pickActivePrimary(location.pathname, studentPrimary, "/discente/projetos"),
-    [location.pathname]
-  )
-
-  const coordinatorActivePrimary = useMemo(
-    () => pickActivePrimary(location.pathname, coordinatorPrimary, "/coordenador/projetos"),
-    [location.pathname]
-  )
-
-  const adminSecondary = adminSecondaryByPrimary[adminActivePrimary] ?? []
-  const gestorSecondary = gestorSecondaryByPrimary[gestorActivePrimary] ?? []
-  const studentSecondary = studentSecondaryByPrimary[studentActivePrimary] ?? []
-  const coordinatorSecondary = coordinatorSecondaryByPrimary[coordinatorActivePrimary] ?? []
-
-  const primaryMenu =
-    role === "ADMINISTRADOR"
-      ? adminPrimary
-      : role === "GESTOR"
-        ? gestorPrimary
-        : role === "DISCENTE"
-          ? studentPrimary
-          : role === "COORDENADOR"
-            ? coordinatorPrimary
-            : coordinatorPrimary
-
-  const activeSecondary =
-    role === "ADMINISTRADOR"
-      ? adminSecondary
-      : role === "GESTOR"
-        ? gestorSecondary
-        : role === "DISCENTE"
-          ? studentSecondary
-          : role === "COORDENADOR"
-            ? coordinatorSecondary
-            : []
-
-  const homeLink =
-    role === "ADMINISTRADOR"
-      ? "/dashboard"
-      : role === "GESTOR"
-        ? "/gestor/projetos"
-        : role === "DISCENTE"
-          ? "/discente/projetos"
-          : role === "COORDENADOR"
-            ? "/coordenador/projetos"
-            : "/coordenador/projetos"
-
-  /* ---- classes ---- */
-
-  const desktopLinkClass = (active: boolean) => `
-    relative inline-flex items-center gap-2 text-sm font-medium pb-2 transition-colors
-    ${active ? "text-[color:var(--page)]" : "text-neutral hover:text-[color:var(--page)]"}
-    after:content-[''] after:absolute after:left-0 after:bottom-0
-    after:h-[3px] after:w-full after:rounded-full after:bg-[color:var(--page)]
-    after:transform after:origin-center after:transition-transform after:duration-300
-    ${active ? "after:scale-x-100" : "after:scale-x-0"}
-  `
-
-  const subSegmentClass = (active: boolean) => `
-    relative inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-full transition-all
-    ${
-      active
-        ? "bg-[color:var(--page)] text-white shadow-sm"
-        : "text-neutral hover:text-[color:var(--page)] hover:bg-[color:var(--page-soft)]"
-    }
-    focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--page)]/40
-  `
-
-  /* ---- render ---- */
+  const primaryMenu = nav.primary
+  const activeSecondary = nav.secondaryByPrimary[activePrimary] ?? []
+  const homeLink = nav.homeLink
 
   return (
     <>
@@ -884,6 +817,7 @@ export default function AppHeader() {
 
           <div className="flex items-center justify-end gap-3">
             <button
+              type="button"
               onClick={logout}
               className="hidden md:flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border text-[color:var(--page)] border-[color:var(--page)] hover:bg-[color:var(--page)] hover:text-white"
             >
@@ -892,6 +826,7 @@ export default function AppHeader() {
             </button>
 
             <button
+              type="button"
               className="flex items-center justify-center rounded-lg p-2 hover:bg-[color:var(--page-soft)] md:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Abrir menu"

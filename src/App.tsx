@@ -108,6 +108,8 @@ import CoordinatorProjectForm from "./pages/coordenador/projetos/CoordinatorProj
 import CoordinatorProjectView from "./pages/coordenador/projetos/CoordinatorProjectView"
 import CoordinatorProjectEdit from "./pages/coordenador/projetos/CoordinatorProjectEdit"
 
+import CoordinatorEditais from "./pages/coordenador/editais/CoordinatorEditais"
+
 import CoordinatorEvaluations from "./pages/coordenador/avaliacoes/CoordinatorEvaluations"
 import CoordinatorEvaluationDetail from "./pages/coordenador/avaliacoes/CoordinatorEvaluationDetail"
 
@@ -152,9 +154,25 @@ const RoleRedirect: React.FC = () => {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
   if (user.role === "ADMINISTRADOR") return <Navigate to="/dashboard" replace />
+  if (user.role === "GESTOR")         return <Navigate to="/dashboard" replace />
   if (user.role === "DISCENTE")      return <Navigate to="/discente/projetos" replace />
   if (user.role === "COORDENADOR")   return <Navigate to="/coordenador/projetos" replace />
   return <Navigate to="/login" replace />
+}
+
+/** Rotas de gestão de editais: só ADMINISTRADOR/GESTOR. */
+const CallsAdminProtected: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === "ADMINISTRADOR" || user.role === "GESTOR") {
+    return <>{children}</>
+  }
+  if (user.role === "COORDENADOR") {
+    return <Navigate to="/coordenador/editais" replace />
+  }
+  return <RoleRedirect />
 }
 
 /* ================= PUBLISHER  ================= */
@@ -232,11 +250,11 @@ export default function App() {
         <Route path="/adm/monitoring/report-validation" element={<Protected><Shell><ReportValidation /></Shell></Protected>} />
         <Route path="/adm/monitoring/AdmCertificates" element={<Protected><Shell><AdmCertificates /></Shell></Protected>} />
 
-        <Route path="/adm/calls" element={<Protected><Shell><CallsManagement /></Shell></Protected>} />
-        <Route path="/adm/calls/CreateCall" element={<Protected><Shell><CreateCall /></Shell></Protected>} />
-        <Route path="/adm/calls/Manage" element={<Protected><Shell><AdmCallsManage /></Shell></Protected>} />
-        <Route path="/adm/calls/CallSchedule" element={<Protected><Shell><CallSchedule /></Shell></Protected>} />
-        <Route path="/adm/calls/CallWorkflow" element={<Protected><Shell><CallWorkflow /></Shell></Protected>} />
+        <Route path="/adm/calls" element={<Protected><CallsAdminProtected><Shell><CallsManagement /></Shell></CallsAdminProtected></Protected>} />
+        <Route path="/adm/calls/CreateCall" element={<Protected><CallsAdminProtected><Shell><CreateCall /></Shell></CallsAdminProtected></Protected>} />
+        <Route path="/adm/calls/Manage" element={<Protected><CallsAdminProtected><Shell><AdmCallsManage /></Shell></CallsAdminProtected></Protected>} />
+        <Route path="/adm/calls/CallSchedule" element={<Protected><CallsAdminProtected><Shell><CallSchedule /></Shell></CallsAdminProtected></Protected>} />
+        <Route path="/adm/calls/CallWorkflow" element={<Protected><CallsAdminProtected><Shell><CallWorkflow /></Shell></CallsAdminProtected></Protected>} />
 
         <Route path="/adm/settings" element={<Protected><Shell><GlobalSettings /></Shell></Protected>} />
         <Route path="/adm/settings/scholarships" element={<Protected><Shell><ScholarshipEntities /></Shell></Protected>} />
@@ -297,6 +315,8 @@ export default function App() {
         <Route path="/coordenador/projetos/novo" element={<Protected><Shell><CoordinatorProjectForm /></Shell></Protected>} />
         <Route path="/coordenador/projetos/:id" element={<Protected><Shell><CoordinatorProjectView /></Shell></Protected>} />
         <Route path="/coordenador/projetos/:id/editar" element={<Protected><Shell><CoordinatorProjectEdit /></Shell></Protected>} />
+
+        <Route path="/coordenador/editais" element={<Protected><Shell><CoordinatorEditais /></Shell></Protected>} />
     
         <Route path="/coordenador/avaliacoes" element={<Protected><Shell><CoordinatorEvaluations /></Shell></Protected>} />
         <Route path="/coordenador/avaliacoes/:id" element={<Protected><Shell><CoordinatorEvaluationDetail /></Shell></Protected>} />

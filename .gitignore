@@ -4,3 +4,5 @@
 /dist
 *.tsbuildinfo
 .vscode
+.absolute-work/
+docs/plans/
