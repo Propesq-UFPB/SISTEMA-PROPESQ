@@ -10,7 +10,12 @@ export const authStorage = {
   getUser(): AuthUser | null {
     const raw = localStorage.getItem(USER_KEY)
     if (!raw) return null
-    try { return JSON.parse(raw) as AuthUser } catch { return null }
+    try {
+      const user = JSON.parse(raw) as AuthUser
+      return { ...user, role: mapBackendRole(user.backendRole || user.role) }
+    } catch {
+      return null
+    }
   },
   save(response: LoginResponse): AuthUser {
     const user: AuthUser = {

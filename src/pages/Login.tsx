@@ -9,44 +9,12 @@ import {
   authService,
   authStorage,
 } from "@/features/auth/api/authService"
+import { mapBackendRole } from "@/features/auth/types/auth"
 import { ApiError } from "@/services/apiClient"
-
-type BackendRole =
-  | "ALUNO"
-  | "DISCENTE"
-  | "COORDENADOR"
-  | "GESTOR"
-  | "ADMIN"
-  | "ADMINISTRADOR"
-  | string
-
-function normalizeRole(role?: BackendRole): Role {
-  const normalizedRole = role?.trim().toUpperCase()
-
-  switch (normalizedRole) {
-    case "ALUNO":
-    case "DISCENTE":
-      return "DISCENTE"
-
-    case "COORDENADOR":
-      return "COORDENADOR"
-
-    case "ADMIN":
-    case "ADMINISTRADOR":
-      return "ADMINISTRADOR"
-    
-    case "GESTOR":
-      return "GESTOR"
-
-    default:
-      return "DISCENTE"
-  }
-}
 
 function destination(role: Role) {
   switch (role) {
     case "GESTOR":
-    case "ADMINISTRADOR":
       return "/dashboard"
 
     case "COORDENADOR":
@@ -89,16 +57,10 @@ export default function Login() {
 
       const response = await authService.login(email, password)
 
-      const backendRole =
-        response.user?.funcao
-
-      const normalizedRole = normalizeRole(backendRole)
-
       const savedUser = authStorage.save(response)
-
       const authenticatedUser = {
         ...savedUser,
-        role: normalizedRole,
+        role: mapBackendRole(response.user?.funcao),
       }
 
       localStorage.setItem(
@@ -108,7 +70,7 @@ export default function Login() {
 
       setAuthenticatedUser(authenticatedUser)
 
-      navigate(destination(normalizedRole), {
+      navigate(destination(authenticatedUser.role), {
         replace: true,
       })
     } catch (err) {
@@ -196,10 +158,6 @@ export default function Login() {
 
                 <option value="COORDENADOR">
                   Coordenador
-                </option>
-
-                <option value="ADMINISTRADOR">
-                  Administrador
                 </option>
 
                 <option value="GESTOR">

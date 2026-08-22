@@ -124,13 +124,6 @@ import CoordinatorReportReview from "./pages/coordenador/relatorios/CoordinatorR
 import CoordinatorProductionIPI from "./pages/coordenador/producao/CoordinatorProductionIPI"
 import CoordinatorProductionResult from "./pages/coordenador/producao/CoordinatorProductionResult"
 
-// gestor pages
-import GestorUserTypes from "./pages/gestor/settings/GestorUserTypes"
-import GestorScholarships from "./pages/gestor/settings/GestorScholarships"
-// import GestorProjects from "./pages/gestor/projetos/GestorProjects"
-// import GestorProjectViewEdit from "./pages/gestor/projetos/GestorProjectViewEdit"
-
-
 import NotFound from "./pages/NotFound"
 
 
@@ -153,20 +146,19 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const RoleRedirect: React.FC = () => {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === "ADMINISTRADOR") return <Navigate to="/dashboard" replace />
   if (user.role === "GESTOR")         return <Navigate to="/dashboard" replace />
   if (user.role === "DISCENTE")      return <Navigate to="/discente/projetos" replace />
   if (user.role === "COORDENADOR")   return <Navigate to="/coordenador/projetos" replace />
   return <Navigate to="/login" replace />
 }
 
-/** Rotas de gestão de editais: só ADMINISTRADOR/GESTOR. */
+/** Rotas de gestão de editais: só GESTOR. */
 const CallsAdminProtected: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === "ADMINISTRADOR" || user.role === "GESTOR") {
+  if (user.role === "GESTOR") {
     return <>{children}</>
   }
   if (user.role === "COORDENADOR") {
@@ -191,9 +183,6 @@ const PublisherProtected: React.FC<{ children: React.ReactNode }> = ({
 
 
 import PublisherHeader from "./publisher/PublisherHeader"
-import GestorAcademicUnits from "./pages/gestor/settings/GestorAcademicUnits"
-import GestorRoles from "./pages/gestor/settings/GestorRoles"
-import GestorParameters from "./pages/gestor/settings/GestorParameters"
 const PublisherShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-slate-100">
     <PublisherHeader />
@@ -332,13 +321,15 @@ export default function App() {
         <Route path="/coordenador/producao/ipi" element={<Protected><Shell><CoordinatorProductionIPI /></Shell></Protected>} />
         <Route path="/coordenador/producao/resultado" element={<Protected><Shell><CoordinatorProductionResult /></Shell></Protected>} />
 
-        {/* Gestor */}
-        <Route path="/gestor/settings/user-types" element={<Protected><Shell><GestorUserTypes /></Shell></Protected>} />
-        <Route path="/gestor/settings/scholarships" element={<Protected><Shell><GestorScholarships /></Shell></Protected>} />
-        <Route path="/gestor/settings/academic-units" element={<Protected><Shell><GestorAcademicUnits /></Shell></Protected>} />
-        <Route path="/gestor/settings/roles" element={<Protected><Shell><GestorRoles /></Shell></Protected>} />
-        <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorParameters /></Shell></Protected>} />
-        {/* <Route path="/gestor/projetos" element={<Protected><Shell><GestorProjects /></Shell></Protected>} /> */}
+        {/* Gestor: settings canônicas em /adm/settings; redirects dos links antigos */}
+        <Route path="/gestor/settings" element={<Navigate to="/adm/settings" replace />} />
+        <Route path="/gestor/settings/user-types" element={<Navigate to="/adm/settings/user-types" replace />} />
+        <Route path="/gestor/settings/scholarships" element={<Navigate to="/adm/settings/scholarships" replace />} />
+        <Route path="/gestor/settings/academic-units" element={<Navigate to="/adm/settings/academic-units" replace />} />
+        <Route path="/gestor/settings/roles" element={<Navigate to="/adm/settings/roles" replace />} />
+        <Route path="/gestor/settings/parameters" element={<Navigate to="/adm/settings/parameters" replace />} />
+        <Route path="/gestor/projetos" element={<Navigate to="/adm/admprojetos" replace />} />
+        <Route path="/gestor/projetos/*" element={<Navigate to="/adm/admprojetos" replace />} />
 
 
         {/* 404 */}

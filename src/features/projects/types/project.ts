@@ -1,4 +1,4 @@
-export type UserRole = "DISCENTE" | "COORDENADOR" | "ADMINISTRADOR" | "GESTOR"
+export type UserRole = "DISCENTE" | "COORDENADOR" | "GESTOR"
 
 export type ResearchProjectBody = {
   resumo?: string
