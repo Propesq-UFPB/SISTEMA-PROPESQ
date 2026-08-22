@@ -108,11 +108,46 @@ export const editalService = {
     });
   },
 
+  setAcademicUnits(id: string | number, unidade_ids: number[]) {
+    return apiRequest<void>(`${ENDPOINT}/${id}/academic-units`, {
+      method: "PUT",
+      body: JSON.stringify({ unidade_ids }),
+    });
+  },
+
   remove(id: string | number) {
     return apiRequest<void>(`${ENDPOINT}/${id}`, { method: "DELETE" });
   },
 
   uploadAttachment(id: string | number, file: File) {
     return uploadPdf(`${ENDPOINT}/${id}/anexo`, file);
+  },
+
+  async getAnexo(id: string | number): Promise<Blob> {
+    const headers = new Headers();
+    const token = getAccessToken();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    const response = await fetch(`${API_BASE_URL}${ENDPOINT}/${id}/anexo`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+      const payload =
+        typeof data === "object" ? (data as ApiErrorPayload) : undefined;
+      const message =
+        payload?.message ??
+        payload?.error ??
+        String(data || "Erro ao baixar anexo do edital");
+      throw new ApiError(response.status, message, payload);
+    }
+
+    return response.blob();
   },
 };

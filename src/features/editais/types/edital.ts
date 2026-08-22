@@ -32,6 +32,7 @@ export type PeriodoEdital = PeriodoEditalPayload & {
 };
 
 export type EditalCotaDistribuicaoPayload = {
+  id_bolsa: number;
   quantidade: number;
   fppi_min: number;
   fppi_max?: number | null;
@@ -59,11 +60,18 @@ export type EditalCotaBolsa = {
   orgao_financiador?: string;
 };
 
+export type EditalAnexoMeta = {
+  id: number;
+  nome: string;
+  tipo: string;
+};
+
 export type Edital = {
   id: number;
   codigo: string | null;
   descricao: string;
   status: StatusEdital;
+  ano: number;
   titulacao_min: TitulacaoMin;
   tipo: TipoEdital;
   limite_solicitacoes_orientador: number;
@@ -72,11 +80,16 @@ export type Edital = {
   apenas_orient_coordena_plano: boolean;
   tec_admin_coord_proj: boolean;
   divulgar_resultado: boolean;
+  edital_para_voluntarios: boolean;
+  apenas_colab_vol_cadastra_plano: boolean;
+  prof_subst_cadastra_proj: boolean;
   categoria: EditalCategoria;
   cota_bolsa?: EditalCotaBolsa | null;
   periodo_submissoes: PeriodoEdital;
   periodo_execucao_rel: PeriodoEdital;
   edital_cota_distribuicao: EditalCotaDistribuicao[];
+  unidade_ids?: number[];
+  anexo?: EditalAnexoMeta | null;
 };
 
 export type EditalListItem = {
@@ -114,6 +127,7 @@ export type CreateEditalPayload = {
   codigo?: string;
   descricao: string;
   status: StatusInicialEdital;
+  ano: number;
   titulacao_min: TitulacaoMin;
   tipo: TipoEdital;
   limite_solicitacoes_orientador: number;
@@ -123,6 +137,9 @@ export type CreateEditalPayload = {
   apenas_orient_coordena_plano: boolean;
   tec_admin_coord_proj: boolean;
   divulgar_resultado: boolean;
+  edital_para_voluntarios: boolean;
+  apenas_colab_vol_cadastra_plano: boolean;
+  prof_subst_cadastra_proj: boolean;
   categoria_id: number;
   edital_cota_distribuicao?: EditalCotaDistribuicaoPayload[];
   periodo_submissao: PeriodoEditalPayload;
@@ -131,8 +148,26 @@ export type CreateEditalPayload = {
 
 export type UpdateEditalPayload = {
   titulo?: string;
-  periodo_execucao?: Partial<PeriodoEditalPayload>;
+  codigo?: string;
+  descricao?: string;
   status?: StatusEdital;
+  ano?: number;
+  titulacao_min?: TitulacaoMin;
+  tipo?: TipoEdital;
+  limite_solicitacoes_orientador?: number;
+  cota_bolsa_id?: number;
+  limite_planos_orientador?: number;
+  avaliacao_vigente?: boolean;
+  apenas_orient_coordena_plano?: boolean;
+  tec_admin_coord_proj?: boolean;
+  divulgar_resultado?: boolean;
+  edital_para_voluntarios?: boolean;
+  apenas_colab_vol_cadastra_plano?: boolean;
+  prof_subst_cadastra_proj?: boolean;
+  categoria_id?: number;
+  edital_cota_distribuicao?: EditalCotaDistribuicaoPayload[];
+  periodo_submissao?: PeriodoEditalPayload;
+  periodo_execucao?: PeriodoEditalPayload;
 };
 
 export type EditalAttachmentResponse = {
