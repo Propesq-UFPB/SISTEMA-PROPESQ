@@ -5,7 +5,7 @@ import { projectService } from "../api/projectService"
 import type { ResearchProject, UpdateResearchProjectPayload, UserRole } from "../types/project"
 import { ApiError } from "@/services/apiClient"
 
-const listPaths: Record<UserRole, string> = { DISCENTE: "/discente/projetos", COORDENADOR: "/coordenador/projetos", GESTOR: "/adm/admprojetos" }
+const listPaths: Record<UserRole, string> = { DISCENTE: "/discente/projetos", COORDENADOR: "/coordenador/projetos", GESTOR: "/gestor/projetos" }
 
 function Field({ label, value }: { label: string; value?: string | string[] }) {
   const display = Array.isArray(value) ? value.join(", ") : value

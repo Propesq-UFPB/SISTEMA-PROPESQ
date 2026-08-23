@@ -42,25 +42,25 @@ export default function GlobalSettings() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <CardLink
-          to="/adm/settings/scholarships"
+          to="/gestor/settings/scholarships"
           title="Entidades & Tipos de Bolsa"
           desc="Cadastro de órgãos financiadores e definição de tipos de bolsa."
           icon={<ShieldCheck size={18} />}
         />
         <CardLink
-          to="/adm/settings/academic-units"
+          to="/gestor/settings/academic-units"
           title="Unidades Acadêmicas"
           desc="Importação e gerenciamento da árvore institucional (centros e departamentos)."
           icon={<Building2 size={18} />}
         />
         <CardLink
-          to="/adm/settings/roles"
+          to="/gestor/settings/roles"
           title="Dicionário de Funções"
           desc="Defina os papéis possíveis no sistema (orientador, bolsista, etc.)."
           icon={<BookUser size={18} />}
         />
         <CardLink
-          to="/adm/settings/user-types"
+          to="/gestor/settings/user-types"
           title="Tipos de Usuários"
           desc="Perfis de acesso e permissões no sistema."
           icon={<Users size={18} />}

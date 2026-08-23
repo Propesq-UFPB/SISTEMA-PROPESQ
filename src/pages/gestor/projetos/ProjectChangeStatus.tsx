@@ -1,4 +1,4 @@
-// src/pages/admin/projects/ProjectChangeStatus.tsx
+// src/pages/gestorin/projects/ProjectChangeStatus.tsx
 import React, { useMemo, useState } from "react"
 import { Helmet } from "react-helmet"
 import { Link, useNavigate, useParams } from "react-router-dom"
@@ -185,8 +185,8 @@ export default function ProjectChangeStatus() {
   const nav = useNavigate()
 
   // permite duas formas:
-  // - /adm/projetos/:id/status (id já vem na rota)
-  // - /adm/projetos/status (busca pelo código ou por texto)
+  // - /gestor/projetos/:id/status (id já vem na rota)
+  // - /gestor/projetos/status (busca pelo código ou por texto)
   const [searchText, setSearchText] = useState(id ? String(id) : "")
   const [searchOpen, setSearchOpen] = useState(!id)
 
@@ -315,7 +315,7 @@ export default function ProjectChangeStatus() {
 
       // Como estamos no mock, não mutamos "projetos".
       // Simulamos sucesso e enviamos o usuário de volta para o detalhe:
-      nav(`/adm/projetos/${project!.id}`, { replace: true })
+      nav(`/gestor/projetos/${project!.id}`, { replace: true })
     } finally {
       setSaving(false)
     }
@@ -337,7 +337,7 @@ export default function ProjectChangeStatus() {
         {/* Botão voltar  */}
         <div className="mb-4">
           <Link
-            to="/adm/projetos"
+            to="/gestor/projetos"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             <ArrowLeft size={16} />
@@ -368,7 +368,7 @@ export default function ProjectChangeStatus() {
             {project && (
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 <Link
-                  to={`/adm/projetos/${project.id}`}
+                  to={`/gestor/projetos/${project.id}`}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:bg-slate-50"
                 >
                   <FolderKanban size={16} />

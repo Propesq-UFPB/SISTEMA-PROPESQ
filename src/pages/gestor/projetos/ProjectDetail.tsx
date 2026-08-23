@@ -345,7 +345,7 @@ export default function ProjectDetail() {
 
         <div className="mx-auto max-w-7xl px-6 py-12">
           <button
-            onClick={() => nav("/adm/projetos")}
+            onClick={() => nav("/gestor/projetos")}
             className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
           >
             <ArrowLeft size={16} />
@@ -389,7 +389,7 @@ export default function ProjectDetail() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={() => nav("/adm/projetos")}
+                  onClick={() => nav("/gestor/projetos")}
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
                 >
                   <ArrowLeft size={16} />
@@ -427,7 +427,7 @@ export default function ProjectDetail() {
             {/* ação principal única */}
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Link
-                to={`/adm/projetos/${project.id}/visualizar-editar`}
+                to={`/gestor/projetos/${project.id}/visualizar-editar`}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white hover:opacity-95"
               >
                 <Pencil size={16} />
@@ -530,7 +530,7 @@ export default function ProjectDetail() {
               icon={<BookOpen size={18} className="text-primary" />}
               right={
                 <Link
-                  to={`/adm/projetos/${project.id}/visualizar-editar`}
+                  to={`/gestor/projetos/${project.id}/visualizar-editar`}
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
                 >
                   <Pencil size={16} />
@@ -610,7 +610,7 @@ export default function ProjectDetail() {
               icon={<Users size={18} className="text-primary" />}
               right={
                 <Link
-                  to={`/adm/projetos/${project.id}/membros`}
+                  to={`/gestor/projetos/${project.id}/membros`}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white hover:opacity-95"
                 >
                   <Users size={16} />
@@ -655,7 +655,7 @@ export default function ProjectDetail() {
               icon={<FolderOpen size={18} className="text-primary" />}
               right={
                 <Link
-                  to={`/adm/projetos/${project.id}/documentos`}
+                  to={`/gestor/projetos/${project.id}/documentos`}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white hover:opacity-95"
                 >
                   <Upload size={16} />
@@ -708,7 +708,7 @@ export default function ProjectDetail() {
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  to="/adm/monitoring/report-validation"
+                  to="/gestor/monitoring/report-validation"
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
                 >
                   <FileText size={16} />
@@ -716,7 +716,7 @@ export default function ProjectDetail() {
                 </Link>
 
                 <Link
-                  to="/adm/monitoring/monitoring-certification"
+                  to="/gestor/monitoring/monitoring-certification"
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
                 >
                   <FileText size={16} />
@@ -735,7 +735,7 @@ export default function ProjectDetail() {
               icon={<GraduationCap size={18} className="text-primary" />}
               right={
                 <Link
-                  to={`/adm/projetos/${project.id}/avaliacoes`}
+                  to={`/gestor/projetos/${project.id}/avaliacoes`}
                   className="inline-flex items-center gap-2 rounded-xl border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-light/50"
                 >
                   <GraduationCap size={16} />
@@ -792,7 +792,7 @@ export default function ProjectDetail() {
 
               <div className="mt-5">
                 <Link
-                  to={`/adm/projetos/${project.id}/parecer`}
+                  to={`/gestor/projetos/${project.id}/parecer`}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white hover:opacity-95"
                 >
                   <FileText size={16} />

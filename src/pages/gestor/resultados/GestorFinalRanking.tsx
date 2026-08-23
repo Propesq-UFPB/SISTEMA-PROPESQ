@@ -229,7 +229,7 @@ function Card({
   )
 }
 
-export default function AdminFinalRanking() {
+export default function GestorFinalRanking() {
   const [search, setSearch] = useState("")
   const [area, setArea] = useState("TODAS")
   const [centro, setCentro] = useState("TODOS")

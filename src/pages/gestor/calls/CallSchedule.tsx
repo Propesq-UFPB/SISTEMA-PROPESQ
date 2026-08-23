@@ -456,7 +456,7 @@ export default function CallWorkflow() {
       </Helmet>
 
       <Link
-        to="/adm/calls/CreateCall"
+        to="/gestor/calls/CreateCall"
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

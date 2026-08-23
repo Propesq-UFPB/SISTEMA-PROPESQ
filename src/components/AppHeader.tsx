@@ -52,14 +52,13 @@ function matchesAny(pathname: string, candidates: string[]) {
 
 /** Rotas cujo "to" do menu deve ativar também em outras paths. */
 const SPECIAL_ACTIVE_MATCHERS: Record<string, (pathname: string) => boolean> = {
-  "/adm/admprojetos": (pathname) =>
-    matchesPrefix(pathname, "/adm/admprojetos") || pathname.startsWith("/adm/projetos"),
+  "/gestor/projetos": (pathname) => matchesPrefix(pathname, "/gestor/projetos"),
 
-  "/adm/avaliacao/avaliadores": (pathname) => matchesPrefix(pathname, "/adm/avaliacao"),
-  "/adm/resultados/ranking": (pathname) => matchesPrefix(pathname, "/adm/resultados"),
-  "/adm/monitoring/replacements": (pathname) => matchesPrefix(pathname, "/adm/monitoring"),
-  "/adm/calls/CreateCall": (pathname) => matchesPrefix(pathname, "/adm/calls"),
-  "/adm/settings/scholarships": (pathname) => matchesPrefix(pathname, "/adm/settings"),
+  "/gestor/avaliacao/avaliadores": (pathname) => matchesPrefix(pathname, "/gestor/avaliacao"),
+  "/gestor/resultados/ranking": (pathname) => matchesPrefix(pathname, "/gestor/resultados"),
+  "/gestor/monitoring/replacements": (pathname) => matchesPrefix(pathname, "/gestor/monitoring"),
+  "/gestor/calls/CreateCall": (pathname) => matchesPrefix(pathname, "/gestor/calls"),
+  "/gestor/settings/scholarships": (pathname) => matchesPrefix(pathname, "/gestor/settings"),
 
   "/discente/projetos": (pathname) =>
     matchesPrefix(pathname, "/discente/projetos") || pathname === "/discente/vinculo",
@@ -137,17 +136,17 @@ const THEME_BASE: ThemeTokens = {
 const THEME_BY_PATH: Array<{ match: (pathname: string) => boolean; theme: ThemeOverride }> = [
   { match: (p) => p.startsWith("/dashboard"), theme: { page: "#2563EB", pageSoft: "#DBEAFE" } },
   {
-    match: (p) => p.startsWith("/adm/admprojetos") || p.startsWith("/adm/projetos"),
+    match: (p) => p.startsWith("/gestor/projetos"),
     theme: { page: "#059669", pageSoft: "#D1FAE5" },
   },
   {
-    match: (p) => p.startsWith("/adm/avaliacao") || p.startsWith("/avaliacoes"),
+    match: (p) => p.startsWith("/gestor/avaliacao") || p.startsWith("/avaliacoes"),
     theme: { page: "#7C3AED", pageSoft: "#EDE9FE" },
   },
-  { match: (p) => p.startsWith("/adm/resultados"), theme: { page: "#0891B2", pageSoft: "#CFFAFE" } },
-  { match: (p) => p.startsWith("/adm/monitoring"), theme: { page: "#D97706", pageSoft: "#FFEDD5" } },
-  { match: (p) => p.startsWith("/adm/calls"), theme: { page: "#DB2777", pageSoft: "#FCE7F3" } },
-  { match: (p) => p.startsWith("/adm/settings"), theme: { page: "#334155", pageSoft: "#E2E8F0" } },
+  { match: (p) => p.startsWith("/gestor/resultados"), theme: { page: "#0891B2", pageSoft: "#CFFAFE" } },
+  { match: (p) => p.startsWith("/gestor/monitoring"), theme: { page: "#D97706", pageSoft: "#FFEDD5" } },
+  { match: (p) => p.startsWith("/gestor/calls"), theme: { page: "#DB2777", pageSoft: "#FCE7F3" } },
+  { match: (p) => p.startsWith("/gestor/settings"), theme: { page: "#334155", pageSoft: "#E2E8F0" } },
   {
     match: (p) => p.startsWith("/discente/projetos") || p === "/discente/vinculo",
     theme: { page: "#059669", pageSoft: "#D1FAE5" },
@@ -540,59 +539,59 @@ export default function AppHeader() {
 
   /* ---- menus ---- */
 
-  const adminPrimary: NavItem[] = [
+  const gestorPrimary: NavItem[] = [
     { to: "/dashboard", label: "Dashboard", icon: <Home size={16} /> },
-    { to: "/adm/admprojetos", label: "Projetos", icon: <FolderKanban size={16} /> },
-    { to: "/adm/avaliacao/avaliadores", label: "Avaliação", icon: <FileSignature size={16} /> },
-    { to: "/adm/resultados/ranking", label: "Resultados", icon: <Award size={16} /> },
-   // { to: "/adm/monitoring/replacements", label: "Acompanhamento", icon: <BadgeCheck size={16} /> },
-    { to: "/adm/calls/CreateCall", label: "Editais", icon: <LineChart size={16} /> },
-    { to: "/adm/settings/scholarships", label: "Configurações", icon: <Settings size={16} /> },
+    { to: "/gestor/projetos", label: "Projetos", icon: <FolderKanban size={16} /> },
+    { to: "/gestor/avaliacao/avaliadores", label: "Avaliação", icon: <FileSignature size={16} /> },
+    { to: "/gestor/resultados/ranking", label: "Resultados", icon: <Award size={16} /> },
+   // { to: "/gestor/monitoring/replacements", label: "Acompanhamento", icon: <BadgeCheck size={16} /> },
+    { to: "/gestor/calls/CreateCall", label: "Editais", icon: <LineChart size={16} /> },
+    { to: "/gestor/settings/scholarships", label: "Configurações", icon: <Settings size={16} /> },
   ]
 
-  const adminSecondaryByPrimary: Record<string, NavItem[]> = {
+  const gestorSecondaryByPrimary: Record<string, NavItem[]> = {
     "/dashboard": [
       { to: "/dashboard", label: "Overview", icon: <Home size={16} />, end: true },
-      // { to: "/adm/admprojetos", label: "Projetos", icon: <FolderKanban size={16} /> },
+      // { to: "/gestor/projetos", label: "Projetos", icon: <FolderKanban size={16} /> },
     ],
-    "/adm/admprojetos": [
-      { to: "/adm/admprojetos", label: "Buscar Projetos", icon: <Eye size={16} />, end: true },
-      { to: "/adm/projetos/novo", label: "Cadastrar", icon: <Plus size={16} />, end: true },
-      { to: "/adm/projetos/status", label: "Alterar Situação", icon: <Workflow size={16} />, end: true },
-      { to: "/adm/projetos/comunicacao", label: "Comunicação", icon: <Megaphone size={16} />, end: true },
+    "/gestor/projetos": [
+      { to: "/gestor/projetos", label: "Buscar Projetos", icon: <Eye size={16} />, end: true },
+      { to: "/gestor/projetos/novo", label: "Cadastrar", icon: <Plus size={16} />, end: true },
+      { to: "/gestor/projetos/status", label: "Alterar Situação", icon: <Workflow size={16} />, end: true },
+      { to: "/gestor/projetos/comunicacao", label: "Comunicação", icon: <Megaphone size={16} />, end: true },
     ],
-    "/adm/avaliacao/avaliadores": [
-      // { to: "/adm/avaliacao", label: "Overview", icon: <FileSignature size={16} />, end: true },
-      { to: "/adm/avaliacao/avaliadores", label: "Avaliadores", icon: <Users size={16} />, end: true },
-      { to: "/adm/avaliacao/distribuicao", label: "Distribuição de Avaliações", icon: <GitBranch size={16} />, end: true },
-      //{ to: "/adm/avaliacao/consolidacao", label: "Consolidação de Avaliações", icon: <ClipboardCheck size={16} />, end: true },
-      { to: "/adm/avaliacao/ipi", label: "Relatório IPI", icon: <FileText size={16} />, end: true },
+    "/gestor/avaliacao/avaliadores": [
+      // { to: "/gestor/avaliacao", label: "Overview", icon: <FileSignature size={16} />, end: true },
+      { to: "/gestor/avaliacao/avaliadores", label: "Avaliadores", icon: <Users size={16} />, end: true },
+      { to: "/gestor/avaliacao/distribuicao", label: "Distribuição de Avaliações", icon: <GitBranch size={16} />, end: true },
+      //{ to: "/gestor/avaliacao/consolidacao", label: "Consolidação de Avaliações", icon: <ClipboardCheck size={16} />, end: true },
+      { to: "/gestor/avaliacao/ipi", label: "Relatório IPI", icon: <FileText size={16} />, end: true },
     ],
-    "/adm/resultados/ranking": [
-      { to: "/adm/resultados/ranking", label: "Ranking Final", icon: <Award size={16} />, end: true },
-      { to: "/adm/resultados/quotas", label: "Cotas", icon: <ShieldCheck size={16} />, end: true },
-      { to: "/adm/resultados/recursos", label: "Recursos", icon: <Gavel size={16} />, end: true },
+    "/gestor/resultados/ranking": [
+      { to: "/gestor/resultados/ranking", label: "Ranking Final", icon: <Award size={16} />, end: true },
+      { to: "/gestor/resultados/quotas", label: "Cotas", icon: <ShieldCheck size={16} />, end: true },
+      { to: "/gestor/resultados/recursos", label: "Recursos", icon: <Gavel size={16} />, end: true },
     ],
-    "/adm/monitoring/replacements": [
-      // { to: "/adm/monitoring", label: "Overview", icon: <BadgeCheck size={16} />, end: true },
-      { to: "/adm/monitoring/replacements", label: "Substituições", icon: <Users size={16} />, end: true },
-      { to: "/adm/monitoring/report-validation", label: "Validação Relatórios", icon: <FileText size={16} />, end: true },
-      { to: "/adm/monitoring/AdmCertificates", label: "Certificados", icon: <Award size={16} />, end: true },
+    "/gestor/monitoring/replacements": [
+      // { to: "/gestor/monitoring", label: "Overview", icon: <BadgeCheck size={16} />, end: true },
+      { to: "/gestor/monitoring/replacements", label: "Substituições", icon: <Users size={16} />, end: true },
+      { to: "/gestor/monitoring/report-validation", label: "Validação Relatórios", icon: <FileText size={16} />, end: true },
+      { to: "/gestor/monitoring/certificates", label: "Certificados", icon: <Award size={16} />, end: true },
     ],
-    "/adm/calls/CreateCall": [
-      //{ to: "/adm/calls", label: "Overview", icon: <FolderKanban size={16} />, end: true },
-      { to: "/adm/calls/CreateCall", label: "Novo Edital", icon: <Notebook size={16} />, end: true },
-      { to: "/adm/calls/Manage", label: "Alterar/Remover", icon: <Pencil size={16} />, end: true },
-      // { to: "/adm/calls/CallSchedule", label: "Cronograma", icon: <ClipboardList size={16} />, end: true },
-      //{ to: "/adm/calls/CallWorkflow", label: "Workflow", icon: <LineChart size={16} />, end: true },
+    "/gestor/calls/CreateCall": [
+      //{ to: "/gestor/calls", label: "Overview", icon: <FolderKanban size={16} />, end: true },
+      { to: "/gestor/calls/CreateCall", label: "Novo Edital", icon: <Notebook size={16} />, end: true },
+      { to: "/gestor/calls/Manage", label: "Alterar/Remover", icon: <Pencil size={16} />, end: true },
+      // { to: "/gestor/calls/CallSchedule", label: "Cronograma", icon: <ClipboardList size={16} />, end: true },
+      //{ to: "/gestor/calls/CallWorkflow", label: "Workflow", icon: <LineChart size={16} />, end: true },
     ],
-    "/adm/settings/scholarships": [
-      //{ to: "/adm/settings", label: "Overview", icon: <Settings size={16} />, end: true },
-      { to: "/adm/settings/scholarships", label: "Bolsas", icon: <ShieldCheck size={16} />, end: true },
-      { to: "/adm/settings/academic-units", label: "Unidades", icon: <Building2 size={16} />, end: true },
-      { to: "/adm/settings/roles", label: "Funções", icon: <BookUser size={16} />, end: true },
-      { to: "/adm/settings/user-types", label: "Usuários", icon: <Users size={16} />, end: true },
-      { to: "/adm/settings/parameters", label: "Parâmetros", icon: <Settings size={16} />, end: true },
+    "/gestor/settings/scholarships": [
+      //{ to: "/gestor/settings", label: "Overview", icon: <Settings size={16} />, end: true },
+      { to: "/gestor/settings/scholarships", label: "Bolsas", icon: <ShieldCheck size={16} />, end: true },
+      { to: "/gestor/settings/academic-units", label: "Unidades", icon: <Building2 size={16} />, end: true },
+      { to: "/gestor/settings/roles", label: "Funções", icon: <BookUser size={16} />, end: true },
+      { to: "/gestor/settings/user-types", label: "Usuários", icon: <Users size={16} />, end: true },
+      { to: "/gestor/settings/parameters", label: "Parâmetros", icon: <Settings size={16} />, end: true },
     ],
   }
 
@@ -689,8 +688,8 @@ export default function AppHeader() {
 
   const navByRole = {
     GESTOR: {
-      primary: adminPrimary,
-      secondaryByPrimary: adminSecondaryByPrimary,
+      primary: gestorPrimary,
+      secondaryByPrimary: gestorSecondaryByPrimary,
       homeLink: "/dashboard",
       fallbackPrimary: "/dashboard",
     },

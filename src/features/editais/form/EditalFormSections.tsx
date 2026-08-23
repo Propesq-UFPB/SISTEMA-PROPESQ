@@ -568,7 +568,7 @@ function EditalDistributionSection({ form }: Readonly<{ form: EditalFormModel }>
                   <p className="mt-1 text-xs text-neutral">
                     Nenhum tipo cadastrado.{" "}
                     <Link
-                      to="/adm/settings/scholarships"
+                      to="/gestor/settings/scholarships"
                       className="text-primary font-semibold underline"
                     >
                       Ir para Entidades & Tipos de Bolsa

@@ -39,7 +39,7 @@ function splitFormattedPeriod(value: string) {
   return { inicio, fim };
 }
 
-export default function AdmCallsManage() {
+export default function GestorCallsManage() {
   const [editais, setEditais] = useState<EditalListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -215,7 +215,7 @@ export default function AdmCallsManage() {
       </Helmet>
 
       <Link
-        to="/adm/calls/CreateCall"
+        to="/gestor/calls/CreateCall"
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

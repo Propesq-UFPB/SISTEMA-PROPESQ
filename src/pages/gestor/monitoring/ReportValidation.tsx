@@ -323,7 +323,7 @@ export default function ReportValidation() {
       </Helmet>
 
       <Link
-        to="/adm/monitoring/replacements"
+        to="/gestor/monitoring/replacements"
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

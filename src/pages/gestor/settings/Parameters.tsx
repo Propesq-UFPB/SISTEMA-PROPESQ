@@ -76,7 +76,7 @@ const DEFAULTS: Params = {
   enicSummariesPerReviewer: 5,
 }
 
-export default function AdmResearchModuleParameters({basePath = "/adm"}: {basePath?: string}) {
+export default function GestorResearchModuleParameters({basePath = "/gestor"}: {basePath?: string}) {
   // Depois: trocar por fetch/GET
   const [initial, setInitial] = useState<Params>(DEFAULTS)
   const [form, setForm] = useState<Params>(DEFAULTS)

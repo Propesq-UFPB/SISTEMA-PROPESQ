@@ -65,7 +65,7 @@ function pill(active: boolean) {
   return active ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-50 text-neutral border-neutral-light"
 }
 
-export default function UserTypes({basePath = "/adm"}: {basePath?: string}) {
+export default function UserTypes({basePath = "/gestor"}: {basePath?: string}) {
   const [userTypes, setUserTypes] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

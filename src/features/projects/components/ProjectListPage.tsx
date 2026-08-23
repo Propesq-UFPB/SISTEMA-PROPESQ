@@ -10,7 +10,7 @@ const PAGE_SIZE = 10
 const paths: Record<UserRole, { details: (id: number) => string; create?: string }> = {
   DISCENTE: { details: (id) => `/discente/projetos/${id}` },
   COORDENADOR: { details: (id) => `/coordenador/projetos/${id}`, create: "/coordenador/projetos/novo" },
-  GESTOR: { details: (id) => `/adm/projetos/${id}/visualizar`, create: "/adm/projetos/novo" },
+  GESTOR: { details: (id) => `/gestor/projetos/${id}/visualizar`, create: "/gestor/projetos/novo" },
 }
 
 function statusClass(status: string) {

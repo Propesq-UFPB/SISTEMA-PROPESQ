@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { mapBackendRole } from "./auth"
+import { isLegacyAdminRole, mapBackendRole } from "./auth"
 
 describe("mapBackendRole", () => {
-  it("mapeia gestão para GESTOR", () => {
+  it("mapeia GESTOR", () => {
     expect(mapBackendRole("GESTOR")).toBe("GESTOR")
-    expect(mapBackendRole("ADMIN")).toBe("GESTOR")
-    expect(mapBackendRole("ADMINISTRADOR")).toBe("GESTOR")
+  })
+
+  it("ADMIN legado não vira GESTOR", () => {
+    expect(mapBackendRole("ADMIN")).toBe("DISCENTE")
+    expect(mapBackendRole("ADMINISTRADOR")).toBe("DISCENTE")
   })
 
   it("mapeia discente e coordenador", () => {
@@ -17,5 +20,13 @@ describe("mapBackendRole", () => {
   it("desconhecido cai em DISCENTE", () => {
     expect(mapBackendRole("FOO")).toBe("DISCENTE")
     expect(mapBackendRole(undefined)).toBe("DISCENTE")
+  })
+})
+
+describe("isLegacyAdminRole", () => {
+  it("detecta ADMIN e ADMINISTRADOR", () => {
+    expect(isLegacyAdminRole("ADMIN")).toBe(true)
+    expect(isLegacyAdminRole("administrador")).toBe(true)
+    expect(isLegacyAdminRole("GESTOR")).toBe(false)
   })
 })

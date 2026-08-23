@@ -279,7 +279,7 @@ function EmptyState() {
   )
 }
 
-export default function AdminAppeals() {
+export default function GestorAppeals() {
   const [query, setQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<"TODOS" | AppealType>("TODOS")
   const [statusFilter, setStatusFilter] = useState<"TODOS" | AppealStatus>("TODOS")
@@ -338,7 +338,7 @@ export default function AdminAppeals() {
         <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link
-              to="/adm/resultados/ranking"
+              to="/gestor/resultados/ranking"
               className="inline-flex w-fit items-center gap-2 rounded-xl border border-neutral/20 bg-white px-4 py-2.5 text-sm font-medium text-neutral transition hover:border-primary/30 hover:text-primary"
             >
               <ArrowLeft size={16} />

@@ -119,7 +119,7 @@ function onlyDigits(s: string) {
   return (s || "").replace(/\D/g, "")
 }
 
-export default function AdmCertificates() {
+export default function GestorCertificates() {
   const [mode, setMode] = useState<"pdf" | "qr">("pdf")
 
   // ===== Mock: editais e projetos (projeto pertence a um edital) =====
@@ -454,7 +454,7 @@ export default function AdmCertificates() {
       </Helmet>
 
       <Link
-        to="/adm/monitoring/replacements"
+        to="/gestor/monitoring/replacements"
         className="inline-flex items-center gap-2 rounded-full border border-neutral-light bg-white px-4 py-2 text-sm  text-primary hover:bg-neutral-50 transition-colors w-fit"
       >
         <ArrowLeft size={16} />

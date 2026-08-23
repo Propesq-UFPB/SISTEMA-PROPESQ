@@ -475,7 +475,7 @@ function buildSmartDistribution({
   }
 }
 
-export default function AdminEvaluationDistribution() {
+export default function GestorEvaluationDistribution() {
   const [projects, setProjects] = useState<Project[]>(projectsMock)
   const [evaluators, setEvaluators] = useState<Evaluator[]>(evaluatorsMock)
   const [assignments, setAssignments] = useState<Assignment[]>(assignmentsMock)
@@ -903,7 +903,7 @@ export default function AdminEvaluationDistribution() {
         </Helmet>
         <div className="flex items-center justify-between">
           <Link
-            to="/adm/avaliacao/avaliadores"
+            to="/gestor/avaliacao/avaliadores"
             className="inline-flex items-center gap-2 rounded-xl border border-neutral/20 bg-white px-4 py-2.5 text-sm font-medium text-neutral transition hover:border-primary/30 hover:text-primary"
           >
             <ArrowLeft size={16} />

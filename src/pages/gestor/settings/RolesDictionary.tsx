@@ -58,7 +58,7 @@ function badgeClass(active: boolean) {
     : "bg-neutral-50 text-neutral border-neutral-light"
 }
 
-export default function RolesDictionary({basePath = "/adm"}: {basePath?: string}) {
+export default function RolesDictionary({basePath = "/gestor"}: {basePath?: string}) {
   const [roles, setRoles] = useState<RoleEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

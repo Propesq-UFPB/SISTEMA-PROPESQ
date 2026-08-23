@@ -1,6 +1,6 @@
 import { apiRequest } from "@/services/apiClient"
 import type { AuthUser, LoginResponse } from "../types/auth"
-import { mapBackendRole } from "../types/auth"
+import { isLegacyAdminRole, mapBackendRole } from "../types/auth"
 
 const TOKEN_KEY = "access_token"
 const USER_KEY = "auth_user"
@@ -12,6 +12,10 @@ export const authStorage = {
     if (!raw) return null
     try {
       const user = JSON.parse(raw) as AuthUser
+      if (isLegacyAdminRole(user.role) || isLegacyAdminRole(String(user.backendRole))) {
+        authStorage.clear()
+        return null
+      }
       return { ...user, role: mapBackendRole(user.backendRole || user.role) }
     } catch {
       return null

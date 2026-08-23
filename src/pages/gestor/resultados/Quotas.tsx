@@ -542,7 +542,7 @@ function exportToCsv(items: QuotaDistributionItem[]) {
   URL.revokeObjectURL(url)
 }
 
-export default function Quotas() {
+export default function GestorCallQuotas() {
   const [search, setSearch] = useState("")
   const [selectedCenter, setSelectedCenter] = useState("TODOS")
   const [selectedSource, setSelectedSource] = useState("TODAS")
@@ -670,7 +670,7 @@ export default function Quotas() {
         {/* Botão voltar */}
         <div>
           <Link
-            to="/adm/resultados/ranking"
+            to="/gestor/resultados/ranking"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             <ArrowLeft size={16} />

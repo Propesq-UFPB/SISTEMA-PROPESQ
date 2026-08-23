@@ -84,7 +84,7 @@ const MOCK_PEOPLE: Person[] = [
   { id: "s2", name: "Carlos Pereira", email: "carlos@discente.ufpb.br", role: "DISCENTE", projectId: "p2" },
 ]
 
-export default function AdmProjectCommunicateWizard() {
+export default function GestorProjectCommunication() {
   const [step, setStep] = useState<1 | 2>(1)
 
   // ====== filtros (itens da imagem) ======

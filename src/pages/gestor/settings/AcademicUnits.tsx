@@ -91,7 +91,7 @@ function errorMessage(err: unknown, fallback: string) {
   return fallback
 }
 
-export default function AcademicUnits({basePath = "/adm"}: {basePath?: string}) {
+export default function AcademicUnits({basePath = "/gestor"}: {basePath?: string}) {
   const [centers, setCenters] = useState<UniversityCenter[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
   const [loading, setLoading] = useState(true)
