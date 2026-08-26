@@ -78,6 +78,7 @@ type GeneralData = {
   introducaoJustificativa: string
   objetivos: string
   metodologia: string
+  resultadosEsperados: string
   referencias: string
 
   objetivosDS: ODS[]
@@ -1352,6 +1353,7 @@ const initialState: FormState = {
     introducaoJustificativa: "",
     objetivos: "",
     metodologia: "",
+    resultadosEsperados: "",
     referencias: "",
 
     objetivosDS: [],
@@ -1963,6 +1965,7 @@ function checkCanGoStep3(form: FormState, canGoStep2: boolean): boolean {
       g.introducaoJustificativa.trim() &&
       g.objetivos.trim() &&
       g.metodologia.trim() &&
+      g.resultadosEsperados.trim() &&
       g.referencias.trim() &&
       /^\S+@\S+\.\S+$/.test(g.email.trim()) &&
       g.unidade.trim() &&
@@ -2464,6 +2467,31 @@ function WizardStep2Anexo({
 
             <CharacterCounter
               value={form.gerais.metodologia}
+              max={LONG_TEXT_MAX}
+            />
+          </Field>
+        </div>
+
+        <div className="md:col-span-2">
+          <Field label="Resultados esperados" required>
+            <textarea
+              value={form.gerais.resultadosEsperados}
+              maxLength={LONG_TEXT_MAX}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  gerais: {
+                    ...current.gerais,
+                    resultadosEsperados: event.target.value,
+                  },
+                }))
+              }
+              className={textareaClassName}
+              placeholder="Descreva os resultados e impactos esperados com a execução do projeto."
+            />
+
+            <CharacterCounter
+              value={form.gerais.resultadosEsperados}
               max={LONG_TEXT_MAX}
             />
           </Field>
@@ -3847,6 +3875,12 @@ function WizardStep6Revisao({
 
           <Info label="Metodologia" value={form.gerais.metodologia} preWrap />
 
+          <Info
+            label="Resultados esperados"
+            value={form.gerais.resultadosEsperados}
+            preWrap
+          />
+
           <Info label="Referências" value={form.gerais.referencias} preWrap />
         </div>
       </div>
@@ -4329,6 +4363,7 @@ export default function ProjectFormWizard({
               introducao: form.gerais.introducaoJustificativa.trim(),
               objetivos: form.gerais.objetivos.trim(),
               metodologia: form.gerais.metodologia.trim(),
+              resultados_esperados: form.gerais.resultadosEsperados.trim(),
               referencias: form.gerais.referencias.trim(),
             },
             atividades: form.gerais.cronograma.map((item) => ({

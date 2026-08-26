@@ -51,6 +51,34 @@ async function uploadPdf(id: string | number, file: File): Promise<void> {
   }
 }
 
+async function getPdf(id: string | number): Promise<Blob> {
+  const headers = new Headers()
+  const token = localStorage.getItem("access_token")
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+
+  const response = await fetch(`${API_BASE_URL}${ENDPOINT}/${id}/anexo`, {
+    headers,
+  })
+
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") ?? ""
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text()
+    const payload =
+      typeof data === "object" ? (data as ApiErrorPayload) : undefined
+    throw new ApiError(
+      response.status,
+      payload?.message ??
+        payload?.error ??
+        String(data || "Erro ao carregar o PDF do projeto"),
+      payload,
+    )
+  }
+
+  return response.blob()
+}
+
 export const projectService = {
   list(params: ResearchProjectListParams = {}) {
     return apiRequest<PaginatedResponse<ResearchProject>>(
@@ -73,6 +101,9 @@ export const projectService = {
   },
   uploadAttachment(id: string | number, file: File) {
     return uploadPdf(id, file)
+  },
+  getAttachment(id: string | number) {
+    return getPdf(id)
   },
   editalLookup() {
     return apiRequest<LookupOption<number>[]>("/editais/lookup")

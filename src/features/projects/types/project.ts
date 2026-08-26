@@ -7,7 +7,31 @@ export type ResearchProjectBody = {
   objetivos?: string
   metodologia?: string
   referencias?: string
-  resultados_esperados?: string
+  resultados_esperados?: string | null
+}
+
+export type ResearchProjectMember = {
+  id: number
+  nome: string
+  email: string
+  funcao: string
+  categoria: string
+  carga_horaria?: number
+  cpf?: string
+  sexo?: string
+  formacao?: string
+  tipo?: string
+}
+
+export type ResearchProjectAttachment = {
+  id: number
+  nome: string
+  tipo: string
+}
+
+export type ResearchProjectSustainableGoal = {
+  id: number
+  name: string
 }
 
 export type ResearchProjectActivity = {
@@ -23,7 +47,7 @@ export type ResearchProject = {
   title: string
   categoria: string
   situacao: string
-  objetivos: string[]
+  objetivos: ResearchProjectSustainableGoal[]
   email: string
   data_cadastro: string
   palavras_chave: string[]
@@ -31,6 +55,8 @@ export type ResearchProject = {
   corpo?: ResearchProjectBody
   atividades: ResearchProjectActivity[]
   unidade?: string
+  membros?: ResearchProjectMember[]
+  anexo?: ResearchProjectAttachment
   data_inicio?: string
   data_fim?: string
   vigencia?: string
@@ -114,6 +140,7 @@ export type CreateResearchProjectPayload = {
       | "introducao"
       | "objetivos"
       | "metodologia"
+      | "resultados_esperados"
       | "referencias"
     >
   >
