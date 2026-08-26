@@ -99,13 +99,18 @@ function useLookupLoader<T>(
   const [options, setOptions] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchRef = useRef(fetch);
+
+  useEffect(() => {
+    fetchRef.current = fetch;
+  }, [fetch]);
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
-    await loadLookupOptions(fetch, errorMessage, setOptions, setError);
+    await loadLookupOptions(fetchRef.current, errorMessage, setOptions, setError);
     setLoading(false);
-  }, [fetch, errorMessage]);
+  }, [errorMessage]);
 
   useEffect(() => {
     void reload();
