@@ -1,5 +1,5 @@
-export type BackendRole = "DISCENTE" | "COORDENADOR" | "GESTOR" | "ADMIN" | string
-export type AppRole = "DISCENTE" | "COORDENADOR" | "ADMINISTRADOR" | "GESTOR"
+export type BackendRole = "DISCENTE" | "COORDENADOR" | "GESTOR" | "ALUNO" | string
+export type AppRole = "DISCENTE" | "COORDENADOR" | "GESTOR"
 
 export type AuthUser = {
   id: number
@@ -19,8 +19,23 @@ export type LoginResponse = {
   }
 }
 
-export function mapBackendRole(role: BackendRole): AppRole {
-  if (role === "COORDENADOR") return "COORDENADOR"
-  if (role === "DISCENTE") return "DISCENTE"
-  return "ADMINISTRADOR"
+export function isLegacyAdminRole(role?: string): boolean {
+  const normalized = role?.toString().trim().toUpperCase()
+  return normalized === "ADMIN" || normalized === "ADMINISTRADOR"
+}
+
+export function mapBackendRole(role?: BackendRole | AppRole): AppRole {
+  const normalizedRole = role?.toString().trim().toUpperCase()
+
+  switch (normalizedRole) {
+    case "ALUNO":
+    case "DISCENTE":
+      return "DISCENTE"
+    case "COORDENADOR":
+      return "COORDENADOR"
+    case "GESTOR":
+      return "GESTOR"
+    default:
+      return "DISCENTE"
+  }
 }

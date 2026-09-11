@@ -1,5 +1,6 @@
 import React from "react"
-import { Route, Routes, Navigate } from "react-router-dom"
+import { Route, Routes, Navigate, useLocation } from "react-router-dom"
+import { remapAdmPath } from "./utils/remapAdmPath"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 
 // Landing
@@ -26,40 +27,40 @@ import UsersAndRoles from "./publisher/UsersAndRoles"
 import AppHeader from "./components/AppHeader"
 import Login from "./pages/Login"
 
-// admin pages
-import Dashboard from "./pages/adm/Dashboard"
-import Evaluators from "./pages/adm/avaliacao/Evaluators"
-import AdminEvaluationDistribution from "./pages/adm/avaliacao/AdminEvaluationDistribution"
-import AdminIPIReport from "./pages/adm/avaliacao/AdminIPIReport"
+// gestor pages
+import Dashboard from "./pages/gestor/Dashboard"
+import Evaluators from "./pages/gestor/avaliacao/Evaluators"
+import GestorEvaluationDistribution from "./pages/gestor/avaliacao/GestorEvaluationDistribution"
+import GestorIPIReport from "./pages/gestor/avaliacao/GestorIPIReport"
 
-import StudentReplacements from "./pages/adm/monitoring/StudentReplacements"
-import ReportValidation from "./pages/adm/monitoring/ReportValidation"
-import AdmCertificates from "./pages/adm/monitoring/AdmCertificates"
+import StudentReplacements from "./pages/gestor/monitoring/StudentReplacements"
+import ReportValidation from "./pages/gestor/monitoring/ReportValidation"
+import GestorCertificates from "./pages/gestor/monitoring/GestorCertificates"
 
-import CallsManagement from "./pages/adm/calls/CallsManagement"
-import CreateCall from "./pages/adm/calls/CreateCall"
-import CallSchedule from "./pages/adm/calls/CallSchedule"
-import CallWorkflow from "./pages/adm/calls/CallWorkflow"
-import AdmCallsManage from "./pages/adm/calls/Manage"
+import CallsManagement from "./pages/gestor/calls/CallsManagement"
+import CreateCall from "./pages/gestor/calls/CreateCall"
+import CallSchedule from "./pages/gestor/calls/CallSchedule"
+import CallWorkflow from "./pages/gestor/calls/CallWorkflow"
+import GestorCallsManage from "./pages/gestor/calls/Manage"
 
-import AdmCallQuotas from "./pages/adm/resultados/Quotas"
-import AdminAppeals from "./pages/adm/resultados/Appeals"
-import AdminFinalRanking from "./pages/adm/resultados/AdminFinalRanking"
+import GestorCallQuotas from "./pages/gestor/resultados/Quotas"
+import GestorAppeals from "./pages/gestor/resultados/Appeals"
+import GestorFinalRanking from "./pages/gestor/resultados/GestorFinalRanking"
 
-import GlobalSettings from "./pages/adm/settings/GlobalSettings"
-import ScholarshipEntities from "./pages/adm/settings/ScholarshipEntities"
-import AcademicUnits from "./pages/adm/settings/AcademicUnits"
-import RolesDictionary from "./pages/adm/settings/RolesDictionary"
-import UserTypes from "./pages/adm/settings/UserTypes"
+import GlobalSettings from "./pages/gestor/settings/GlobalSettings"
+import ScholarshipEntities from "./pages/gestor/settings/ScholarshipEntities"
+import AcademicUnits from "./pages/gestor/settings/AcademicUnits"
+import RolesDictionary from "./pages/gestor/settings/RolesDictionary"
+import UserTypes from "./pages/gestor/settings/UserTypes"
 
-import AdmProjectCommunication from "./pages/adm/projects/AdmProjectCommunication"
-import AdmResearchModuleParameters from "./pages/adm/settings/Parameters"
+import GestorProjectCommunication from "./pages/gestor/projetos/GestorProjectCommunication"
+import GestorResearchModuleParameters from "./pages/gestor/settings/Parameters"
 
-import ProjectDetail from "./pages/adm/projects/ProjectDetail"
-import ProjectCreateWizard from "./pages/adm/projects/ProjectCreateWizard"
-import ProjectChangeStatus from "./pages/adm/projects/ProjectChangeStatus"
-import ProjectViewEdit from "./pages/adm/projects/ProjectViewEdit"
-import AdmProjects from "./pages/adm/projects/AdmProjects"
+import ProjectDetail from "./pages/gestor/projetos/ProjectDetail"
+import ProjectCreateWizard from "./pages/gestor/projetos/ProjectCreateWizard"
+import ProjectChangeStatus from "./pages/gestor/projetos/ProjectChangeStatus"
+import ProjectViewEdit from "./pages/gestor/projetos/ProjectViewEdit"
+import GestorProjects from "./pages/gestor/projetos/GestorProjects"
 
 
 // discente pages
@@ -108,6 +109,8 @@ import CoordinatorProjectForm from "./pages/coordenador/projetos/CoordinatorProj
 import CoordinatorProjectView from "./pages/coordenador/projetos/CoordinatorProjectView"
 import CoordinatorProjectEdit from "./pages/coordenador/projetos/CoordinatorProjectEdit"
 
+import CoordinatorEditais from "./pages/coordenador/editais/CoordinatorEditais"
+
 import CoordinatorEvaluations from "./pages/coordenador/avaliacoes/CoordinatorEvaluations"
 import CoordinatorEvaluationDetail from "./pages/coordenador/avaliacoes/CoordinatorEvaluationDetail"
 
@@ -121,13 +124,6 @@ import CoordinatorReportReview from "./pages/coordenador/relatorios/CoordinatorR
 
 import CoordinatorProductionIPI from "./pages/coordenador/producao/CoordinatorProductionIPI"
 import CoordinatorProductionResult from "./pages/coordenador/producao/CoordinatorProductionResult"
-
-// gestor pages
-import GestorUserTypes from "./pages/gestor/settings/GestorUserTypes"
-import GestorScholarships from "./pages/gestor/settings/GestorScholarships"
-// import GestorProjects from "./pages/gestor/projetos/GestorProjects"
-// import GestorProjectViewEdit from "./pages/gestor/projetos/GestorProjectViewEdit"
-
 
 import NotFound from "./pages/NotFound"
 
@@ -151,10 +147,35 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const RoleRedirect: React.FC = () => {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === "ADMINISTRADOR") return <Navigate to="/dashboard" replace />
+  if (user.role === "GESTOR")         return <Navigate to="/dashboard" replace />
   if (user.role === "DISCENTE")      return <Navigate to="/discente/projetos" replace />
   if (user.role === "COORDENADOR")   return <Navigate to="/coordenador/projetos" replace />
   return <Navigate to="/login" replace />
+}
+
+function AdmToGestorRedirect() {
+  const location = useLocation()
+  return (
+    <Navigate
+      to={`${remapAdmPath(location.pathname)}${location.search}${location.hash}`}
+      replace
+    />
+  )
+}
+
+/** Rotas de gestão de editais: só GESTOR. */
+const GestorProtected: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === "GESTOR") {
+    return <>{children}</>
+  }
+  if (user.role === "COORDENADOR") {
+    return <Navigate to="/coordenador/editais" replace />
+  }
+  return <RoleRedirect />
 }
 
 /* ================= PUBLISHER  ================= */
@@ -173,9 +194,6 @@ const PublisherProtected: React.FC<{ children: React.ReactNode }> = ({
 
 
 import PublisherHeader from "./publisher/PublisherHeader"
-import GestorAcademicUnits from "./pages/gestor/settings/GestorAcademicUnits"
-import GestorRoles from "./pages/gestor/settings/GestorRoles"
-import GestorParameters from "./pages/gestor/settings/GestorParameters"
 const PublisherShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-slate-100">
     <PublisherHeader />
@@ -220,38 +238,38 @@ export default function App() {
 
         {/* SISTEMA */}
         <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
-        <Route path="/adm/avaliacao/avaliadores" element={<Protected><Shell><Evaluators /></Shell></Protected>} />
-        <Route path="/adm/avaliacao/distribuicao" element={<Protected><Shell><AdminEvaluationDistribution /></Shell></Protected>} />
-        <Route path="/adm/avaliacao/ipi" element={<Protected><Shell><AdminIPIReport /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/avaliadores" element={<Protected><Shell><Evaluators /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/distribuicao" element={<Protected><Shell><GestorEvaluationDistribution /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/ipi" element={<Protected><Shell><GestorIPIReport /></Shell></Protected>} />
 
-        <Route path="/adm/resultados/ranking" element={<Protected><Shell><AdminFinalRanking /></Shell></Protected>} />
-        <Route path="/adm/resultados/quotas" element={<Protected><Shell><AdmCallQuotas /></Shell></Protected>} />
-        <Route path="/adm/resultados/recursos" element={<Protected><Shell><AdminAppeals /></Shell></Protected>} />
+        <Route path="/gestor/resultados/ranking" element={<Protected><Shell><GestorFinalRanking /></Shell></Protected>} />
+        <Route path="/gestor/resultados/quotas" element={<Protected><Shell><GestorCallQuotas /></Shell></Protected>} />
+        <Route path="/gestor/resultados/recursos" element={<Protected><Shell><GestorAppeals /></Shell></Protected>} />
 
-        <Route path="/adm/monitoring/replacements" element={<Protected><Shell><StudentReplacements /></Shell></Protected>} />
-        <Route path="/adm/monitoring/report-validation" element={<Protected><Shell><ReportValidation /></Shell></Protected>} />
-        <Route path="/adm/monitoring/AdmCertificates" element={<Protected><Shell><AdmCertificates /></Shell></Protected>} />
+        <Route path="/gestor/monitoring/replacements" element={<Protected><Shell><StudentReplacements /></Shell></Protected>} />
+        <Route path="/gestor/monitoring/report-validation" element={<Protected><Shell><ReportValidation /></Shell></Protected>} />
+        <Route path="/gestor/monitoring/certificates" element={<Protected><Shell><GestorCertificates /></Shell></Protected>} />
 
-        <Route path="/adm/calls" element={<Protected><Shell><CallsManagement /></Shell></Protected>} />
-        <Route path="/adm/calls/CreateCall" element={<Protected><Shell><CreateCall /></Shell></Protected>} />
-        <Route path="/adm/calls/Manage" element={<Protected><Shell><AdmCallsManage /></Shell></Protected>} />
-        <Route path="/adm/calls/CallSchedule" element={<Protected><Shell><CallSchedule /></Shell></Protected>} />
-        <Route path="/adm/calls/CallWorkflow" element={<Protected><Shell><CallWorkflow /></Shell></Protected>} />
+        <Route path="/gestor/calls" element={<Protected><GestorProtected><Shell><CallsManagement /></Shell></GestorProtected></Protected>} />
+        <Route path="/gestor/calls/CreateCall" element={<Protected><GestorProtected><Shell><CreateCall /></Shell></GestorProtected></Protected>} />
+        <Route path="/gestor/calls/Manage" element={<Protected><GestorProtected><Shell><GestorCallsManage /></Shell></GestorProtected></Protected>} />
+        <Route path="/gestor/calls/CallSchedule" element={<Protected><GestorProtected><Shell><CallSchedule /></Shell></GestorProtected></Protected>} />
+        <Route path="/gestor/calls/CallWorkflow" element={<Protected><GestorProtected><Shell><CallWorkflow /></Shell></GestorProtected></Protected>} />
 
-        <Route path="/adm/settings" element={<Protected><Shell><GlobalSettings /></Shell></Protected>} />
-        <Route path="/adm/settings/scholarships" element={<Protected><Shell><ScholarshipEntities /></Shell></Protected>} />
-        <Route path="/adm/settings/academic-units" element={<Protected><Shell><AcademicUnits /></Shell></Protected>} />
-        <Route path="/adm/settings/roles" element={<Protected><Shell><RolesDictionary /></Shell></Protected>} />
-        <Route path="/adm/settings/user-types" element={<Protected><Shell><UserTypes /></Shell></Protected>} />
-        <Route path="/adm/settings/parameters" element={<Protected><Shell><AdmResearchModuleParameters /></Shell></Protected>} />
+        <Route path="/gestor/settings" element={<Protected><Shell><GlobalSettings /></Shell></Protected>} />
+        <Route path="/gestor/settings/scholarships" element={<Protected><Shell><ScholarshipEntities /></Shell></Protected>} />
+        <Route path="/gestor/settings/academic-units" element={<Protected><Shell><AcademicUnits /></Shell></Protected>} />
+        <Route path="/gestor/settings/roles" element={<Protected><Shell><RolesDictionary /></Shell></Protected>} />
+        <Route path="/gestor/settings/user-types" element={<Protected><Shell><UserTypes /></Shell></Protected>} />
+        <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorResearchModuleParameters /></Shell></Protected>} />
 
-        <Route path="/adm/projetos/comunicacao" element={<Protected><Shell><AdmProjectCommunication /></Shell></Protected>} />
-        <Route path="/adm/projetos/detalhes-projetos" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
-        <Route path="/adm/projetos/novo" element={<Protected><Shell><ProjectCreateWizard /></Shell></Protected>} />
-        <Route path="/adm/projetos/status" element={<Protected><Shell><ProjectChangeStatus /></Shell></Protected>} />
-        <Route path="/adm/projetos/:id/status" element={<Protected><Shell><ProjectChangeStatus /></Shell></Protected>} />
-        <Route path="/adm/projetos/:id/visualizar" element={<Protected><Shell><ProjectViewEdit /></Shell></Protected>} />
-        <Route path="/adm/admprojetos" element={<Protected><Shell><AdmProjects /></Shell></Protected>} />
+        <Route path="/gestor/projetos/comunicacao" element={<Protected><Shell><GestorProjectCommunication /></Shell></Protected>} />
+        <Route path="/gestor/projetos/detalhes-projetos" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
+        <Route path="/gestor/projetos/novo" element={<Protected><Shell><ProjectCreateWizard /></Shell></Protected>} />
+        <Route path="/gestor/projetos/status" element={<Protected><Shell><ProjectChangeStatus /></Shell></Protected>} />
+        <Route path="/gestor/projetos/:id/status" element={<Protected><Shell><ProjectChangeStatus /></Shell></Protected>} />
+        <Route path="/gestor/projetos/:id/visualizar" element={<Protected><Shell><ProjectViewEdit /></Shell></Protected>} />
+        <Route path="/gestor/projetos" element={<Protected><Shell><GestorProjects /></Shell></Protected>} />
 
         {/* Discente */}
         <Route path="/discente/dashboard" element={<Protected><Shell><DisDashboard /></Shell></Protected>} />
@@ -297,6 +315,8 @@ export default function App() {
         <Route path="/coordenador/projetos/novo" element={<Protected><Shell><CoordinatorProjectForm /></Shell></Protected>} />
         <Route path="/coordenador/projetos/:id" element={<Protected><Shell><CoordinatorProjectView /></Shell></Protected>} />
         <Route path="/coordenador/projetos/:id/editar" element={<Protected><Shell><CoordinatorProjectEdit /></Shell></Protected>} />
+
+        <Route path="/coordenador/editais" element={<Protected><Shell><CoordinatorEditais /></Shell></Protected>} />
     
         <Route path="/coordenador/avaliacoes" element={<Protected><Shell><CoordinatorEvaluations /></Shell></Protected>} />
         <Route path="/coordenador/avaliacoes/:id" element={<Protected><Shell><CoordinatorEvaluationDetail /></Shell></Protected>} />
@@ -312,14 +332,7 @@ export default function App() {
         <Route path="/coordenador/producao/ipi" element={<Protected><Shell><CoordinatorProductionIPI /></Shell></Protected>} />
         <Route path="/coordenador/producao/resultado" element={<Protected><Shell><CoordinatorProductionResult /></Shell></Protected>} />
 
-        {/* Gestor */}
-        <Route path="/gestor/settings/user-types" element={<Protected><Shell><GestorUserTypes /></Shell></Protected>} />
-        <Route path="/gestor/settings/scholarships" element={<Protected><Shell><GestorScholarships /></Shell></Protected>} />
-        <Route path="/gestor/settings/academic-units" element={<Protected><Shell><GestorAcademicUnits /></Shell></Protected>} />
-        <Route path="/gestor/settings/roles" element={<Protected><Shell><GestorRoles /></Shell></Protected>} />
-        <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorParameters /></Shell></Protected>} />
-        {/* <Route path="/gestor/projetos" element={<Protected><Shell><GestorProjects /></Shell></Protected>} /> */}
-
+        <Route path="/adm/*" element={<AdmToGestorRedirect />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

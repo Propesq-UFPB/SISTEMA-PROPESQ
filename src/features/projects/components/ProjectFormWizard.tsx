@@ -22,7 +22,16 @@ import {
   Users,
 } from "lucide-react"
 import { Helmet } from "react-helmet"
-import { projectRoleService } from "@/features/settings/api/projectRoleService"
+import { ApiError } from "@/services/apiClient"
+import { projectService } from "../api/projectService"
+import type {
+  KnowledgeAreaLookup,
+  LookupOption,
+  MemberCategory,
+  MemberLookupBundle,
+  ResearchGroupLookup,
+  ResearchUserLookup,
+} from "../types/project"
 
 /* ================= TIPOS ================= */
 
@@ -42,11 +51,16 @@ type CronogramaItem = {
 
 type ProjectMember = {
   id: string
+  categoria: MemberCategory | ""
+  userId: string
   nome: string
   papel: string
-  vinculo: string
   email: string
-  lattes: string
+  cargaHoraria: string
+  cpf: string
+  sexo: string
+  formacao: string
+  tipoExterno: string
 }
 
 type GeneralData = {
@@ -64,6 +78,7 @@ type GeneralData = {
   introducaoJustificativa: string
   objetivos: string
   metodologia: string
+  resultadosEsperados: string
   referencias: string
 
   objetivosDS: ODS[]
@@ -121,16 +136,16 @@ const LONG_TEXT_MAX = 15000
 // mas indisponível para seleção no fluxo da tela.
 const EXTERNAL_PROJECTS_ENABLED = false
 
-const centros = ["CCHLA", "CCEN", "CT", "CCS", "CE", "CCTA"]
+const _centros = ["CCHLA", "CCEN", "CT", "CCS", "CE", "CCTA"]
 
-const unidades = [
+const _unidades = [
   "Departamento A",
   "Departamento B",
   "Laboratório X",
   "Programa Y",
 ]
 
-const editais = [
+const _editais = [
   "Edital 01/2026",
   "Edital 02/2026",
   "PIBIC 2026",
@@ -194,7 +209,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "10400001",
         nome: "Astronomia",
         subareas: [
-          { codigo: "10401008", nome: "Astronomia de Posição e Mecânica Celeste" },
+          {
+            codigo: "10401008",
+            nome: "Astronomia de Posição e Mecânica Celeste",
+          },
           { codigo: "10402004", nome: "Astrofísica Estelar" },
           { codigo: "10403000", nome: "Astrofísica do Meio Interestelar" },
           { codigo: "10404007", nome: "Astrofísica Extragalactica" },
@@ -207,11 +225,20 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Física",
         subareas: [
           { codigo: "10501002", nome: "Física Geral" },
-          { codigo: "10502009", nome: "Áreas Clássicas de Fenomenologia e suas Aplicações" },
-          { codigo: "10503005", nome: "Física das Partículas Elementares e Campos" },
+          {
+            codigo: "10502009",
+            nome: "Áreas Clássicas de Fenomenologia e suas Aplicações",
+          },
+          {
+            codigo: "10503005",
+            nome: "Física das Partículas Elementares e Campos",
+          },
           { codigo: "10504001", nome: "Física Nuclear" },
           { codigo: "10505008", nome: "Física Atômica e Molecular" },
-          { codigo: "10506004", nome: "Física dos Fluídos, Física de Plasmas e Descargas Elétricas" },
+          {
+            codigo: "10506004",
+            nome: "Física dos Fluídos, Física de Plasmas e Descargas Elétricas",
+          },
           { codigo: "10507000", nome: "Física da Matéria Condensada" },
         ],
       },
@@ -255,15 +282,17 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "20100000",
         nome: "Biologia Geral",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "20200005",
         nome: "Genética",
         subareas: [
           { codigo: "20201001", nome: "Genética Quantitativa" },
-          { codigo: "20202008", nome: "Genética Molecular e de Microorganismos" },
+          {
+            codigo: "20202008",
+            nome: "Genética Molecular e de Microorganismos",
+          },
           { codigo: "20203004", nome: "Genética Vegetal" },
           { codigo: "20204000", nome: "Genética Animal" },
           { codigo: "20205007", nome: "Genética Humana e Médica" },
@@ -372,7 +401,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "21200009",
         nome: "Microbiologia",
         subareas: [
-          { codigo: "21201005", nome: "Biologia e Fisiologia dos Microorganismos" },
+          {
+            codigo: "21201005",
+            nome: "Biologia e Fisiologia dos Microorganismos",
+          },
           { codigo: "21202001", nome: "Microbiologia Aplicada" },
         ],
       },
@@ -382,17 +414,26 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         subareas: [
           { codigo: "21301000", nome: "Protozoologia de Parasitos" },
           { codigo: "21302006", nome: "Helmintologia de Parasitos" },
-          { codigo: "21303002", nome: "Entomologia e Malacologia de Parasitos e Vetores" },
+          {
+            codigo: "21303002",
+            nome: "Entomologia e Malacologia de Parasitos e Vetores",
+          },
         ],
       },
       {
         codigo: "21400008",
         nome: "Biotecnologia",
         subareas: [
-          { codigo: "21401004", nome: "Biotecnologia em Saúde Humana e Animal" },
+          {
+            codigo: "21401004",
+            nome: "Biotecnologia em Saúde Humana e Animal",
+          },
           { codigo: "21402000", nome: "Biotecnologia Industrial" },
           { codigo: "21403007", nome: "Biotecnologia Vegetal" },
-          { codigo: "21404003", nome: "Biotecnologia Ambiental e Recursos Naturais" },
+          {
+            codigo: "21404003",
+            nome: "Biotecnologia Ambiental e Recursos Naturais",
+          },
         ],
       },
     ],
@@ -425,7 +466,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "30300002",
         nome: "Engenharia de Materiais e Metalúrgica",
         subareas: [
-          { codigo: "30301009", nome: "Instalações e Equipamentos Metalúrgicos" },
+          {
+            codigo: "30301009",
+            nome: "Instalações e Equipamentos Metalúrgicos",
+          },
           { codigo: "30302005", nome: "Metalurgia Extrativa" },
           { codigo: "30303001", nome: "Metalurgia de Transformação" },
           { codigo: "30304008", nome: "Metalurgia Física" },
@@ -437,10 +481,19 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Engenharia Elétrica",
         subareas: [
           { codigo: "30401003", nome: "Materiais Elétricos" },
-          { codigo: "30402000", nome: "Medidas Elétricas, Magnéticas e Eletrônicas; Instrumentação" },
-          { codigo: "30403006", nome: "Circuitos Elétricos, Magnéticos e Eletrônicos" },
+          {
+            codigo: "30402000",
+            nome: "Medidas Elétricas, Magnéticas e Eletrônicas; Instrumentação",
+          },
+          {
+            codigo: "30403006",
+            nome: "Circuitos Elétricos, Magnéticos e Eletrônicos",
+          },
           { codigo: "30404002", nome: "Sistemas Elétricos de Potência" },
-          { codigo: "30405009", nome: "Eletrônica Industrial, Sistemas e Controles Eletrônicos" },
+          {
+            codigo: "30405009",
+            nome: "Eletrônica Industrial, Sistemas e Controles Eletrônicos",
+          },
           { codigo: "30406005", nome: "Telecomunicações" },
         ],
       },
@@ -459,11 +512,26 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "30600006",
         nome: "Engenharia Química",
         subareas: [
-          { codigo: "30604001", nome: "Engenharia de Reações Químicas e Catálise" },
-          { codigo: "30605008", nome: "Engenharia de Separações e Termodinâmica" },
-          { codigo: "30606004", nome: "Fenômenos de Transporte, Materiais e Particulados" },
-          { codigo: "30607000", nome: "Modelagem, Simulação, Síntese, Otimização e Controle de Processos" },
-          { codigo: "30608007", nome: "Processos Ambientais e Tecnologias Limpas" },
+          {
+            codigo: "30604001",
+            nome: "Engenharia de Reações Químicas e Catálise",
+          },
+          {
+            codigo: "30605008",
+            nome: "Engenharia de Separações e Termodinâmica",
+          },
+          {
+            codigo: "30606004",
+            nome: "Fenômenos de Transporte, Materiais e Particulados",
+          },
+          {
+            codigo: "30607000",
+            nome: "Modelagem, Simulação, Síntese, Otimização e Controle de Processos",
+          },
+          {
+            codigo: "30608007",
+            nome: "Processos Ambientais e Tecnologias Limpas",
+          },
           { codigo: "30609003", nome: "Processos Biotecnológicos e Alimentos" },
         ],
       },
@@ -472,7 +540,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Engenharia Sanitária",
         subareas: [
           { codigo: "30701007", nome: "Recursos Hídricos" },
-          { codigo: "30702003", nome: "Tratamento de Águas de Abastecimento e Residuárias" },
+          {
+            codigo: "30702003",
+            nome: "Tratamento de Águas de Abastecimento e Residuárias",
+          },
           { codigo: "30703000", nome: "Saneamento Básico" },
           { codigo: "30704006", nome: "Saneamento Ambiental" },
         ],
@@ -510,11 +581,20 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "31100007",
         nome: "Engenharia Naval e Oceânica",
         subareas: [
-          { codigo: "31101003", nome: "Hidrodinâmica de Navios e Sistemas Oceânicos" },
+          {
+            codigo: "31101003",
+            nome: "Hidrodinâmica de Navios e Sistemas Oceânicos",
+          },
           { codigo: "31102000", nome: "Estruturas Navais e Oceânicas" },
           { codigo: "31103006", nome: "Máquinas Marítimas" },
-          { codigo: "31104002", nome: "Projeto de Navios e de Sistemas Oceânicos" },
-          { codigo: "31105009", nome: "Tecnologia de Construção Naval e de Sistemas Oceânicos" },
+          {
+            codigo: "31104002",
+            nome: "Projeto de Navios e de Sistemas Oceânicos",
+          },
+          {
+            codigo: "31105009",
+            nome: "Tecnologia de Construção Naval e de Sistemas Oceânicos",
+          },
         ],
       },
       {
@@ -524,7 +604,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "31201008", nome: "Aerodinâmica" },
           { codigo: "31202004", nome: "Dinâmica de Voo" },
           { codigo: "31203000", nome: "Estruturas Aeroespaciais" },
-          { codigo: "31204007", nome: "Materiais e Processos para Engenharia Aeronáutica e Aeroespacial" },
+          {
+            codigo: "31204007",
+            nome: "Materiais e Processos para Engenharia Aeronáutica e Aeroespacial",
+          },
           { codigo: "31205003", nome: "Propulsão Aeroespacial" },
           { codigo: "31206000", nome: "Sistemas Aeroespaciais" },
         ],
@@ -559,7 +642,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "40102009", nome: "Cirurgia" },
           { codigo: "40103005", nome: "Saúde Materno-Infantil" },
           { codigo: "40104001", nome: "Psiquiatria" },
-          { codigo: "40105008", nome: "Anatomia Patológica e Patologia Clínica" },
+          {
+            codigo: "40105008",
+            nome: "Anatomia Patológica e Patologia Clínica",
+          },
           { codigo: "40106004", nome: "Radiologia Médica" },
           { codigo: "40107000", nome: "Medicina Legal e Deontologia" },
         ],
@@ -583,12 +669,24 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "40300005",
         nome: "Farmácia",
         subareas: [
-          { codigo: "40301001", nome: "Farmacotécnica e tecnologia farmacêutica" },
+          {
+            codigo: "40301001",
+            nome: "Farmacotécnica e tecnologia farmacêutica",
+          },
           { codigo: "40302008", nome: "Farmacognosia" },
           { codigo: "40303004", nome: "Avaliação e analises toxicológicas" },
-          { codigo: "40304000", nome: "Garantia e controle de qualidade farmacêuticos" },
-          { codigo: "40306003", nome: "Fisiopatologia e diagnóstico laboratorial" },
-          { codigo: "40307000", nome: "Farmácia clínica, assistência e atenção farmacêuticas" },
+          {
+            codigo: "40304000",
+            nome: "Garantia e controle de qualidade farmacêuticos",
+          },
+          {
+            codigo: "40306003",
+            nome: "Fisiopatologia e diagnóstico laboratorial",
+          },
+          {
+            codigo: "40307000",
+            nome: "Farmácia clínica, assistência e atenção farmacêuticas",
+          },
           { codigo: "40308006", nome: "Química Farmacêutica Medicinal" },
         ],
       },
@@ -596,11 +694,20 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "40400000",
         nome: "Enfermagem",
         subareas: [
-          { codigo: "40401006", nome: "Enfermagem em Saúde do Adulto e do Idoso" },
+          {
+            codigo: "40401006",
+            nome: "Enfermagem em Saúde do Adulto e do Idoso",
+          },
           { codigo: "40402002", nome: "Enfermagem em Saúde da Mulher" },
-          { codigo: "40403009", nome: "Enfermagem em Saúde da Criança e do Adolescente" },
+          {
+            codigo: "40403009",
+            nome: "Enfermagem em Saúde da Criança e do Adolescente",
+          },
           { codigo: "40404005", nome: "Enfermagem em Saúde Mental" },
-          { codigo: "40405001", nome: "Enfermagem em Doenças Emergentes, Reemergentes e Negligenciadas" },
+          {
+            codigo: "40405001",
+            nome: "Enfermagem em Doenças Emergentes, Reemergentes e Negligenciadas",
+          },
           { codigo: "40406008", nome: "Enfermagem em Saúde Coletiva" },
           { codigo: "40407004", nome: "Enfermagem Fundamental" },
           { codigo: "40408000", nome: "Enfermagem na Gestão e Gerenciamento" },
@@ -611,8 +718,14 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Nutrição",
         subareas: [
           { codigo: "40505006", nome: "Alimentos e alimentação coletiva" },
-          { codigo: "40506002", nome: "Ciências humanas e sociais em alimentação e nutrição" },
-          { codigo: "40507009", nome: "Epidemiologia e políticas de alimentação e nutrição" },
+          {
+            codigo: "40506002",
+            nome: "Ciências humanas e sociais em alimentação e nutrição",
+          },
+          {
+            codigo: "40507009",
+            nome: "Epidemiologia e políticas de alimentação e nutrição",
+          },
           { codigo: "40508005", nome: "Nutrição básica e experimental" },
           { codigo: "40509001", nome: "Nutrição clínica" },
         ],
@@ -622,27 +735,30 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Saúde Coletiva",
         subareas: [
           { codigo: "40601005", nome: "Epidemiologia" },
-          { codigo: "40604004", nome: "Ciências Sociais e Humanidades em Saúde" },
-          { codigo: "40605000", nome: "Política, Planejamento, Gestão e Avaliação" },
+          {
+            codigo: "40604004",
+            nome: "Ciências Sociais e Humanidades em Saúde",
+          },
+          {
+            codigo: "40605000",
+            nome: "Política, Planejamento, Gestão e Avaliação",
+          },
         ],
       },
       {
         codigo: "40700003",
         nome: "Fonoaudiologia",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "40800008",
         nome: "Fisioterapia e Terapia Ocupacional",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "40900002",
         nome: "Educação Física",
-        subareas: [
-        ],
+        subareas: [],
       },
     ],
   },
@@ -669,7 +785,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "50201000", nome: "Silvicultura" },
           { codigo: "50202006", nome: "Manejo Florestal" },
           { codigo: "50203002", nome: "Técnicas e Operações Florestais" },
-          { codigo: "50204009", nome: "Tecnologia e Utilização de Produtos Florestais" },
+          {
+            codigo: "50204009",
+            nome: "Tecnologia e Utilização de Produtos Florestais",
+          },
           { codigo: "50205005", nome: "Conservação da Natureza" },
           { codigo: "50206001", nome: "Energia de Biomassa Florestal" },
         ],
@@ -680,7 +799,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         subareas: [
           { codigo: "50301004", nome: "Máquinas e Implementos Agrícolas" },
           { codigo: "50302000", nome: "Engenharia de Água e Solo" },
-          { codigo: "50303007", nome: "Engenharia de Processamento de Produtos Agrícolas" },
+          {
+            codigo: "50303007",
+            nome: "Engenharia de Processamento de Produtos Agrícolas",
+          },
           { codigo: "50304003", nome: "Construções Rurais e Ambiência" },
           { codigo: "50305000", nome: "Energização Rural" },
         ],
@@ -689,8 +811,14 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "50400002",
         nome: "Zootecnia",
         subareas: [
-          { codigo: "50401009", nome: "Ecologia dos Animais Domésticos e Etologia" },
-          { codigo: "50402005", nome: "Genética e Melhoramento dos Animais Domésticos" },
+          {
+            codigo: "50401009",
+            nome: "Ecologia dos Animais Domésticos e Etologia",
+          },
+          {
+            codigo: "50402005",
+            nome: "Genética e Melhoramento dos Animais Domésticos",
+          },
           { codigo: "50403001", nome: "Nutrição e Alimentação Animal" },
           { codigo: "50404008", nome: "Pastagem e Forragicultura" },
           { codigo: "50405004", nome: "Produção Animal" },
@@ -712,7 +840,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         nome: "Recursos Pesqueiros e Engenharia de Pesca",
         subareas: [
           { codigo: "50601008", nome: "Recursos Pesqueiros Marinhos" },
-          { codigo: "50602004", nome: "Recursos Pesqueiros de Águas Interiores" },
+          {
+            codigo: "50602004",
+            nome: "Recursos Pesqueiros de Águas Interiores",
+          },
           { codigo: "50603000", nome: "Aqüicultura" },
           { codigo: "50604007", nome: "Engenharia de Pesca" },
         ],
@@ -759,20 +890,29 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "60301007", nome: "Teoria Econômica" },
           { codigo: "60302003", nome: "Métodos Quantitativos em Economia" },
           { codigo: "60303000", nome: "Economia Monetária e Fiscal" },
-          { codigo: "60304006", nome: "Crescimento, Flutuações e Planejamento Econômico" },
+          {
+            codigo: "60304006",
+            nome: "Crescimento, Flutuações e Planejamento Econômico",
+          },
           { codigo: "60305002", nome: "Economia Internacional" },
           { codigo: "60306009", nome: "Economia dos Recursos Humanos" },
           { codigo: "60307005", nome: "Economia Industrial" },
           { codigo: "60308001", nome: "Economia do Bem-Estar Social" },
           { codigo: "60309008", nome: "Economia Regional e Urbana" },
-          { codigo: "60310006", nome: "Economias Agrária e dos Recursos Naturais" },
+          {
+            codigo: "60310006",
+            nome: "Economias Agrária e dos Recursos Naturais",
+          },
         ],
       },
       {
         codigo: "60400005",
         nome: "Arquitetura e Urbanismo",
         subareas: [
-          { codigo: "60401001", nome: "Fundamentos de Arquitetura e Urbanismo" },
+          {
+            codigo: "60401001",
+            nome: "Fundamentos de Arquitetura e Urbanismo",
+          },
           { codigo: "60402008", nome: "Projeto de Arquitetura e Urbanismo" },
           { codigo: "60403004", nome: "Tecnologia de Arquitetura e Urbanismo" },
           { codigo: "60404000", nome: "Paisagismo" },
@@ -782,8 +922,14 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         codigo: "60500000",
         nome: "Planejamento Urbano e Regional",
         subareas: [
-          { codigo: "60501006", nome: "Fundamentos do Planejamento Urbano e Regional" },
-          { codigo: "60502002", nome: "Métodos e Técnicas do Planejamento Urbano e Regional" },
+          {
+            codigo: "60501006",
+            nome: "Fundamentos do Planejamento Urbano e Regional",
+          },
+          {
+            codigo: "60502002",
+            nome: "Métodos e Técnicas do Planejamento Urbano e Regional",
+          },
           { codigo: "60503009", nome: "Serviços Urbanos e Regionais" },
         ],
       },
@@ -812,8 +958,7 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "60800003",
         nome: "Museologia",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "60900008",
@@ -837,8 +982,7 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "61100005",
         nome: "Economia Doméstica",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "61200000",
@@ -851,8 +995,7 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "61300004",
         nome: "Turismo",
-        subareas: [
-        ],
+        subareas: [],
       },
     ],
   },
@@ -894,7 +1037,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "70302006", nome: "Etnologia Indígena" },
           { codigo: "70303002", nome: "Antropologia Urbana" },
           { codigo: "70304009", nome: "Antropologia Rural" },
-          { codigo: "70305005", nome: "Antropologia das Populações Afro-Brasileiras" },
+          {
+            codigo: "70305005",
+            nome: "Antropologia das Populações Afro-Brasileiras",
+          },
         ],
       },
       {
@@ -937,8 +1083,14 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "70705003", nome: "Psicologia Social" },
           { codigo: "70706000", nome: "Psicologia Cognitiva" },
           { codigo: "70707006", nome: "Psicologia do Desenvolvimento Humano" },
-          { codigo: "70708002", nome: "Psicologia do Ensino e da Aprendizagem" },
-          { codigo: "70709009", nome: "Psicologia do Trabalho e Organizacional" },
+          {
+            codigo: "70708002",
+            nome: "Psicologia do Ensino e da Aprendizagem",
+          },
+          {
+            codigo: "70709009",
+            nome: "Psicologia do Trabalho e Organizacional",
+          },
           { codigo: "70710007", nome: "Tratamento e Prevenção Psicológica" },
         ],
       },
@@ -948,7 +1100,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
         subareas: [
           { codigo: "70801002", nome: "Fundamentos da Educação" },
           { codigo: "70802009", nome: "Administração Educacional" },
-          { codigo: "70803005", nome: "Política, Planejamento e Avaliação Educacional" },
+          {
+            codigo: "70803005",
+            nome: "Política, Planejamento e Avaliação Educacional",
+          },
           { codigo: "70804001", nome: "Ensino-Aprendizagem" },
           { codigo: "70805008", nome: "Currículo" },
           { codigo: "70806004", nome: "Orientação e Aconselhamento" },
@@ -977,7 +1132,10 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
           { codigo: "71006001", nome: "Ciências da Religião Aplicada" },
           { codigo: "71007008", nome: "Ciências da Linguagem Religiosa" },
           { codigo: "71008004", nome: "Ciências Empíricas da Religião" },
-          { codigo: "71009000", nome: "Epistemologia das Ciências da Religião" },
+          {
+            codigo: "71009000",
+            nome: "Epistemologia das Ciências da Religião",
+          },
           { codigo: "71010009", nome: "Tradições e Escrituras Sagradas" },
         ],
       },
@@ -1040,8 +1198,7 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "99900009",
         nome: "Multidisciplinar",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "90200000",
@@ -1053,38 +1210,32 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "92300006",
         nome: "Secretariado Executivo",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "92400000",
         nome: "Defesa",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "92600000",
         nome: "Bioética",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "92700004",
         nome: "Ciências Ambientais",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "92800009",
         nome: "Divulgação Científica",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "93200005",
         nome: "Robótica, Mecatrônica e Automação",
-        subareas: [
-        ],
+        subareas: [],
       },
       {
         codigo: "93300000",
@@ -1100,8 +1251,7 @@ const cnpqAreasConhecimento: CnpqGrandeArea[] = [
       {
         codigo: "93400004",
         nome: "Segurança Contra Incêndio",
-        subareas: [
-        ],
+        subareas: [],
       },
     ],
   },
@@ -1111,35 +1261,35 @@ function formatCnpqOption(item: { codigo: string; nome: string }) {
   return `${item.codigo} — ${item.nome}`
 }
 
-const areaConhecimentoOptions = cnpqAreasConhecimento.map(formatCnpqOption)
-const grandeAreas = cnpqAreasConhecimento.map(formatCnpqOption)
+const _areaConhecimentoOptions = cnpqAreasConhecimento.map(formatCnpqOption)
+const _grandeAreas = cnpqAreasConhecimento.map(formatCnpqOption)
 
 function getAreasByGrandeArea(grandeArea: string) {
   const grandeAreaSelecionada = cnpqAreasConhecimento.find(
-    (item) => formatCnpqOption(item) === grandeArea
+    (item) => formatCnpqOption(item) === grandeArea,
   )
 
   return grandeAreaSelecionada?.areas ?? []
 }
 
-function getSubareasByArea(grandeArea: string, area: string) {
+function _getSubareasByArea(grandeArea: string, area: string) {
   const areaSelecionada = getAreasByGrandeArea(grandeArea).find(
-    (item) => formatCnpqOption(item) === area
+    (item) => formatCnpqOption(item) === area,
   )
 
   return areaSelecionada?.subareas ?? []
 }
 
-const especialidades = [
+const _especialidades = [
   "Especialidade A",
   "Especialidade B",
   "Especialidade C",
   "Outra",
 ]
 
-const linhas = ["Linha 01", "Linha 02", "Linha 03"]
+const _linhas = ["Linha 01", "Linha 02", "Linha 03"]
 
-const grupos = ["GP I", "GP II", "GP III", "Outro"]
+const _grupos = ["GP I", "GP II", "GP III", "Outro"]
 
 const categoriasProjeto = [
   "Pesquisa (Externo)",
@@ -1160,14 +1310,9 @@ const subcatNivelII = [
   "Subcategoria Nível II — 3",
 ]
 
-const definicoesPI = [
-  "Institucional",
-  "Compartilhada",
-  "Privada",
-  "A definir",
-]
+const definicoesPI = ["Institucional", "Compartilhada", "Privada", "A definir"]
 
-const memberVinculos = [
+const _memberVinculos = [
   "Docente UFPB",
   "Técnico-administrativo UFPB",
   "Discente UFPB",
@@ -1180,11 +1325,16 @@ const memberVinculos = [
 
 const initialMember: ProjectMember = {
   id: "",
+  categoria: "",
+  userId: "",
   nome: "",
   papel: "",
-  vinculo: "",
   email: "",
-  lattes: "",
+  cargaHoraria: "",
+  cpf: "",
+  sexo: "",
+  formacao: "",
+  tipoExterno: "",
 }
 
 const initialState: FormState = {
@@ -1203,6 +1353,7 @@ const initialState: FormState = {
     introducaoJustificativa: "",
     objetivos: "",
     metodologia: "",
+    resultadosEsperados: "",
     referencias: "",
 
     objetivosDS: [],
@@ -1253,13 +1404,69 @@ function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError || error instanceof Error) return error.message
+  return fallback
+}
+
+export function splitKeywords(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .split(/[;,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+export function getScheduleMonth(
+  startDate: string,
+  monthNumber: number,
+): string {
+  const date = new Date(`${startDate}T00:00:00.000Z`)
+  date.setUTCDate(1)
+  date.setUTCMonth(date.getUTCMonth() + monthNumber - 1)
+  return date.toISOString().slice(0, 10)
+}
+
+export function validateProjectAttachment(file: File | null): string | null {
+  if (!file) return null
+  if (
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
+    return "O arquivo selecionado deve estar no formato PDF."
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    return "O arquivo selecionado deve possuir no máximo 10 MB."
+  }
+  return null
+}
+
+export function isInternalSpecificDataValid(
+  linhaPesquisa: string,
+  data: InternalData,
+): boolean {
+  if (!linhaPesquisa.trim()) return false
+  if (data.vinculadoGrupo === "Sim" && !data.grupoPesquisa.trim()) return false
+  if (data.possuiProtocoloEtica === "Sim") {
+    return Boolean(data.comiteEticaNome.trim() && data.protocoloEtica.trim())
+  }
+  return true
+}
+
 function getProjectDurationInMonths(periodoIni: string, periodoFim: string) {
   if (!periodoIni || !periodoFim) return 12
 
   const start = new Date(`${periodoIni}T00:00:00`)
   const end = new Date(`${periodoFim}T00:00:00`)
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end < start
+  ) {
     return 12
   }
 
@@ -1357,10 +1564,11 @@ function CharacterCounter({
     <p
       className={cx(
         "text-right text-[11px]",
-        closeToLimit ? "text-amber-700" : "text-neutral"
+        closeToLimit ? "text-amber-700" : "text-neutral",
       )}
     >
-      {value.length.toLocaleString("pt-BR")} / {max.toLocaleString("pt-BR")} caracteres
+      {value.length.toLocaleString("pt-BR")} / {max.toLocaleString("pt-BR")}{" "}
+      caracteres
     </p>
   )
 }
@@ -1385,7 +1593,7 @@ function StepPill({
     <div
       className={cx(
         "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold",
-        stateClass
+        stateClass,
       )}
     >
       {done && <Check size={14} />}
@@ -1408,10 +1616,7 @@ function Info({
       <p className="text-[11px] font-bold uppercase text-neutral">{label}</p>
 
       <p
-        className={cx(
-          "text-sm text-neutral",
-          preWrap && "whitespace-pre-wrap"
-        )}
+        className={cx("text-sm text-neutral", preWrap && "whitespace-pre-wrap")}
       >
         {value || "—"}
       </p>
@@ -1423,34 +1628,13 @@ function Info({
 
 function OdsPicker({
   value,
+  options,
   onChange,
 }: Readonly<{
   value: ODS[]
+  options: ODS[]
   onChange: (v: ODS[]) => void
 }>) {
-  const odsOptions: ODS[] = useMemo(
-    () => [
-      { id: 1, label: "Erradicação da pobreza" },
-      { id: 2, label: "Fome zero" },
-      { id: 3, label: "Saúde e bem-estar" },
-      { id: 4, label: "Educação de qualidade" },
-      { id: 5, label: "Igualdade de gênero" },
-      { id: 6, label: "Água potável e saneamento" },
-      { id: 7, label: "Energia limpa" },
-      { id: 8, label: "Trabalho decente e crescimento econômico" },
-      { id: 9, label: "Indústria, inovação e infraestrutura" },
-      { id: 10, label: "Redução das desigualdades" },
-      { id: 11, label: "Cidades e comunidades sustentáveis" },
-      { id: 12, label: "Consumo e produção responsáveis" },
-      { id: 13, label: "Ação contra a mudança global do clima" },
-      { id: 14, label: "Vida na água" },
-      { id: 15, label: "Vida terrestre" },
-      { id: 16, label: "Paz, justiça e instituições eficazes" },
-      { id: 17, label: "Parcerias e meios de implementação" },
-    ],
-    []
-  )
-
   const selectedIds = new Set(value.map((item) => item.id))
 
   function toggle(ods: ODS) {
@@ -1464,7 +1648,7 @@ function OdsPicker({
 
   return (
     <div className="flex flex-wrap gap-2">
-      {odsOptions.map((ods) => {
+      {options.map((ods) => {
         const selected = selectedIds.has(ods.id)
 
         return (
@@ -1476,7 +1660,7 @@ function OdsPicker({
               "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
               selected
                 ? "border-primary bg-primary text-white"
-                : "border-neutral/20 bg-white text-primary hover:bg-neutral/5"
+                : "border-neutral/20 bg-white text-primary hover:bg-neutral/5",
             )}
           >
             <span
@@ -1484,7 +1668,7 @@ function OdsPicker({
                 "grid h-5 w-5 place-items-center rounded-full border text-[11px]",
                 selected
                   ? "border-white/30 bg-white/15"
-                  : "border-neutral/20 bg-white"
+                  : "border-neutral/20 bg-white",
               )}
             >
               {ods.id}
@@ -1515,19 +1699,19 @@ function CronogramaPicker({
 
   const totalMeses = useMemo(
     () => getProjectDurationInMonths(periodoIni, periodoFim),
-    [periodoIni, periodoFim]
+    [periodoIni, periodoFim],
   )
 
   const mesesDisponiveis = useMemo(
     () => Array.from({ length: totalMeses }, (_, index) => index + 1),
-    [totalMeses]
+    [totalMeses],
   )
 
   const canAdd = Boolean(
     atividade.trim() &&
       mesInicio >= 1 &&
       mesFim >= mesInicio &&
-      mesFim <= totalMeses
+      mesFim <= totalMeses,
   )
 
   function addLinha() {
@@ -1609,7 +1793,7 @@ function CronogramaPicker({
             "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canAdd
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           <Plus size={16} />
@@ -1631,7 +1815,7 @@ function CronogramaPicker({
             "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition",
             value.length === 0
               ? "cursor-not-allowed border-neutral/20 bg-neutral/5 text-neutral"
-              : "border-neutral/20 bg-white text-primary hover:border-primary/30"
+              : "border-neutral/20 bg-white text-primary hover:border-primary/30",
           )}
         >
           <RefreshCcw size={14} />
@@ -1704,7 +1888,7 @@ function FileInputBox({
           "flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed p-6 text-center transition",
           disabled
             ? "cursor-not-allowed border-neutral/20 bg-neutral/5 text-neutral"
-            : "border-neutral-light bg-white text-primary hover:border-primary/40 hover:bg-primary/5"
+            : "border-neutral-light bg-white text-primary hover:border-primary/40 hover:bg-primary/5",
         )}
       >
         <input
@@ -1722,7 +1906,9 @@ function FileInputBox({
         </p>
 
         <p className="mt-1 text-xs text-neutral">
-          {disabled ? "Campo indisponível no fluxo atual." : "Formato aceito: PDF."}
+          {disabled
+            ? "Campo indisponível no fluxo atual."
+            : "Formato aceito: PDF."}
         </p>
       </label>
 
@@ -1739,7 +1925,6 @@ function FileInputBox({
     </Field>
   )
 }
-
 
 /* ================= VALIDAÇÃO DO WIZARD ================= */
 
@@ -1780,16 +1965,16 @@ function checkCanGoStep3(form: FormState, canGoStep2: boolean): boolean {
       g.introducaoJustificativa.trim() &&
       g.objetivos.trim() &&
       g.metodologia.trim() &&
+      g.resultadosEsperados.trim() &&
       g.referencias.trim() &&
-      g.email.trim() &&
-      g.centro.trim() &&
+      /^\S+@\S+\.\S+$/.test(g.email.trim()) &&
       g.unidade.trim() &&
       g.periodoIni &&
       g.periodoFim &&
+      g.periodoFim >= g.periodoIni &&
       g.grandeArea.trim() &&
       g.area.trim() &&
-      g.especialidade.trim() &&
-      g.linhaPesquisa.trim()
+      g.areaConhecimento.trim(),
   )
 }
 
@@ -1797,7 +1982,7 @@ function checkCanGoStep4(form: FormState, canGoStep3: boolean): boolean {
   if (!canGoStep3) return false
 
   return Boolean(
-    form.gerais.objetivosDS.length > 0 && form.gerais.cronograma.length > 0
+    form.gerais.objetivosDS.length > 0 && form.gerais.cronograma.length > 0,
   )
 }
 
@@ -1817,15 +2002,7 @@ function checkCanGoStep6(form: FormState, canGoStep5: boolean): boolean {
   if (!canGoStep5) return false
 
   if (form.gerais.tipo === "interno") {
-    const i = form.interno
-
-    if (!i.grupoPesquisa.trim()) return false
-
-    if (i.possuiProtocoloEtica === "Sim") {
-      return Boolean(i.comiteEticaNome.trim() && i.protocoloEtica.trim())
-    }
-
-    return true
+    return isInternalSpecificDataValid(form.gerais.linhaPesquisa, form.interno)
   }
 
   if (EXTERNAL_PROJECTS_ENABLED && form.gerais.tipo === "externo") {
@@ -1835,7 +2012,7 @@ function checkCanGoStep6(form: FormState, canGoStep5: boolean): boolean {
       e.categoriaProjeto.trim() &&
         e.subcategoriaNivelI.trim() &&
         e.subcategoriaNivelII.trim() &&
-        e.definicaoPropriedadeIntelectual.trim()
+        e.definicaoPropriedadeIntelectual.trim(),
     )
   }
 
@@ -1855,7 +2032,7 @@ function checkStepDone(currentStep: Step, flags: StepValidationFlags): boolean {
 
 function canAdvanceFromStep(
   step: Step,
-  flags: Omit<StepValidationFlags, "submitted">
+  flags: Omit<StepValidationFlags, "submitted">,
 ): boolean {
   const advanceByStep: Record<Step, boolean> = {
     1: flags.canGoStep2,
@@ -1905,7 +2082,6 @@ function WizardStep1Tipo({
             <p className="text-sm font-bold">
               Cadastro de projeto externo temporariamente desativado
             </p>
-
           </div>
         </div>
       )}
@@ -1926,7 +2102,7 @@ function WizardStep1Tipo({
             "rounded-2xl border p-6 text-left transition",
             form.gerais.tipo === "interno"
               ? "border-primary bg-primary/5"
-              : "border-neutral/20 hover:bg-neutral/5"
+              : "border-neutral/20 hover:bg-neutral/5",
           )}
         >
           <div className="flex items-center justify-between">
@@ -1958,14 +2134,14 @@ function WizardStep1Tipo({
           }}
           className={cx(
             "rounded-2xl border p-6 text-left transition",
-            externalTypeButtonClass
+            externalTypeButtonClass,
           )}
         >
           <div className="flex items-center justify-between gap-3">
             <h3
               className={cx(
                 "text-base font-bold",
-                EXTERNAL_PROJECTS_ENABLED ? "text-primary" : "text-neutral"
+                EXTERNAL_PROJECTS_ENABLED ? "text-primary" : "text-neutral",
               )}
             >
               Externo
@@ -2010,7 +2186,7 @@ function WizardStep1Tipo({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canGoStep2
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           Próximo
@@ -2018,10 +2194,8 @@ function WizardStep1Tipo({
         </button>
       </div>
     </Card>
-
   )
 }
-
 
 function WizardStep2Anexo({
   form,
@@ -2029,8 +2203,12 @@ function WizardStep2Anexo({
   goNext,
   goBack,
   canGoStep3,
-  areasFiltradas,
-  subareasFiltradas,
+  editais,
+  unidadesAcademicas,
+  grandesAreasLookup,
+  areasLookup,
+  subareasLookup,
+  especialidadesLookup,
   submitError,
 }: Readonly<{
   form: FormState
@@ -2038,8 +2216,12 @@ function WizardStep2Anexo({
   goNext: () => void
   goBack: () => void
   canGoStep3: boolean
-  areasFiltradas: CnpqArea[]
-  subareasFiltradas: CnpqSubarea[]
+  editais: LookupOption<number>[]
+  unidadesAcademicas: LookupOption<number>[]
+  grandesAreasLookup: KnowledgeAreaLookup[]
+  areasLookup: KnowledgeAreaLookup[]
+  subareasLookup: KnowledgeAreaLookup[]
+  especialidadesLookup: KnowledgeAreaLookup[]
   submitError: string
 }>) {
   return (
@@ -2051,7 +2233,9 @@ function WizardStep2Anexo({
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <Field label="Tipo do projeto" required>
           <input
-            value={form.gerais.tipo ? formatProjectTypeLabel(form.gerais.tipo) : ""}
+            value={
+              form.gerais.tipo ? formatProjectTypeLabel(form.gerais.tipo) : ""
+            }
             readOnly
             className={disabledInputClassName}
             placeholder="Selecione no passo 1"
@@ -2074,8 +2258,8 @@ function WizardStep2Anexo({
           >
             <option value="">Selecione</option>
             {editais.map((item) => (
-              <option key={item} value={item}>
-                {item}
+              <option key={item.id} value={item.id}>
+                {item.name}
               </option>
             ))}
           </select>
@@ -2289,6 +2473,31 @@ function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
+          <Field label="Resultados esperados" required>
+            <textarea
+              value={form.gerais.resultadosEsperados}
+              maxLength={LONG_TEXT_MAX}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  gerais: {
+                    ...current.gerais,
+                    resultadosEsperados: event.target.value,
+                  },
+                }))
+              }
+              className={textareaClassName}
+              placeholder="Descreva os resultados e impactos esperados com a execução do projeto."
+            />
+
+            <CharacterCounter
+              value={form.gerais.resultadosEsperados}
+              max={LONG_TEXT_MAX}
+            />
+          </Field>
+        </div>
+
+        <div className="md:col-span-2">
           <Field label="Referências" required>
             <textarea
               value={form.gerais.referencias}
@@ -2369,29 +2578,6 @@ function WizardStep2Anexo({
           </div>
         </Field>
 
-        <Field label="Centro" required>
-          <select
-            value={form.gerais.centro}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                gerais: {
-                  ...current.gerais,
-                  centro: event.target.value,
-                },
-              }))
-            }
-            className={selectClassName}
-          >
-            <option value="">Selecione</option>
-            {centros.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </Field>
-
         <Field label="Unidade" required>
           <select
             value={form.gerais.unidade}
@@ -2407,32 +2593,9 @@ function WizardStep2Anexo({
             className={selectClassName}
           >
             <option value="">Selecione</option>
-            {unidades.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Área de conhecimento">
-          <select
-            value={form.gerais.areaConhecimento}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                gerais: {
-                  ...current.gerais,
-                  areaConhecimento: event.target.value,
-                },
-              }))
-            }
-            className={selectClassName}
-          >
-            <option value="">Selecione</option>
-            {areaConhecimentoOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
+            {unidadesAcademicas.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
               </option>
             ))}
           </select>
@@ -2450,15 +2613,16 @@ function WizardStep2Anexo({
                   area: "",
                   subarea: "",
                   especialidade: "",
+                  areaConhecimento: "",
                 },
               }))
             }
             className={selectClassName}
           >
             <option value="">Selecione</option>
-            {grandeAreas.map((item) => (
-              <option key={item} value={item}>
-                {item}
+            {grandesAreasLookup.map((item) => (
+              <option key={item.id} value={item.name}>
+                {item.name}
               </option>
             ))}
           </select>
@@ -2475,6 +2639,10 @@ function WizardStep2Anexo({
                   area: event.target.value,
                   subarea: "",
                   especialidade: "",
+                  areaConhecimento: String(
+                    areasLookup.find((item) => item.name === event.target.value)
+                      ?.id ?? "",
+                  ),
                 },
               }))
             }
@@ -2486,15 +2654,11 @@ function WizardStep2Anexo({
                 ? "Selecione"
                 : "Selecione primeiro a grande área"}
             </option>
-            {areasFiltradas.map((item) => {
-              const label = formatCnpqOption(item)
-
-              return (
-                <option key={item.codigo} value={label}>
-                  {label}
-                </option>
-              )
-            })}
+            {areasLookup.map((item) => (
+              <option key={item.id} value={item.name}>
+                {item.name}
+              </option>
+            ))}
           </select>
         </Field>
 
@@ -2508,6 +2672,11 @@ function WizardStep2Anexo({
                   ...current.gerais,
                   subarea: event.target.value,
                   especialidade: "",
+                  areaConhecimento: String(
+                    subareasLookup.find(
+                      (item) => item.name === event.target.value,
+                    )?.id ?? current.gerais.areaConhecimento,
+                  ),
                 },
               }))
             }
@@ -2515,23 +2684,17 @@ function WizardStep2Anexo({
             className={selectClassName}
           >
             <option value="">
-              {form.gerais.area
-                ? "Selecione"
-                : "Selecione primeiro a área"}
+              {form.gerais.area ? "Selecione" : "Selecione primeiro a área"}
             </option>
-            {subareasFiltradas.map((item) => {
-              const label = formatCnpqOption(item)
-
-              return (
-                <option key={item.codigo} value={label}>
-                  {label}
-                </option>
-              )
-            })}
+            {subareasLookup.map((item) => (
+              <option key={item.id} value={item.name}>
+                {item.name}
+              </option>
+            ))}
           </select>
         </Field>
 
-        <Field label="Especialidade" required>
+        <Field label="Especialidade">
           <select
             value={form.gerais.especialidade}
             onChange={(event) =>
@@ -2540,38 +2703,20 @@ function WizardStep2Anexo({
                 gerais: {
                   ...current.gerais,
                   especialidade: event.target.value,
+                  areaConhecimento: String(
+                    especialidadesLookup.find(
+                      (item) => item.name === event.target.value,
+                    )?.id ?? current.gerais.areaConhecimento,
+                  ),
                 },
               }))
             }
             className={selectClassName}
           >
             <option value="">Selecione</option>
-            {especialidades.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Linha de pesquisa" required>
-          <select
-            value={form.gerais.linhaPesquisa}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                gerais: {
-                  ...current.gerais,
-                  linhaPesquisa: event.target.value,
-                },
-              }))
-            }
-            className={selectClassName}
-          >
-            <option value="">Selecione</option>
-            {linhas.map((item) => (
-              <option key={item} value={item}>
-                {item}
+            {especialidadesLookup.map((item) => (
+              <option key={item.id} value={item.name}>
+                {item.name}
               </option>
             ))}
           </select>
@@ -2601,7 +2746,7 @@ function WizardStep2Anexo({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canGoStep3
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           Próximo
@@ -2609,23 +2754,23 @@ function WizardStep2Anexo({
         </button>
       </div>
     </Card>
-
   )
 }
-
 
 function WizardStep3Ods({
   form,
   setForm,
   goNext,
   goBack,
-  canGoStep4
+  canGoStep4,
+  odsOptions,
 }: Readonly<{
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   goNext: () => void
   goBack: () => void
   canGoStep4: boolean
+  odsOptions: ODS[]
 }>) {
   return (
     <Card
@@ -2637,6 +2782,7 @@ function WizardStep3Ods({
         <Field label="Objetivos do Desenvolvimento Sustentável" required>
           <OdsPicker
             value={form.gerais.objetivosDS}
+            options={odsOptions}
             onChange={(objetivosDS) =>
               setForm((current) => ({
                 ...current,
@@ -2688,7 +2834,7 @@ function WizardStep3Ods({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canGoStep4
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           Próximo
@@ -2696,10 +2842,8 @@ function WizardStep3Ods({
         </button>
       </div>
     </Card>
-
   )
 }
-
 
 function WizardStep4Membros({
   form,
@@ -2709,11 +2853,12 @@ function WizardStep4Membros({
   canGoStep5,
   memberDraft,
   setMemberDraft,
-  memberRoles,
+  memberLookups,
+  userOptions,
   addMember,
   removeMember,
   canAddMember,
-  resetMemberDraft
+  resetMemberDraft,
 }: Readonly<{
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
@@ -2722,7 +2867,8 @@ function WizardStep4Membros({
   canGoStep5: boolean
   memberDraft: ProjectMember
   setMemberDraft: React.Dispatch<React.SetStateAction<ProjectMember>>
-  memberRoles: string[]
+  memberLookups: MemberLookupBundle | null
+  userOptions: ResearchUserLookup[]
   addMember: () => void
   removeMember: (id: string) => void
   canAddMember: boolean
@@ -2757,18 +2903,25 @@ function WizardStep4Membros({
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label="Nome" required>
-            <input
-              value={memberDraft.nome}
+          <Field label="Vínculo" required>
+            <select
+              value={memberDraft.categoria}
               onChange={(event) =>
                 setMemberDraft((current) => ({
-                  ...current,
-                  nome: event.target.value,
+                  ...initialMember,
+                  id: current.id,
+                  categoria: event.target.value as MemberCategory,
                 }))
               }
-              className={inputClassName}
-              placeholder="Nome completo"
-            />
+              className={selectClassName}
+            >
+              <option value="">Selecione</option>
+              {(memberLookups?.categorias ?? []).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field label="Papel no projeto" required>
@@ -2783,64 +2936,160 @@ function WizardStep4Membros({
               className={selectClassName}
             >
               <option value="">Selecione</option>
-              {memberRoles.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+              {(memberLookups?.funcoes ?? []).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="Vínculo" required>
-            <select
-              value={memberDraft.vinculo}
-              onChange={(event) =>
-                setMemberDraft((current) => ({
-                  ...current,
-                  vinculo: event.target.value,
-                }))
-              }
-              className={selectClassName}
-            >
-              <option value="">Selecione</option>
-              {memberVinculos.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {memberDraft.categoria !== "EXTERNO" ? (
+            <Field label="Usuário cadastrado" required>
+              <select
+                value={memberDraft.userId}
+                disabled={!memberDraft.categoria}
+                onChange={(event) => {
+                  const user = userOptions.find(
+                    (item) => item.id === Number(event.target.value),
+                  )
+                  setMemberDraft((current) => ({
+                    ...current,
+                    userId: event.target.value,
+                    nome: user?.name ?? "",
+                    email: user?.email ?? "",
+                  }))
+                }}
+                className={selectClassName}
+              >
+                <option value="">Selecione</option>
+                {userOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} — {item.email}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <>
+              <Field label="Nome" required>
+                <input
+                  value={memberDraft.nome}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      nome: event.target.value,
+                    }))
+                  }
+                  className={inputClassName}
+                  placeholder="Nome completo"
+                />
+              </Field>
+              <Field label="E-mail" required>
+                <input
+                  type="email"
+                  value={memberDraft.email}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      email: event.target.value,
+                    }))
+                  }
+                  className={inputClassName}
+                  placeholder="email@exemplo.com"
+                />
+              </Field>
+              <Field
+                label="CPF"
+                hint="Deixe em branco para pessoa estrangeira."
+              >
+                <input
+                  value={memberDraft.cpf}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      cpf: event.target.value,
+                    }))
+                  }
+                  className={inputClassName}
+                  placeholder="000.000.000-00"
+                />
+              </Field>
+              <Field label="Sexo" required>
+                <select
+                  value={memberDraft.sexo}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      sexo: event.target.value,
+                    }))
+                  }
+                  className={selectClassName}
+                >
+                  <option value="">Selecione</option>
+                  {(memberLookups?.sexos ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Formação" required>
+                <select
+                  value={memberDraft.formacao}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      formacao: event.target.value,
+                    }))
+                  }
+                  className={selectClassName}
+                >
+                  <option value="">Selecione</option>
+                  {(memberLookups?.formacoes_externas ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tipo de membro externo" required>
+                <select
+                  value={memberDraft.tipoExterno}
+                  onChange={(event) =>
+                    setMemberDraft((current) => ({
+                      ...current,
+                      tipoExterno: event.target.value,
+                    }))
+                  }
+                  className={selectClassName}
+                >
+                  <option value="">Selecione</option>
+                  {(memberLookups?.tipos_externos ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </>
+          )}
 
-          <Field label="E-mail" required>
+          <Field label="Carga horária dedicada" required>
             <input
-              type="email"
-              value={memberDraft.email}
+              type="number"
+              min={1}
+              value={memberDraft.cargaHoraria}
               onChange={(event) =>
                 setMemberDraft((current) => ({
                   ...current,
-                  email: event.target.value,
+                  cargaHoraria: event.target.value,
                 }))
               }
               className={inputClassName}
-              placeholder="ex.: membro@ufpb.br"
+              placeholder="Horas"
             />
           </Field>
-
-          <div className="md:col-span-2">
-            <Field label="Currículo Lattes">
-              <input
-                value={memberDraft.lattes}
-                onChange={(event) =>
-                  setMemberDraft((current) => ({
-                    ...current,
-                    lattes: event.target.value,
-                  }))
-                }
-                className={inputClassName}
-                placeholder="URL do currículo Lattes"
-              />
-            </Field>
-          </div>
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -2852,7 +3101,7 @@ function WizardStep4Membros({
               "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
               canAddMember
                 ? "bg-primary text-white hover:bg-primary/90"
-                : "cursor-not-allowed bg-neutral/10 text-neutral"
+                : "cursor-not-allowed bg-neutral/10 text-neutral",
             )}
           >
             <Plus size={16} />
@@ -2881,7 +3130,7 @@ function WizardStep4Membros({
               "inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold",
               form.gerais.membros.length > 0
                 ? "border-green-200 bg-green-50 text-green-700"
-                : "border-red-200 bg-red-50 text-red-700"
+                : "border-red-200 bg-red-50 text-red-700",
             )}
           >
             {form.gerais.membros.length > 0
@@ -2915,11 +3164,15 @@ function WizardStep4Membros({
 
                     <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral">
                       <span className="rounded-full bg-neutral/10 px-2 py-1">
-                        {membro.papel}
+                        {memberLookups?.funcoes.find(
+                          (item) => item.id === membro.papel,
+                        )?.name ?? membro.papel}
                       </span>
 
                       <span className="rounded-full bg-neutral/10 px-2 py-1">
-                        {membro.vinculo}
+                        {memberLookups?.categorias.find(
+                          (item) => item.id === membro.categoria,
+                        )?.name ?? membro.categoria}
                       </span>
 
                       <span className="rounded-full bg-neutral/10 px-2 py-1">
@@ -2927,11 +3180,9 @@ function WizardStep4Membros({
                       </span>
                     </div>
 
-                    {membro.lattes && (
-                      <p className="mt-3 text-xs text-neutral">
-                        Lattes: {membro.lattes}
-                      </p>
-                    )}
+                    <p className="mt-3 text-xs text-neutral">
+                      Carga horária: {membro.cargaHoraria}h
+                    </p>
                   </div>
 
                   <button
@@ -3000,7 +3251,7 @@ function WizardStep4Membros({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canGoStep5
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           Próximo
@@ -3008,23 +3259,23 @@ function WizardStep4Membros({
         </button>
       </div>
     </Card>
-
   )
 }
-
 
 function WizardStep5Especifico({
   form,
   setForm,
   goNext,
   goBack,
-  canGoStep6
+  canGoStep6,
+  researchGroups,
 }: Readonly<{
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   goNext: () => void
   goBack: () => void
   canGoStep6: boolean
+  researchGroups: ResearchGroupLookup[]
 }>) {
   return (
     <Card
@@ -3057,6 +3308,8 @@ function WizardStep5Especifico({
                         interno: {
                           ...current.interno,
                           vinculadoGrupo: item,
+                          grupoPesquisa:
+                            item === "Não" ? "" : current.interno.grupoPesquisa,
                         },
                       }))
                     }
@@ -3067,7 +3320,10 @@ function WizardStep5Especifico({
             </div>
           </Field>
 
-          <Field label="Grupo de pesquisa" required>
+          <Field
+            label="Grupo de pesquisa"
+            required={form.interno.vinculadoGrupo === "Sim"}
+          >
             <select
               value={form.interno.grupoPesquisa}
               onChange={(event) =>
@@ -3079,15 +3335,45 @@ function WizardStep5Especifico({
                   },
                 }))
               }
-              className={selectClassName}
+              disabled={form.interno.vinculadoGrupo !== "Sim"}
+              className={cx(
+                selectClassName,
+                form.interno.vinculadoGrupo !== "Sim" &&
+                  "cursor-not-allowed bg-neutral/5",
+              )}
             >
               <option value="">Selecione</option>
-              {grupos.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+              {researchGroups.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
+          </Field>
+
+          <Field label="Linha de pesquisa" required>
+            <input
+              value={form.gerais.linhaPesquisa}
+              list="research-group-lines"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  gerais: {
+                    ...current.gerais,
+                    linhaPesquisa: event.target.value,
+                  },
+                }))
+              }
+              className={inputClassName}
+              placeholder="Informe a linha de pesquisa"
+            />
+            <datalist id="research-group-lines">
+              {researchGroups
+                .find((item) => item.id === Number(form.interno.grupoPesquisa))
+                ?.linhas.map((linha) => (
+                  <option key={linha} value={linha} />
+                ))}
+            </datalist>
           </Field>
 
           <Field
@@ -3151,7 +3437,7 @@ function WizardStep5Especifico({
               className={cx(
                 inputClassName,
                 form.interno.possuiProtocoloEtica !== "Sim" &&
-                  "cursor-not-allowed bg-neutral/5 text-neutral"
+                  "cursor-not-allowed bg-neutral/5 text-neutral",
               )}
               placeholder="ex.: CEP/HULW, CEP/UFPB"
             />
@@ -3181,7 +3467,7 @@ function WizardStep5Especifico({
               className={cx(
                 inputClassName,
                 form.interno.possuiProtocoloEtica !== "Sim" &&
-                  "cursor-not-allowed bg-neutral/5 text-neutral"
+                  "cursor-not-allowed bg-neutral/5 text-neutral",
               )}
               placeholder="ex.: 1234567"
             />
@@ -3324,7 +3610,7 @@ function WizardStep5Especifico({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             canGoStep6
               ? "bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-neutral/10 text-neutral"
+              : "cursor-not-allowed bg-neutral/10 text-neutral",
           )}
         >
           Próximo
@@ -3332,10 +3618,8 @@ function WizardStep5Especifico({
         </button>
       </div>
     </Card>
-
   )
 }
-
 
 function WizardStep6Revisao({
   form,
@@ -3347,8 +3631,13 @@ function WizardStep6Revisao({
   backTo,
   setForm,
   setSubmitted,
+  setCreatedProjectId,
   setStep,
   resetMemberDraft,
+  editalName,
+  unidadeName,
+  grupoName,
+  memberLookups,
 }: Readonly<{
   form: FormState
   goBack: () => void
@@ -3359,8 +3648,13 @@ function WizardStep6Revisao({
   backTo: string
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   setSubmitted: React.Dispatch<React.SetStateAction<boolean>>
+  setCreatedProjectId: React.Dispatch<React.SetStateAction<number | null>>
   setStep: React.Dispatch<React.SetStateAction<Step>>
   resetMemberDraft: () => void
+  editalName: string
+  unidadeName: string
+  grupoName: string
+  memberLookups: MemberLookupBundle | null
 }>) {
   const specificDataSuffix = form.gerais.tipo
     ? `(${formatProjectTypeLabel(form.gerais.tipo)})`
@@ -3387,11 +3681,13 @@ function WizardStep6Revisao({
           </h3>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Info label="Tipo" value={formatProjectTypeLabel(form.gerais.tipo)} />
+            <Info
+              label="Tipo"
+              value={formatProjectTypeLabel(form.gerais.tipo)}
+            />
 
-            <Info label="Edital" value={form.gerais.editalPesquisa} />
-            <Info label="Centro" value={form.gerais.centro} />
-            <Info label="Unidade" value={form.gerais.unidade} />
+            <Info label="Edital" value={editalName} />
+            <Info label="Unidade" value={unidadeName} />
 
             <div className="sm:col-span-2">
               <Info label="Título" value={form.gerais.titulo} />
@@ -3412,13 +3708,14 @@ function WizardStep6Revisao({
 
             <Info
               label="Área de conhecimento"
-              value={form.gerais.areaConhecimento}
+              value={
+                form.gerais.especialidade ||
+                form.gerais.subarea ||
+                form.gerais.area
+              }
             />
 
-            <Info
-              label="Linha de pesquisa"
-              value={form.gerais.linhaPesquisa}
-            />
+            <Info label="Linha de pesquisa" value={form.gerais.linhaPesquisa} />
 
             <Info label="Grande área" value={form.gerais.grandeArea} />
 
@@ -3458,8 +3755,7 @@ function WizardStep6Revisao({
         <div className="rounded-2xl border border-neutral/20 p-5">
           <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
             <Hash size={16} />
-            Dados específicos{" "}
-            {specificDataSuffix}
+            Dados específicos {specificDataSuffix}
           </h3>
 
           {form.gerais.tipo === "interno" ? (
@@ -3469,10 +3765,7 @@ function WizardStep6Revisao({
                 value={form.interno.vinculadoGrupo}
               />
 
-              <Info
-                label="Grupo de pesquisa"
-                value={form.interno.grupoPesquisa}
-              />
+              <Info label="Grupo de pesquisa" value={grupoName} />
 
               <Info
                 label="Possui protocolo em comitê?"
@@ -3493,10 +3786,7 @@ function WizardStep6Revisao({
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Info
-                label="Categoria"
-                value={form.externo.categoriaProjeto}
-              />
+              <Info label="Categoria" value={form.externo.categoriaProjeto} />
 
               <Info
                 label="Subcategoria Nível I"
@@ -3547,6 +3837,7 @@ function WizardStep6Revisao({
                     setForm(initialState)
                     resetMemberDraft()
                     setSubmitted(false)
+                    setCreatedProjectId(null)
                     setStep(1)
                   }}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
@@ -3582,17 +3873,15 @@ function WizardStep6Revisao({
 
           <Info label="Objetivos" value={form.gerais.objetivos} preWrap />
 
+          <Info label="Metodologia" value={form.gerais.metodologia} preWrap />
+
           <Info
-            label="Metodologia"
-            value={form.gerais.metodologia}
+            label="Resultados esperados"
+            value={form.gerais.resultadosEsperados}
             preWrap
           />
 
-          <Info
-            label="Referências"
-            value={form.gerais.referencias}
-            preWrap
-          />
+          <Info label="Referências" value={form.gerais.referencias} preWrap />
         </div>
       </div>
 
@@ -3679,10 +3968,24 @@ function WizardStep6Revisao({
               <p className="text-sm font-bold text-primary">{membro.nome}</p>
 
               <div className="mt-2 grid grid-cols-1 gap-3 text-sm text-neutral sm:grid-cols-2">
-                <Info label="Papel" value={membro.papel} />
-                <Info label="Vínculo" value={membro.vinculo} />
+                <Info
+                  label="Papel"
+                  value={
+                    memberLookups?.funcoes.find(
+                      (item) => item.id === membro.papel,
+                    )?.name ?? membro.papel
+                  }
+                />
+                <Info
+                  label="Vínculo"
+                  value={
+                    memberLookups?.categorias.find(
+                      (item) => item.id === membro.categoria,
+                    )?.name ?? membro.categoria
+                  }
+                />
                 <Info label="E-mail" value={membro.email} />
-                <Info label="Lattes" value={membro.lattes} />
+                <Info label="Carga horária" value={`${membro.cargaHoraria}h`} />
               </div>
             </div>
           ))}
@@ -3706,14 +4009,13 @@ function WizardStep6Revisao({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
             saving || submitted || !canGoStep6
               ? "cursor-not-allowed bg-neutral/10 text-neutral"
-              : "bg-primary text-white hover:bg-primary/90"
+              : "bg-primary text-white hover:bg-primary/90",
           )}
         >
           {submitButtonLabel}
         </button>
       </div>
     </Card>
-
   )
 }
 
@@ -3733,28 +4035,73 @@ export default function ProjectFormWizard({
   const [step, setStep] = useState<Step>(1)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [createdProjectId, setCreatedProjectId] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState("")
   const [form, setForm] = useState<FormState>(initialState)
   const [memberDraft, setMemberDraft] = useState<ProjectMember>({
     ...initialMember,
     id: createId("membro"),
   })
-  const [memberRoles, setMemberRoles] = useState<string[]>([])
+  const [editaisLookup, setEditaisLookup] = useState<LookupOption<number>[]>([])
+  const [academicUnits, setAcademicUnits] = useState<LookupOption<number>[]>([])
+  const [grandesAreasLookup, setGrandesAreasLookup] = useState<
+    KnowledgeAreaLookup[]
+  >([])
+  const [areasLookup, setAreasLookup] = useState<KnowledgeAreaLookup[]>([])
+  const [subareasLookup, setSubareasLookup] = useState<KnowledgeAreaLookup[]>(
+    [],
+  )
+  const [especialidadesLookup, setEspecialidadesLookup] = useState<
+    KnowledgeAreaLookup[]
+  >([])
+  const [odsOptions, setOdsOptions] = useState<ODS[]>([])
+  const [researchGroups, setResearchGroups] = useState<ResearchGroupLookup[]>(
+    [],
+  )
+  const [memberLookups, setMemberLookups] = useState<MemberLookupBundle | null>(
+    null,
+  )
+  const [userOptions, setUserOptions] = useState<ResearchUserLookup[]>([])
 
   useEffect(() => {
     let cancelled = false
 
-    void projectRoleService
-      .lookup()
-      .then((roles) => {
-        if (!cancelled) {
-          setMemberRoles(roles.map((role) => role.name))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMemberRoles([])
-        }
+    void Promise.all([
+      projectService.editalLookup(),
+      projectService.academicUnitLookup(),
+      projectService.knowledgeAreaLookup(),
+      projectService.sustainableDevelopmentGoalsLookup(),
+      projectService.researchGroupLookup(),
+      projectService.memberLookups(),
+    ])
+      .then(
+        ([
+          editais,
+          units,
+          knowledgeAreas,
+          sustainableGoals,
+          groups,
+          members,
+        ]) => {
+          if (cancelled) return
+          setEditaisLookup(editais)
+          setAcademicUnits(units)
+          setGrandesAreasLookup(knowledgeAreas)
+          setOdsOptions(
+            sustainableGoals.map((item) => ({ id: item.id, label: item.name })),
+          )
+          setResearchGroups(groups)
+          setMemberLookups(members)
+        },
+      )
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setSubmitError(
+            getErrorMessage(
+              error,
+              "Não foi possível carregar os dados do formulário.",
+            ),
+          )
       })
 
     return () => {
@@ -3762,26 +4109,117 @@ export default function ProjectFormWizard({
     }
   }, [])
 
+  useEffect(() => {
+    if (!form.gerais.grandeArea) {
+      setAreasLookup([])
+      return
+    }
+    let cancelled = false
+    void projectService
+      .knowledgeAreaLookup({ grande_area: form.gerais.grandeArea })
+      .then((items) => {
+        if (!cancelled) setAreasLookup(items)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setSubmitError(
+            getErrorMessage(error, "Erro ao carregar áreas de conhecimento."),
+          )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [form.gerais.grandeArea])
+
+  useEffect(() => {
+    if (!form.gerais.area) {
+      setSubareasLookup([])
+      return
+    }
+    let cancelled = false
+    void projectService
+      .knowledgeAreaLookup({
+        grande_area: form.gerais.grandeArea,
+        area: form.gerais.area,
+      })
+      .then((items) => {
+        if (!cancelled) setSubareasLookup(items)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setSubmitError(getErrorMessage(error, "Erro ao carregar subáreas."))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [form.gerais.grandeArea, form.gerais.area])
+
+  useEffect(() => {
+    if (!form.gerais.subarea) {
+      setEspecialidadesLookup([])
+      return
+    }
+    let cancelled = false
+    void projectService
+      .knowledgeAreaLookup({
+        grande_area: form.gerais.grandeArea,
+        area: form.gerais.area,
+        sub_area: form.gerais.subarea,
+      })
+      .then((items) => {
+        if (!cancelled) setEspecialidadesLookup(items)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setSubmitError(
+            getErrorMessage(error, "Erro ao carregar especialidades."),
+          )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [form.gerais.grandeArea, form.gerais.area, form.gerais.subarea])
+
+  useEffect(() => {
+    if (!memberDraft.categoria || memberDraft.categoria === "EXTERNO") {
+      setUserOptions([])
+      return
+    }
+    let cancelled = false
+    void projectService
+      .userLookup({ funcao: memberDraft.categoria })
+      .then((items) => {
+        if (!cancelled) setUserOptions(items)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setSubmitError(getErrorMessage(error, "Erro ao carregar usuários."))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [memberDraft.categoria])
+
   const canGoStep2 = useMemo(() => checkCanGoStep2(form), [form])
 
   const canGoStep3 = useMemo(
     () => checkCanGoStep3(form, canGoStep2),
-    [form, canGoStep2]
+    [form, canGoStep2],
   )
 
   const canGoStep4 = useMemo(
     () => checkCanGoStep4(form, canGoStep3),
-    [form, canGoStep3]
+    [form, canGoStep3],
   )
 
   const canGoStep5 = useMemo(
     () => checkCanGoStep5(form, canGoStep4),
-    [form, canGoStep4]
+    [form, canGoStep4],
   )
 
   const canGoStep6 = useMemo(
     () => checkCanGoStep6(form, canGoStep5),
-    [form, canGoStep5]
+    [form, canGoStep5],
   )
 
   const stepFlags = useMemo(
@@ -3793,27 +4231,32 @@ export default function ProjectFormWizard({
       canGoStep6,
       submitted,
     }),
-    [canGoStep2, canGoStep3, canGoStep4, canGoStep5, canGoStep6, submitted]
+    [canGoStep2, canGoStep3, canGoStep4, canGoStep5, canGoStep6, submitted],
   )
 
   const canAddMember = useMemo(() => {
-    return Boolean(
-      memberDraft.nome.trim() &&
-        memberDraft.papel.trim() &&
-        memberDraft.vinculo.trim() &&
-        memberDraft.email.trim()
+    const baseValid = Boolean(
+      memberDraft.categoria &&
+        memberDraft.papel &&
+        Number(memberDraft.cargaHoraria) > 0,
     )
-  }, [memberDraft])
-
-  const areasFiltradas = useMemo(
-    () => getAreasByGrandeArea(form.gerais.grandeArea),
-    [form.gerais.grandeArea]
-  )
-
-  const subareasFiltradas = useMemo(
-    () => getSubareasByArea(form.gerais.grandeArea, form.gerais.area),
-    [form.gerais.grandeArea, form.gerais.area]
-  )
+    if (!baseValid) return false
+    if (memberDraft.categoria === "EXTERNO") {
+      return Boolean(
+        memberDraft.nome.trim() &&
+          /^\S+@\S+\.\S+$/.test(memberDraft.email.trim()) &&
+          memberDraft.sexo &&
+          memberDraft.formacao &&
+          memberDraft.tipoExterno,
+      )
+    }
+    return Boolean(
+      memberDraft.userId &&
+        !form.gerais.membros.some(
+          (member) => member.userId === memberDraft.userId,
+        ),
+    )
+  }, [form.gerais.membros, memberDraft])
 
   function stepDone(currentStep: Step) {
     return checkStepDone(currentStep, stepFlags)
@@ -3873,8 +4316,91 @@ export default function ProjectFormWizard({
     setSubmitError("")
 
     try {
+      const attachment =
+        form.gerais.pdfComplementar ?? form.gerais.comprovanteExterno
+      const attachmentError = validateProjectAttachment(attachment)
+      if (attachmentError) throw new Error(attachmentError)
+
+      const internalMembers = form.gerais.membros
+        .filter((member) => member.categoria !== "EXTERNO")
+        .map((member) => ({
+          user_id: Number(member.userId),
+          funcao: member.papel,
+          ch_dedicadas: Number(member.cargaHoraria),
+        }))
+      const externalMembers = form.gerais.membros
+        .filter((member) => member.categoria === "EXTERNO")
+        .map((member) => ({
+          funcao: member.papel,
+          ch_dedicada: Number(member.cargaHoraria),
+          ...(member.cpf.trim() && { cpf: member.cpf.trim() }),
+          nome: member.nome.trim(),
+          email: member.email.trim(),
+          sexo: member.sexo,
+          formacao: member.formacao,
+          tipo: member.tipoExterno,
+        }))
+
+      const created = createdProjectId
+        ? { id: createdProjectId }
+        : await projectService.create({
+            tipo: form.gerais.tipo === "interno" ? "INTERNO" : "EXTERNO",
+            titulo: form.gerais.titulo.trim(),
+            title: form.gerais.title.trim(),
+            edital_id: Number(form.gerais.editalPesquisa),
+            vigencia: form.gerais.periodoFim,
+            data_inicio: form.gerais.periodoIni,
+            data_fim: form.gerais.periodoFim,
+            email: form.gerais.email.trim(),
+            palavras_chave: splitKeywords(form.gerais.palavrasChave),
+            key_words: splitKeywords(form.gerais.keywords),
+            pesquisa_objetivo_ids: form.gerais.objetivosDS.map(
+              (item) => item.id,
+            ),
+            corpo_projeto: {
+              resumo: form.gerais.descricaoResumida.trim(),
+              abstract: form.gerais.abstract.trim(),
+              introducao: form.gerais.introducaoJustificativa.trim(),
+              objetivos: form.gerais.objetivos.trim(),
+              metodologia: form.gerais.metodologia.trim(),
+              resultados_esperados: form.gerais.resultadosEsperados.trim(),
+              referencias: form.gerais.referencias.trim(),
+            },
+            atividades: form.gerais.cronograma.map((item) => ({
+              descricao: item.atividade.trim(),
+              meses: Array.from(
+                { length: item.mesFim - item.mesInicio + 1 },
+                (_, index) => ({
+                  data: getScheduleMonth(
+                    form.gerais.periodoIni,
+                    item.mesInicio + index,
+                  ),
+                }),
+              ),
+            })),
+            unidade_id: Number(form.gerais.unidade),
+            area_conhecimento_id: Number(form.gerais.areaConhecimento),
+            linha_pesquisa: form.gerais.linhaPesquisa.trim(),
+            vinculado_grupo_pesquisa: form.interno.vinculadoGrupo === "Sim",
+            ...(form.interno.vinculadoGrupo === "Sim" && {
+              grupo_pesquisa_id: Number(form.interno.grupoPesquisa),
+            }),
+            possui_comite_etica: form.interno.possuiProtocoloEtica === "Sim",
+            ...(form.interno.possuiProtocoloEtica === "Sim" && {
+              comite_etica: form.interno.comiteEticaNome.trim(),
+              numero_protocolo: form.interno.protocoloEtica.trim(),
+            }),
+            membros: internalMembers,
+            membros_externos: externalMembers,
+          })
+
+      setCreatedProjectId(created.id)
+      if (attachment)
+        await projectService.uploadAttachment(created.id, attachment)
+      setSubmitted(true)
+    } catch (error) {
       setSubmitError(
-        "O formulário está pronto para integração, mas o back-end ainda exige IDs de corpo do projeto, atividades, palavras-chave, ODS, categoria e unidade sem oferecer todos os endpoints necessários para criá-los. Nenhum cadastro foi enviado."
+        getErrorMessage(error, "Não foi possível cadastrar o projeto."),
       )
     } finally {
       setSaving(false)
@@ -3884,10 +4410,9 @@ export default function ProjectFormWizard({
   return (
     <main className="min-h-screen bg-[#F3F4F6]">
       <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-
-      <Helmet>
-        <title>{pageTitle}</title>
-      </Helmet>
+        <Helmet>
+          <title>{pageTitle}</title>
+        </Helmet>
 
         <div className="flex items-center justify-between">
           <Link
@@ -3911,8 +4436,9 @@ export default function ProjectFormWizard({
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral">
-              Preencha os campos do Anexo II, vincule ODS, cronograma, membros
-              e documentos complementares. Ao submeter, o projeto entra com status inicial{" "}
+              Preencha os campos do Anexo II, vincule ODS, cronograma, membros e
+              documentos complementares. Ao submeter, o projeto entra com status
+              inicial{" "}
               <span className="font-semibold text-primary">SUBMETIDO</span>.
             </p>
           </div>
@@ -3944,6 +4470,15 @@ export default function ProjectFormWizard({
           </div>
         </div>
 
+        {submitError && step !== 2 && (
+          <div
+            className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
+            role="alert"
+          >
+            {submitError}
+          </div>
+        )}
+
         {
           {
             1: (
@@ -3961,8 +4496,12 @@ export default function ProjectFormWizard({
                 goNext={goNext}
                 goBack={goBack}
                 canGoStep3={canGoStep3}
-                areasFiltradas={areasFiltradas}
-                subareasFiltradas={subareasFiltradas}
+                editais={editaisLookup}
+                unidadesAcademicas={academicUnits}
+                grandesAreasLookup={grandesAreasLookup}
+                areasLookup={areasLookup}
+                subareasLookup={subareasLookup}
+                especialidadesLookup={especialidadesLookup}
                 submitError={submitError}
               />
             ),
@@ -3973,6 +4512,7 @@ export default function ProjectFormWizard({
                 goNext={goNext}
                 goBack={goBack}
                 canGoStep4={canGoStep4}
+                odsOptions={odsOptions}
               />
             ),
             4: (
@@ -3984,7 +4524,8 @@ export default function ProjectFormWizard({
                 canGoStep5={canGoStep5}
                 memberDraft={memberDraft}
                 setMemberDraft={setMemberDraft}
-                memberRoles={memberRoles}
+                memberLookups={memberLookups}
+                userOptions={userOptions}
                 addMember={addMember}
                 removeMember={removeMember}
                 canAddMember={canAddMember}
@@ -3998,6 +4539,7 @@ export default function ProjectFormWizard({
                 goNext={goNext}
                 goBack={goBack}
                 canGoStep6={canGoStep6}
+                researchGroups={researchGroups}
               />
             ),
             6: (
@@ -4011,8 +4553,25 @@ export default function ProjectFormWizard({
                 backTo={backTo}
                 setForm={setForm}
                 setSubmitted={setSubmitted}
+                setCreatedProjectId={setCreatedProjectId}
                 setStep={setStep}
                 resetMemberDraft={resetMemberDraft}
+                editalName={
+                  editaisLookup.find(
+                    (item) => item.id === Number(form.gerais.editalPesquisa),
+                  )?.name ?? ""
+                }
+                unidadeName={
+                  academicUnits.find(
+                    (item) => item.id === Number(form.gerais.unidade),
+                  )?.name ?? ""
+                }
+                grupoName={
+                  researchGroups.find(
+                    (item) => item.id === Number(form.interno.grupoPesquisa),
+                  )?.name ?? ""
+                }
+                memberLookups={memberLookups}
               />
             ),
           }[step]
@@ -4023,7 +4582,7 @@ export default function ProjectFormWizard({
             to={backTo}
             className="inline-flex items-center gap-2 rounded-xl border border-neutral/20 bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary/40 hover:bg-neutral/5"
           >
-Finalizar e voltar para projetos
+            Finalizar e voltar para projetos
           </Link>
         </div>
       </div>
