@@ -22,8 +22,10 @@ import {
   Users,
 } from "lucide-react"
 import { Helmet } from "react-helmet"
+import type { EditalLookup } from "@/features/editais"
 import { ApiError } from "@/services/apiClient"
 import { projectService } from "../api/projectService"
+import { getEditalExecutionPeriod } from "../utils/projectPeriod"
 import type {
   KnowledgeAreaLookup,
   LookupOption,
@@ -2216,7 +2218,7 @@ function WizardStep2Anexo({
   goNext: () => void
   goBack: () => void
   canGoStep3: boolean
-  editais: LookupOption<number>[]
+  editais: EditalLookup[]
   unidadesAcademicas: LookupOption<number>[]
   grandesAreasLookup: KnowledgeAreaLookup[]
   areasLookup: KnowledgeAreaLookup[]
@@ -2245,15 +2247,24 @@ function WizardStep2Anexo({
         <Field label="Edital de pesquisa" required>
           <select
             value={form.gerais.editalPesquisa}
-            onChange={(event) =>
+            onChange={(event) => {
+              const editalId = event.target.value
+              const selectedEdital = editais.find(
+                (item) => item.id === Number(editalId),
+              )
+              const period = selectedEdital
+                ? getEditalExecutionPeriod(selectedEdital)
+                : { periodoIni: "", periodoFim: "" }
+
               setForm((current) => ({
                 ...current,
                 gerais: {
                   ...current.gerais,
-                  editalPesquisa: event.target.value,
+                  editalPesquisa: editalId,
+                  ...period,
                 },
               }))
-            }
+            }}
             className={selectClassName}
           >
             <option value="">Selecione</option>
@@ -4042,7 +4053,7 @@ export default function ProjectFormWizard({
     ...initialMember,
     id: createId("membro"),
   })
-  const [editaisLookup, setEditaisLookup] = useState<LookupOption<number>[]>([])
+  const [editaisLookup, setEditaisLookup] = useState<EditalLookup[]>([])
   const [academicUnits, setAcademicUnits] = useState<LookupOption<number>[]>([])
   const [grandesAreasLookup, setGrandesAreasLookup] = useState<
     KnowledgeAreaLookup[]

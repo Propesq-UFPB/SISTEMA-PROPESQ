@@ -4,6 +4,7 @@ import {
   buildQuery,
   type ApiErrorPayload,
 } from "@/services/apiClient"
+import type { EditalLookup } from "@/features/editais"
 import type {
   CreateResearchProjectPayload,
   KnowledgeAreaLookup,
@@ -106,7 +107,7 @@ export const projectService = {
     return getPdf(id)
   },
   editalLookup() {
-    return apiRequest<LookupOption<number>[]>("/editais/lookup")
+    return apiRequest<EditalLookup[]>("/editais/lookup")
   },
   academicUnitLookup() {
     return apiRequest<LookupOption<number>[]>("/academic-units/lookup")

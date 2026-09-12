@@ -5,6 +5,7 @@ import {
   splitKeywords,
   validateProjectAttachment,
 } from "./ProjectFormWizard"
+import { getEditalExecutionPeriod } from "../utils/projectPeriod"
 
 describe("validações do cadastro de projeto", () => {
   it("normaliza palavras-chave separadas por vírgula ou ponto e vírgula", () => {
@@ -17,6 +18,20 @@ describe("validações do cadastro de projeto", () => {
   it("converte os meses relativos do cronograma em datas", () => {
     expect(getScheduleMonth("2026-11-15", 1)).toBe("2026-11-01")
     expect(getScheduleMonth("2026-11-15", 3)).toBe("2027-01-01")
+  })
+
+  it("usa o período de execução do edital como período do projeto", () => {
+    expect(
+      getEditalExecutionPeriod({
+        periodo_execucao_rel: {
+          inicio: "2026-08-01T00:00:00.000Z",
+          fim: "2027-07-31T00:00:00.000Z",
+        },
+      }),
+    ).toEqual({
+      periodoIni: "2026-08-01",
+      periodoFim: "2027-07-31",
+    })
   })
 
   it("exige grupo apenas quando o vínculo é marcado", () => {

@@ -104,6 +104,7 @@ export type EditalLookup = {
   codigo: string | null;
   descricao: string;
   name: string;
+  periodo_execucao_rel: PeriodoEditalPayload;
 };
 
 export type EditalTypeLookup = {
