@@ -15,6 +15,7 @@ import {
   Building2,
   Plus,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { StatusEdital } from "@/features/editais/types/edital";
@@ -550,78 +551,125 @@ function EditalDistributionSection({ form }: Readonly<{ form: EditalFormModel }>
             </div>
 
             <div className="space-y-3">
-              {form.quotaDistributions.map((distribution, index) => (
-                <div
-                  key={distribution.id}
-                  className="space-y-3 rounded-xl border border-neutral-light bg-neutral-50/40 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-primary">
-                      Distribuição {index + 1}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => form.removeQuotaDistribution(distribution.id)}
-                      disabled={form.quotaDistributions.length === 1}
-                      aria-label={`Remover distribuição ${index + 1}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Trash2 size={14} />
-                      Remover
-                    </button>
-                  </div>
+              {form.quotaDistributions.map((distribution, index) => {
+                const expanded =
+                  form.expandedQuotaDistributionId === distribution.id;
+                const scholarshipName =
+                  form.bolsaOptions.find(
+                    option => String(option.id) === distribution.tipoBolsa,
+                  )?.descricao ??
+                  (distribution.tipoBolsa
+                    ? `Bolsa #${distribution.tipoBolsa}`
+                    : "Tipo de bolsa não selecionado");
+                const contentId = `quota-distribution-${distribution.id}`;
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <label className="text-sm">
-                      <span className="mb-1 block text-xs text-neutral">
-                        Tipo da bolsa <span className="text-red-500">*</span>
-                      </span>
-                      <select
-                        value={distribution.tipoBolsa}
-                        onChange={(e) =>
-                          form.updateQuotaDistribution(
-                            distribution.id,
-                            "tipoBolsa",
-                            e.target.value,
-                          )
+                return (
+                  <div
+                    key={distribution.id}
+                    className="overflow-hidden rounded-xl border border-neutral-light bg-neutral-50/40"
+                  >
+                    <div className="flex items-center gap-2 p-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.toggleQuotaDistribution(distribution.id)
                         }
-                        disabled={form.bolsaLoading || Boolean(form.bolsaError)}
-                        className="w-full rounded-lg border border-neutral-light bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                        aria-expanded={expanded}
+                        aria-controls={contentId}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
                       >
-                        <option value="">
-                          {form.bolsaLoading ? "Carregando..." : "-- SELECIONE --"}
-                        </option>
-                        {!form.bolsaLoading &&
-                          !form.bolsaError &&
-                          form.bolsaOptions.length === 0 && (
-                            <option value="" disabled>
-                              Cadastre um tipo de bolsa nas configurações
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-primary">
+                            Distribuição {index + 1}
+                          </span>
+                          <span className="mt-1 block truncate text-xs text-neutral">
+                            {scholarshipName} • {distribution.quantidade || "0"}{" "}
+                            cota(s) • FPPI {distribution.fppiMin || "0,00"} • Média{" "}
+                            {distribution.mediaMinProj || "0,0"}
+                          </span>
+                        </span>
+                        <ChevronDown
+                          size={18}
+                          aria-hidden="true"
+                          className={`shrink-0 text-neutral transition-transform ${
+                            expanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.removeQuotaDistribution(distribution.id)
+                        }
+                        disabled={form.quotaDistributions.length === 1}
+                        aria-label={`Remover distribuição ${index + 1}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 size={14} />
+                        Remover
+                      </button>
+                    </div>
+
+                    {expanded && (
+                      <div
+                        id={contentId}
+                        className="grid grid-cols-1 gap-3 border-t border-neutral-light bg-white p-4 md:grid-cols-2"
+                      >
+                        <label className="text-sm">
+                          <span className="mb-1 block text-xs text-neutral">
+                            Tipo da bolsa <span className="text-red-500">*</span>
+                          </span>
+                          <select
+                            value={distribution.tipoBolsa}
+                            onChange={(e) =>
+                              form.updateQuotaDistribution(
+                                distribution.id,
+                                "tipoBolsa",
+                                e.target.value,
+                              )
+                            }
+                            disabled={
+                              form.bolsaLoading || Boolean(form.bolsaError)
+                            }
+                            className="w-full rounded-lg border border-neutral-light bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                          >
+                            <option value="">
+                              {form.bolsaLoading
+                                ? "Carregando..."
+                                : "-- SELECIONE --"}
                             </option>
-                          )}
-                        {form.bolsaOptions.map(option => (
-                          <option key={option.id} value={String(option.id)}>
-                            {option.descricao}
-                          </option>
-                        ))}
-                      </select>
-                      <LookupError
-                        error={form.bolsaError}
-                        onRetry={form.loadBolsaOptions}
-                      />
-                      {!form.bolsaLoading &&
-                        !form.bolsaError &&
-                        form.bolsaOptions.length === 0 && (
-                          <p className="mt-1 text-xs text-neutral">
-                            Nenhum tipo cadastrado.{" "}
-                            <Link
-                              to="/gestor/settings/scholarships"
-                              className="text-primary font-semibold underline"
-                            >
-                              Ir para Entidades & Tipos de Bolsa
-                            </Link>
-                          </p>
-                        )}
-                    </label>
+                            {!form.bolsaLoading &&
+                              !form.bolsaError &&
+                              form.bolsaOptions.length === 0 && (
+                                <option value="" disabled>
+                                  Cadastre um tipo de bolsa nas configurações
+                                </option>
+                              )}
+                            {form.bolsaOptions.map(option => (
+                              <option key={option.id} value={String(option.id)}>
+                                {option.descricao}
+                              </option>
+                            ))}
+                          </select>
+                          <LookupError
+                            error={form.bolsaError}
+                            onRetry={form.loadBolsaOptions}
+                          />
+                          {!form.bolsaLoading &&
+                            !form.bolsaError &&
+                            form.bolsaOptions.length === 0 && (
+                              <p className="mt-1 text-xs text-neutral">
+                                Nenhum tipo cadastrado.{" "}
+                                <Link
+                                  to="/gestor/settings/scholarships"
+                                  className="text-primary font-semibold underline"
+                                >
+                                  Ir para Entidades & Tipos de Bolsa
+                                </Link>
+                              </p>
+                            )}
+                        </label>
 
                     <label className="text-sm">
                       <span className="mb-1 block text-xs text-neutral">
@@ -677,9 +725,11 @@ function EditalDistributionSection({ form }: Readonly<{ form: EditalFormModel }>
                         className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </label>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

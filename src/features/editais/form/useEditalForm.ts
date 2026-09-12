@@ -177,7 +177,9 @@ export type EditalFormModel = {
   distribuicaoCotasBolsas: YesNo;
   setDistribuicaoCotasBolsas: (value: YesNo) => void;
   quotaDistributions: QuotaDistributionForm[];
+  expandedQuotaDistributionId: number | null;
   addQuotaDistribution: () => void;
+  toggleQuotaDistribution: (id: number) => void;
   updateQuotaDistribution: (
     id: number,
     field: keyof Omit<QuotaDistributionForm, "id">,
@@ -303,6 +305,12 @@ export function useEditalForm({
   >(
     seed.quotaDistributions,
   );
+  const [expandedQuotaDistributionId, setExpandedQuotaDistributionId] =
+    useState<number | null>(
+      initialEdital?.edital_cota_distribuicao.length
+        ? null
+        : (seed.quotaDistributions[0]?.id ?? null),
+    );
   const [unidadeIds, setUnidadeIds] = useState<number[]>(seed.unidadeIds);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -648,10 +656,13 @@ export function useEditalForm({
   }, []);
 
   const addQuotaDistribution = useCallback(() => {
-    setQuotaDistributions(current => [
-      ...current,
-      createQuotaDistribution(),
-    ]);
+    const distribution = createQuotaDistribution();
+    setQuotaDistributions(current => [...current, distribution]);
+    setExpandedQuotaDistributionId(distribution.id);
+  }, []);
+
+  const toggleQuotaDistribution = useCallback((id: number) => {
+    setExpandedQuotaDistributionId(current => current === id ? null : id);
   }, []);
 
   const updateQuotaDistribution = useCallback(
@@ -677,6 +688,7 @@ export function useEditalForm({
         ? current.filter(distribution => distribution.id !== id)
         : current,
     );
+    setExpandedQuotaDistributionId(current => current === id ? null : current);
   }, []);
 
   const saveDraft = useCallback(() => {
@@ -743,7 +755,9 @@ export function useEditalForm({
     distribuicaoCotasBolsas,
     setDistribuicaoCotasBolsas,
     quotaDistributions,
+    expandedQuotaDistributionId,
     addQuotaDistribution,
+    toggleQuotaDistribution,
     updateQuotaDistribution,
     removeQuotaDistribution,
     bolsaOptions: bolsaLoader.options,
