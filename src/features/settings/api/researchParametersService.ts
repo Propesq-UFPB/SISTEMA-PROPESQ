@@ -4,8 +4,6 @@ export type ResearchModuleParameters = {
   lateSubmissionToleranceDays: number
   maxRenewalsPerProject: number
   maxProjectDurationMonths: number
-  maxQuotaRequestsPerProject: number
-  maxWorkPlansPerAdvisor: number
   scholarshipChangeCutoffDay: number
   emailScholarshipChanges: string
   emailInventionNotifications: string

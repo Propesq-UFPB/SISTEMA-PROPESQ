@@ -51,8 +51,6 @@ function toParams(data: Params & { updatedAt?: string }): Params {
     lateSubmissionToleranceDays: data.lateSubmissionToleranceDays,
     maxRenewalsPerProject: data.maxRenewalsPerProject,
     maxProjectDurationMonths: data.maxProjectDurationMonths,
-    maxQuotaRequestsPerProject: data.maxQuotaRequestsPerProject,
-    maxWorkPlansPerAdvisor: data.maxWorkPlansPerAdvisor,
     scholarshipChangeCutoffDay: data.scholarshipChangeCutoffDay,
     emailScholarshipChanges: data.emailScholarshipChanges,
     emailInventionNotifications: data.emailInventionNotifications,
@@ -66,8 +64,6 @@ const DEFAULTS: Params = {
   lateSubmissionToleranceDays: 0,
   maxRenewalsPerProject: 0,
   maxProjectDurationMonths: 12,
-  maxQuotaRequestsPerProject: 1,
-  maxWorkPlansPerAdvisor: 5,
   scholarshipChangeCutoffDay: 20,
   emailScholarshipChanges: "",
   emailInventionNotifications: "",
@@ -76,7 +72,9 @@ const DEFAULTS: Params = {
   enicSummariesPerReviewer: 5,
 }
 
-export default function GestorResearchModuleParameters({basePath = "/gestor"}: {basePath?: string}) {
+export default function GestorResearchModuleParameters({
+  basePath = "/gestor",
+}: Readonly<{ basePath?: string }>) {
   // Depois: trocar por fetch/GET
   const [initial, setInitial] = useState<Params>(DEFAULTS)
   const [form, setForm] = useState<Params>(DEFAULTS)
@@ -104,14 +102,6 @@ export default function GestorResearchModuleParameters({basePath = "/gestor"}: {
 
     if (form.maxProjectDurationMonths <= 0) {
       e.maxProjectDurationMonths = "Deve ser maior que zero."
-    }
-
-    if (form.maxQuotaRequestsPerProject <= 0) {
-      e.maxQuotaRequestsPerProject = "Deve ser maior que zero."
-    }
-
-    if (form.maxWorkPlansPerAdvisor <= 0) {
-      e.maxWorkPlansPerAdvisor = "Deve ser maior que zero."
     }
 
     if (form.scholarshipChangeCutoffDay < 1 || form.scholarshipChangeCutoffDay > 31) {
@@ -368,32 +358,10 @@ export default function GestorResearchModuleParameters({basePath = "/gestor"}: {
             error={errors.maxProjectDurationMonths}
             hint="Ex.: 12, 18, 24."
           />
-
-          <FieldNumber
-            label="Limite de solicitações de cotas por projeto"
-            value={form.maxQuotaRequestsPerProject}
-            min={1}
-            max={99}
-            disabled={loading}
-            onChange={(v) => setForm((p) => ({ ...p, maxQuotaRequestsPerProject: v }))}
-            error={errors.maxQuotaRequestsPerProject}
-            hint="Controla quantas solicitações de cota o projeto pode fazer."
-          />
         </section>
 
         <section className="bg-white border border-neutral-light rounded-2xl p-5 space-y-4 shadow-sm">
           <h2 className="text-sm font-bold text-primary">Bolsas, Relatórios e ENIC</h2>
-
-          <FieldNumber
-            label="Limite de Planos de Trabalho por orientador"
-            value={form.maxWorkPlansPerAdvisor}
-            min={1}
-            max={200}
-            disabled={loading}
-            onChange={(v) => setForm((p) => ({ ...p, maxWorkPlansPerAdvisor: v }))}
-            error={errors.maxWorkPlansPerAdvisor}
-            hint="Ex.: 5, 10, 20."
-          />
 
           <FieldNumber
             label="Dia limite para alterações de bolsistas valerem no mês corrente"
