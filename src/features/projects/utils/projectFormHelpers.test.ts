@@ -3,6 +3,8 @@ import type { FormState } from "../types/projectFormWizard"
 import { getEditalExecutionPeriod } from "./projectPeriod"
 import {
   canAdvanceFromStep,
+  getStepValidationErrors,
+  checkCanGoStep3,
   checkCanGoStep2,
   checkCanGoStep4,
   checkCanGoStep5,
@@ -112,12 +114,15 @@ describe("validações do cadastro de projeto", () => {
     expect(checkCanGoStep2(formWith({ tipo: null }))).toBe(false)
   })
 
-  it("exige ODS e cronograma para avançar do step 3", () => {
+  it("exige cronograma e permite avançar do step 3 sem ODS", () => {
     expect(checkCanGoStep4(initialState, true)).toBe(false)
+    expect(getStepValidationErrors(initialState, 3)).toEqual({
+      Cronograma: "Adicione pelo menos uma atividade ao cronograma.",
+    })
     expect(
       checkCanGoStep4(
         formWith({
-          objetivosDS: [{ id: 1, label: "ODS 1" }],
+          objetivosDS: [],
           cronograma: [
             { id: "c1", atividade: "A", mesInicio: 1, mesFim: 2 },
           ],
@@ -128,7 +133,7 @@ describe("validações do cadastro de projeto", () => {
     expect(
       checkCanGoStep4(
         formWith({
-          objetivosDS: [{ id: 1, label: "ODS 1" }],
+          objetivosDS: [],
           cronograma: [
             { id: "c1", atividade: "A", mesInicio: 1, mesFim: 2 },
           ],
@@ -183,5 +188,36 @@ describe("validações do cadastro de projeto", () => {
     expect(canAdvanceFromStep(1, flags)).toBe(true)
     expect(canAdvanceFromStep(2, flags)).toBe(false)
     expect(canAdvanceFromStep(6, flags)).toBe(true)
+  })
+})
+
+
+describe("avisos de pendências por etapa", () => {
+  it("identifica e atualiza os campos pendentes do Anexo II", () => {
+    const form = formWith({ titulo: "   ", email: "email inválido", periodoIni: "2026-03-01", periodoFim: "2026-02-01" })
+    const errors = getStepValidationErrors(form, 2)
+    expect(errors["Título"]).toBeTruthy()
+    expect(errors["Title"]).toBeTruthy()
+    expect(errors["E-mail de contato"]).toContain("válido")
+    expect(errors["Período do projeto"]).toContain("posterior")
+    form.gerais.titulo = "Projeto preenchido"
+    form.gerais.email = "nome@exemplo.com"
+    form.gerais.periodoFim = "2026-03-01"
+    const updated = getStepValidationErrors(form, 2)
+    expect(updated["Título"]).toBeUndefined()
+    expect(updated["E-mail de contato"]).toBeUndefined()
+    expect(updated["Período do projeto"]).toBeUndefined()
+    expect(checkCanGoStep3(form, true)).toBe(false)
+  })
+
+  it("explica exigências condicionais sem cobrar campos opcionais", () => {
+    const form = formWith({ tipo: "interno", linhaPesquisa: "Linha" })
+    form.interno = { ...form.interno, vinculadoGrupo: "Não", possuiProtocoloEtica: "Não" }
+    expect(getStepValidationErrors(form, 5)).toEqual({})
+    form.interno.vinculadoGrupo = "Sim"
+    form.interno.possuiProtocoloEtica = "Sim"
+    expect(Object.keys(getStepValidationErrors(form, 5))).toEqual(["Grupo de pesquisa", "Comitê de Ética", "Nº do protocolo"])
+    expect(getStepValidationErrors(form, 4)["Membros"]).toBeTruthy()
+    expect(getStepValidationErrors(form, 4)["Comprovante de aprovação/financiamento"]).toBeUndefined()
   })
 })

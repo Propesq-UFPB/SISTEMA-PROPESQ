@@ -1,3 +1,4 @@
+import { getStepValidationErrors } from "../utils/projectFormHelpers"
 import { ChevronRight, FileText } from "lucide-react"
 import type { EditalLookup } from "@/features/editais"
 import type {
@@ -49,6 +50,7 @@ export function WizardStep2Anexo({
   especialidadesLookup: KnowledgeAreaLookup[]
   submitError: string
 }>) {
+  const validationErrors = getStepValidationErrors(form, 2)
   return (
     <Card
       title="Passo 2 — Campos do Anexo II"
@@ -56,7 +58,7 @@ export function WizardStep2Anexo({
       icon={<FileText size={18} className="text-primary" />}
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Field label="Tipo do projeto" required>
+        <Field label="Tipo do projeto" error={validationErrors["Tipo do projeto"]} required>
           <input
             value={
               form.gerais.tipo ? formatProjectTypeLabel(form.gerais.tipo) : ""
@@ -67,7 +69,7 @@ export function WizardStep2Anexo({
           />
         </Field>
 
-        <Field label="Edital de pesquisa" required>
+        <Field label="Edital de pesquisa" error={validationErrors["Edital de pesquisa"]} required>
           <select
             value={form.gerais.editalPesquisa}
             onChange={(event) => {
@@ -99,7 +101,7 @@ export function WizardStep2Anexo({
           </select>
         </Field>
 
-        <Field label="Título" required hint="">
+        <Field label="Título" error={validationErrors["Título"]} required hint="">
           <input
             value={form.gerais.titulo}
             maxLength={TITLE_MAX}
@@ -119,7 +121,7 @@ export function WizardStep2Anexo({
           <CharacterCounter value={form.gerais.titulo} max={TITLE_MAX} />
         </Field>
 
-        <Field label="Title" required hint="">
+        <Field label="Title" error={validationErrors["Title"]} required hint="">
           <input
             value={form.gerais.title}
             maxLength={TITLE_MAX}
@@ -140,7 +142,7 @@ export function WizardStep2Anexo({
         </Field>
 
         <Field
-          label="Palavras-chave"
+          label="Palavras-chave" error={validationErrors["Palavras-chave"]}
           required
           hint="Separe por vírgula ou ponto e vírgula."
         >
@@ -161,7 +163,7 @@ export function WizardStep2Anexo({
         </Field>
 
         <Field
-          label="Keywords"
+          label="Keywords" error={validationErrors["Keywords"]}
           required
           hint="Separe por vírgula ou ponto e vírgula."
         >
@@ -182,7 +184,7 @@ export function WizardStep2Anexo({
         </Field>
 
         <div className="md:col-span-2">
-          <Field label="Resumo" required>
+          <Field label="Resumo" error={validationErrors["Resumo"]} required>
             <textarea
               value={form.gerais.descricaoResumida}
               maxLength={LONG_TEXT_MAX}
@@ -207,7 +209,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Abstract" required>
+          <Field label="Abstract" error={validationErrors["Abstract"]} required>
             <textarea
               value={form.gerais.abstract}
               maxLength={LONG_TEXT_MAX}
@@ -232,7 +234,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Introdução / justificativa" required>
+          <Field label="Introdução / justificativa" error={validationErrors["Introdução / justificativa"]} required>
             <textarea
               value={form.gerais.introducaoJustificativa}
               maxLength={LONG_TEXT_MAX}
@@ -257,7 +259,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Objetivos" required>
+          <Field label="Objetivos" error={validationErrors["Objetivos"]} required>
             <textarea
               value={form.gerais.objetivos}
               maxLength={LONG_TEXT_MAX}
@@ -282,7 +284,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Metodologia" required>
+          <Field label="Metodologia" error={validationErrors["Metodologia"]} required>
             <textarea
               value={form.gerais.metodologia}
               maxLength={LONG_TEXT_MAX}
@@ -307,7 +309,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Resultados esperados" required>
+          <Field label="Resultados esperados" error={validationErrors["Resultados esperados"]} required>
             <textarea
               value={form.gerais.resultadosEsperados}
               maxLength={LONG_TEXT_MAX}
@@ -332,7 +334,7 @@ export function WizardStep2Anexo({
         </div>
 
         <div className="md:col-span-2">
-          <Field label="Referências" required>
+          <Field label="Referências" error={validationErrors["Referências"]} required>
             <textarea
               value={form.gerais.referencias}
               maxLength={LONG_TEXT_MAX}
@@ -356,7 +358,7 @@ export function WizardStep2Anexo({
           </Field>
         </div>
 
-        <Field label="E-mail de contato" required>
+        <Field label="E-mail de contato" error={validationErrors["E-mail de contato"]} required>
           <input
             type="email"
             value={form.gerais.email}
@@ -375,7 +377,7 @@ export function WizardStep2Anexo({
         </Field>
 
         <Field
-          label="Período do projeto"
+          label="Período do projeto" error={validationErrors["Período do projeto"]}
           required
           hint="Defina início e fim do projeto."
         >
@@ -412,7 +414,7 @@ export function WizardStep2Anexo({
           </div>
         </Field>
 
-        <Field label="Unidade" required>
+        <Field label="Unidade" error={validationErrors["Unidade"]} required>
           <select
             value={form.gerais.unidade}
             onChange={(event) =>
@@ -435,7 +437,7 @@ export function WizardStep2Anexo({
           </select>
         </Field>
 
-        <Field label="Grande área" required>
+        <Field label="Grande área" error={validationErrors["Grande área"]} required>
           <select
             value={form.gerais.grandeArea}
             onChange={(event) =>
@@ -462,7 +464,7 @@ export function WizardStep2Anexo({
           </select>
         </Field>
 
-        <Field label="Área" required>
+        <Field label="Área" error={validationErrors["Área"]} required>
           <select
             value={form.gerais.area}
             onChange={(event) =>
@@ -496,7 +498,7 @@ export function WizardStep2Anexo({
           </select>
         </Field>
 
-        <Field label="Subárea">
+        <Field label="Subárea" error={validationErrors["Subárea"]}>
           <select
             value={form.gerais.subarea}
             onChange={(event) =>
@@ -528,7 +530,7 @@ export function WizardStep2Anexo({
           </select>
         </Field>
 
-        <Field label="Especialidade">
+        <Field label="Especialidade" error={validationErrors["Especialidade"]}>
           <select
             value={form.gerais.especialidade}
             onChange={(event) =>

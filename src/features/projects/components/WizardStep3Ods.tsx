@@ -1,3 +1,4 @@
+import { getStepValidationErrors } from "../utils/projectFormHelpers"
 import { CalendarDays, ChevronRight } from "lucide-react"
 import type { FormState, ODS } from "../types/projectFormWizard"
 import { cx } from "../utils/projectFormHelpers"
@@ -20,14 +21,15 @@ export function WizardStep3Ods({
   canGoStep4: boolean
   odsOptions: ODS[]
 }>) {
+  const validationErrors = getStepValidationErrors(form, 3)
   return (
     <Card
       title="Passo 3 — ODS e cronograma"
-      subtitle="Vincule pelo menos um ODS e cadastre o cronograma do projeto."
+      subtitle="Cadastre o cronograma do projeto e, se desejar, vincule ODS."
       icon={<CalendarDays size={18} className="text-primary" />}
     >
       <div className="space-y-6">
-        <Field label="Objetivos do Desenvolvimento Sustentável" required>
+        <Field label="Objetivos do Desenvolvimento Sustentável" hint="Opcional.">
           <OdsPicker
             value={form.gerais.objetivosDS}
             options={odsOptions}
@@ -44,7 +46,7 @@ export function WizardStep3Ods({
         </Field>
 
         <Field
-          label="Cronograma"
+          label="Cronograma" error={validationErrors["Cronograma"]}
           required
           hint="Informe a atividade e selecione a duração dentro do período do projeto."
         >
