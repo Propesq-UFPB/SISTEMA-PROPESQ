@@ -20,7 +20,9 @@ import {
 import { Link } from "react-router-dom";
 import type { StatusEdital } from "@/features/editais/types/edital";
 import type { EditalFormModel } from "./useEditalForm";
-import { YesNoField } from "./EditalFormFields";
+import { EditalValidationField, YesNoField } from "./EditalFormFields";
+
+import { parseDecimal, parseInteger } from "./editalFormLogic";
 
 function pdfSelectionTitle(
   file: File | null,
@@ -150,6 +152,7 @@ function EditalPdfSection({ form }: Readonly<{ form: EditalFormModel }>) {
             </label>
           </div>
 
+          <EditalValidationField error={!form.readOnly && !form.hasPdf && "Faça upload do PDF do edital para publicar."} />
           {form.fileError && <p className="text-sm text-red-600">{form.fileError}</p>}
         </div>
 
@@ -171,18 +174,20 @@ function EditalDataSection({ form }: Readonly<{ form: EditalFormModel }>) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Ano do Edital <span className="text-red-500">*</span>
-              </span>
-              <input
-                value={form.editalYear}
-                onChange={(e) => form.setEditalYear(e.target.value)}
-                inputMode="numeric"
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Ex.: 2026"
-              />
-            </label>
+            <EditalValidationField error={!form.readOnly && (!form.editalYear.trim() && "Informe o ano do edital.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Ano do Edital <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={form.editalYear}
+                  onChange={(e) => form.setEditalYear(e.target.value)}
+                  inputMode="numeric"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Ex.: 2026"
+                />
+              </label>
+            </EditalValidationField>
 
             <label className="text-sm">
               <span className="block text-xs text-neutral mb-1">Código</span>
@@ -206,17 +211,19 @@ function EditalDataSection({ form }: Readonly<{ form: EditalFormModel }>) {
               </p>
             </label>
 
-            <label className="text-sm md:col-span-2">
-              <span className="block text-xs text-neutral mb-1">
-                Descrição <span className="text-red-500">*</span>
-              </span>
-              <input
-                value={form.descricao}
-                onChange={(e) => form.setDescricao(e.target.value)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Ex.: PIBIC 2026"
-              />
-            </label>
+            <EditalValidationField className="md:col-span-2" error={!form.readOnly && (!form.descricao.trim() && "Informe a descrição do edital.")}>
+              <label className="text-sm md:col-span-2">
+                <span className="block text-xs text-neutral mb-1">
+                  Descrição <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={form.descricao}
+                  onChange={(e) => form.setDescricao(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Ex.: PIBIC 2026"
+                />
+              </label>
+            </EditalValidationField>
           </div>
         </div>
 
@@ -255,6 +262,7 @@ function EditalPeriodsSection({ form }: Readonly<{ form: EditalFormModel }>) {
                   className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
+              <EditalValidationField error={!form.readOnly && (!form.submissionStart || !form.submissionEnd) && "Informe o período de submissões."} />
               {form.submissionDateError && (
                 <p className="text-xs text-red-600 mt-1">
                   {form.submissionDateError}
@@ -282,6 +290,7 @@ function EditalPeriodsSection({ form }: Readonly<{ form: EditalFormModel }>) {
                   className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
+              <EditalValidationField error={!form.readOnly && (!form.executionStart || !form.executionEnd) && "Informe o período de execução do projeto."} />
               {form.executionDateError && (
                 <p className="text-xs text-red-600 mt-1">
                   {form.executionDateError}
@@ -309,106 +318,85 @@ function EditalClassificationSection({ form }: Readonly<{ form: EditalFormModel 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Titulação mínima para a solicitação de cotas{" "}
-                <span className="text-red-500">*</span>
-              </span>
-              <select
-                value={form.titulacaoMinima}
-                onChange={(e) => form.setTitulacaoMinima(e.target.value)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">-- SELECIONE --</option>
-                <option value="GRADUACAO">Graduação</option>
-                <option value="ESPECIALIZACAO">Especialização</option>
-                <option value="MESTRADO">Mestrado</option>
-                <option value="DOUTORADO">Doutorado</option>
-              </select>
-            </label>
+            <EditalValidationField error={!form.readOnly && (!form.titulacaoMinima && "Informe a titulação mínima para solicitação de cotas.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Titulação mínima para a solicitação de cotas{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+                <select
+                  value={form.titulacaoMinima}
+                  onChange={(e) => form.setTitulacaoMinima(e.target.value)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">-- SELECIONE --</option>
+                  <option value="GRADUACAO">Graduação</option>
+                  <option value="ESPECIALIZACAO">Especialização</option>
+                  <option value="MESTRADO">Mestrado</option>
+                  <option value="DOUTORADO">Doutorado</option>
+                </select>
+              </label>
+            </EditalValidationField>
 
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Período de Cota <span className="text-red-500">*</span>
-              </span>
-              <select
-                value={form.periodoCota}
-                onChange={(e) => form.setPeriodoCota(e.target.value)}
-                disabled={form.cotaBolsaLoading || Boolean(form.cotaBolsaError)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-              >
-                <option value="">
-                  {form.cotaBolsaLoading ? "Carregando..." : "-- SELECIONE --"}
-                </option>
-                {!form.cotaBolsaLoading &&
-                  !form.cotaBolsaError &&
-                  form.cotaBolsaOptions.length === 0 && (
-                    <option value="" disabled>
-                      Cadastre uma cota bolsa no backend
+            <EditalValidationField error={!form.readOnly && (!form.periodoCota && "Selecione o período de cota.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Período de Cota <span className="text-red-500">*</span>
+                </span>
+                <select
+                  value={form.periodoCota}
+                  onChange={(e) => form.setPeriodoCota(e.target.value)}
+                  disabled={form.cotaBolsaLoading || Boolean(form.cotaBolsaError)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                >
+                  <option value="">
+                    {form.cotaBolsaLoading ? "Carregando..." : "-- SELECIONE --"}
+                  </option>
+                  {!form.cotaBolsaLoading &&
+                    !form.cotaBolsaError &&
+                    form.cotaBolsaOptions.length === 0 && (
+                      <option value="" disabled>
+                        Cadastre uma cota bolsa no backend
+                      </option>
+                    )}
+                  {form.cotaBolsaOptions.map((opt) => (
+                    <option key={opt.id} value={String(opt.id)}>
+                      {opt.name}
                     </option>
+                  ))}
+                </select>
+                <LookupError error={form.cotaBolsaError} onRetry={form.loadCotaBolsaOptions} />
+              </label>
+            </EditalValidationField>
+
+            <EditalValidationField error={!form.readOnly && (!form.tipoEdital && "Selecione o tipo de edital.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Tipo Edital <span className="text-red-500">*</span>
+                </span>
+                <select
+                  value={form.tipoEdital}
+                  onChange={(e) => form.setTipoEdital(e.target.value)}
+                  disabled={form.tipoEditalLoading || Boolean(form.tipoEditalError)}
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                >
+                  {form.tipoEditalLoading && (
+                    <option value={form.tipoEdital}>Carregando...</option>
                   )}
-                {form.cotaBolsaOptions.map((opt) => (
-                  <option key={opt.id} value={String(opt.id)}>
-                    {opt.name}
-                  </option>
-                ))}
-              </select>
-              <LookupError error={form.cotaBolsaError} onRetry={form.loadCotaBolsaOptions} />
-            </label>
-
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Tipo Edital <span className="text-red-500">*</span>
-              </span>
-              <select
-                value={form.tipoEdital}
-                onChange={(e) => form.setTipoEdital(e.target.value)}
-                disabled={form.tipoEditalLoading || Boolean(form.tipoEditalError)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-              >
-                {form.tipoEditalLoading && (
-                  <option value={form.tipoEdital}>Carregando...</option>
-                )}
-                {!form.tipoEditalLoading && form.tipoEditalOptions.length === 0 && (
-                  <option value="PESQUISA">Pesquisa</option>
-                )}
-                {form.tipoEditalOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.name}
-                  </option>
-                ))}
-              </select>
-              <LookupError error={form.tipoEditalError} onRetry={form.loadTipoEditalOptions} />
-            </label>
-
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Categoria <span className="text-red-500">*</span>
-              </span>
-              <select
-                value={form.categoria}
-                onChange={(e) => form.setCategoria(e.target.value)}
-                disabled={form.categoriaLoading || Boolean(form.categoriaError)}
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-              >
-                <option value="">
-                  {form.categoriaLoading ? "Carregando..." : "-- SELECIONE --"}
-                </option>
-                {!form.categoriaLoading &&
-                  !form.categoriaError &&
-                  form.categoriaOptions.length === 0 && (
-                    <option value="" disabled>
-                      Cadastre uma form.categoria
+                  {!form.tipoEditalLoading && form.tipoEditalOptions.length === 0 && (
+                    <option value="PESQUISA">Pesquisa</option>
+                  )}
+                  {form.tipoEditalOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
                     </option>
-                  )}
-                {form.categoriaOptions.map((opt) => (
-                  <option key={opt.id} value={String(opt.id)}>
-                    {opt.name}
-                  </option>
-                ))}
-              </select>
-              <LookupError error={form.categoriaError} onRetry={form.loadCategoriaOptions} />
-            </label>
+                  ))}
+                </select>
+                <LookupError error={form.tipoEditalError} onRetry={form.loadTipoEditalOptions} />
+              </label>
+            </EditalValidationField>
+
+
           </div>
         </div>
 
@@ -430,31 +418,35 @@ function EditalLimitsSection({ form }: Readonly<{ form: EditalFormModel }>) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Limite de solicitações de projetos por orientador{" "}
-                <span className="text-red-500">*</span>
-              </span>
-              <input
-                value={form.limiteProjetosOrientador}
-                onChange={(e) => form.setLimiteProjetosOrientador(e.target.value)}
-                inputMode="numeric"
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
+            <EditalValidationField error={!form.readOnly && (!form.limiteProjetosOrientador.trim() ? "Informe o limite de solicitações de projetos por orientador." : parseInteger(form.limiteProjetosOrientador) < 0 && "O limite de projetos não pode ser negativo.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Limite de solicitações de projetos por orientador{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={form.limiteProjetosOrientador}
+                  onChange={(e) => form.setLimiteProjetosOrientador(e.target.value)}
+                  inputMode="numeric"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+            </EditalValidationField>
 
-            <label className="text-sm">
-              <span className="block text-xs text-neutral mb-1">
-                Limite de Planos de trabalho por orientador{" "}
-                <span className="text-red-500">*</span>
-              </span>
-              <input
-                value={form.limitePlanosOrientador}
-                onChange={(e) => form.setLimitePlanosOrientador(e.target.value)}
-                inputMode="numeric"
-                className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
+            <EditalValidationField error={!form.readOnly && (!form.limitePlanosOrientador.trim() ? "Informe o limite de planos de trabalho por orientador." : parseInteger(form.limitePlanosOrientador) < 0 && "O limite de planos não pode ser negativo.")}>
+              <label className="text-sm">
+                <span className="block text-xs text-neutral mb-1">
+                  Limite de Planos de trabalho por orientador{" "}
+                  <span className="text-red-500">*</span>
+                </span>
+                <input
+                  value={form.limitePlanosOrientador}
+                  onChange={(e) => form.setLimitePlanosOrientador(e.target.value)}
+                  inputMode="numeric"
+                  className="w-full border border-neutral-light rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+            </EditalValidationField>
           </div>
         </div>
 
@@ -616,115 +608,123 @@ function EditalDistributionSection({ form }: Readonly<{ form: EditalFormModel }>
                         id={contentId}
                         className="grid grid-cols-1 gap-3 border-t border-neutral-light bg-white p-4 md:grid-cols-2"
                       >
-                        <label className="text-sm">
-                          <span className="mb-1 block text-xs text-neutral">
-                            Tipo da bolsa <span className="text-red-500">*</span>
-                          </span>
-                          <select
-                            value={distribution.tipoBolsa}
-                            onChange={(e) =>
-                              form.updateQuotaDistribution(
-                                distribution.id,
-                                "tipoBolsa",
-                                e.target.value,
-                              )
-                            }
-                            disabled={
-                              form.bolsaLoading || Boolean(form.bolsaError)
-                            }
-                            className="w-full rounded-lg border border-neutral-light bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-                          >
-                            <option value="">
-                              {form.bolsaLoading
-                                ? "Carregando..."
-                                : "-- SELECIONE --"}
-                            </option>
+                        <EditalValidationField error={!form.readOnly && (!distribution.tipoBolsa && "Selecione o tipo da bolsa.")}>
+                          <label className="text-sm">
+                            <span className="mb-1 block text-xs text-neutral">
+                              Tipo da bolsa <span className="text-red-500">*</span>
+                            </span>
+                            <select
+                              value={distribution.tipoBolsa}
+                              onChange={(e) =>
+                                form.updateQuotaDistribution(
+                                  distribution.id,
+                                  "tipoBolsa",
+                                  e.target.value,
+                                )
+                              }
+                              disabled={
+                                form.bolsaLoading || Boolean(form.bolsaError)
+                              }
+                              className="w-full rounded-lg border border-neutral-light bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                            >
+                              <option value="">
+                                {form.bolsaLoading
+                                  ? "Carregando..."
+                                  : "-- SELECIONE --"}
+                              </option>
+                              {!form.bolsaLoading &&
+                                !form.bolsaError &&
+                                form.bolsaOptions.length === 0 && (
+                                  <option value="" disabled>
+                                    Cadastre um tipo de bolsa nas configurações
+                                  </option>
+                                )}
+                              {form.bolsaOptions.map(option => (
+                                <option key={option.id} value={String(option.id)}>
+                                  {option.descricao}
+                                </option>
+                              ))}
+                            </select>
+                            <LookupError
+                              error={form.bolsaError}
+                              onRetry={form.loadBolsaOptions}
+                            />
                             {!form.bolsaLoading &&
                               !form.bolsaError &&
                               form.bolsaOptions.length === 0 && (
-                                <option value="" disabled>
-                                  Cadastre um tipo de bolsa nas configurações
-                                </option>
+                                <p className="mt-1 text-xs text-neutral">
+                                  Nenhum tipo cadastrado.{" "}
+                                  <Link
+                                    to="/gestor/settings/scholarships"
+                                    className="text-primary font-semibold underline"
+                                  >
+                                    Ir para Entidades & Tipos de Bolsa
+                                  </Link>
+                                </p>
                               )}
-                            {form.bolsaOptions.map(option => (
-                              <option key={option.id} value={String(option.id)}>
-                                {option.descricao}
-                              </option>
-                            ))}
-                          </select>
-                          <LookupError
-                            error={form.bolsaError}
-                            onRetry={form.loadBolsaOptions}
-                          />
-                          {!form.bolsaLoading &&
-                            !form.bolsaError &&
-                            form.bolsaOptions.length === 0 && (
-                              <p className="mt-1 text-xs text-neutral">
-                                Nenhum tipo cadastrado.{" "}
-                                <Link
-                                  to="/gestor/settings/scholarships"
-                                  className="text-primary font-semibold underline"
-                                >
-                                  Ir para Entidades & Tipos de Bolsa
-                                </Link>
-                              </p>
-                            )}
-                        </label>
+                          </label>
+                        </EditalValidationField>
 
-                    <label className="text-sm">
-                      <span className="mb-1 block text-xs text-neutral">
-                        Quantidade <span className="text-red-500">*</span>
-                      </span>
-                      <input
-                        value={distribution.quantidade}
-                        onChange={(e) =>
-                          form.updateQuotaDistribution(
-                            distribution.id,
-                            "quantidade",
-                            e.target.value,
-                          )
-                        }
-                        inputMode="numeric"
-                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </label>
+                    <EditalValidationField error={!form.readOnly && (!distribution.quantidade.trim() ? "Informe a quantidade de cotas." : parseInteger(distribution.quantidade) <= 0 && "A quantidade de cotas deve ser maior que zero.")}>
+                      <label className="text-sm">
+                        <span className="mb-1 block text-xs text-neutral">
+                          Quantidade <span className="text-red-500">*</span>
+                        </span>
+                        <input
+                          value={distribution.quantidade}
+                          onChange={(e) =>
+                            form.updateQuotaDistribution(
+                              distribution.id,
+                              "quantidade",
+                              e.target.value,
+                            )
+                          }
+                          inputMode="numeric"
+                          className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </label>
+                    </EditalValidationField>
 
-                    <label className="text-sm">
-                      <span className="mb-1 block text-xs text-neutral">
-                        FPPI Mínimo <span className="text-red-500">*</span>
-                      </span>
-                      <input
-                        value={distribution.fppiMin}
-                        onChange={(e) =>
-                          form.updateQuotaDistribution(
-                            distribution.id,
-                            "fppiMin",
-                            e.target.value,
-                          )
-                        }
-                        inputMode="decimal"
-                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </label>
+                    <EditalValidationField error={!form.readOnly && (!distribution.fppiMin.trim() ? "Informe o FPPI mínimo." : parseDecimal(distribution.fppiMin) <= 0 && "O FPPI mínimo deve ser maior que zero.")}>
+                      <label className="text-sm">
+                        <span className="mb-1 block text-xs text-neutral">
+                          FPPI Mínimo <span className="text-red-500">*</span>
+                        </span>
+                        <input
+                          value={distribution.fppiMin}
+                          onChange={(e) =>
+                            form.updateQuotaDistribution(
+                              distribution.id,
+                              "fppiMin",
+                              e.target.value,
+                            )
+                          }
+                          inputMode="decimal"
+                          className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </label>
+                    </EditalValidationField>
 
-                    <label className="text-sm">
-                      <span className="mb-1 block text-xs text-neutral">
-                        Média Mínima dos Projetos{" "}
-                        <span className="text-red-500">*</span>
-                      </span>
-                      <input
-                        value={distribution.mediaMinProj}
-                        onChange={(e) =>
-                          form.updateQuotaDistribution(
-                            distribution.id,
-                            "mediaMinProj",
-                            e.target.value,
-                          )
-                        }
-                        inputMode="decimal"
-                        className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </label>
+                    <EditalValidationField error={!form.readOnly && (!distribution.mediaMinProj.trim() ? "Informe a média mínima dos projetos." : parseDecimal(distribution.mediaMinProj) <= 0 && "A média mínima dos projetos deve ser maior que zero.")}>
+                      <label className="text-sm">
+                        <span className="mb-1 block text-xs text-neutral">
+                          Média Mínima dos Projetos{" "}
+                          <span className="text-red-500">*</span>
+                        </span>
+                        <input
+                          value={distribution.mediaMinProj}
+                          onChange={(e) =>
+                            form.updateQuotaDistribution(
+                              distribution.id,
+                              "mediaMinProj",
+                              e.target.value,
+                            )
+                          }
+                          inputMode="decimal"
+                          className="w-full rounded-lg border border-neutral-light px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </label>
+                    </EditalValidationField>
                       </div>
                     )}
                   </div>

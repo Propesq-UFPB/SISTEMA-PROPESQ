@@ -83,7 +83,6 @@ export type Edital = {
   edital_para_voluntarios: boolean;
   apenas_colab_vol_cadastra_plano: boolean;
   prof_subst_cadastra_proj: boolean;
-  categoria: EditalCategoria;
   cota_bolsa?: EditalCotaBolsa | null;
   periodo_submissoes: PeriodoEdital;
   periodo_execucao_rel: PeriodoEdital;
@@ -141,7 +140,6 @@ export type CreateEditalPayload = {
   edital_para_voluntarios: boolean;
   apenas_colab_vol_cadastra_plano: boolean;
   prof_subst_cadastra_proj: boolean;
-  categoria_id: number;
   edital_cota_distribuicao?: EditalCotaDistribuicaoPayload[];
   periodo_submissao: PeriodoEditalPayload;
   periodo_execucao: PeriodoEditalPayload;
@@ -165,7 +163,6 @@ export type UpdateEditalPayload = {
   edital_para_voluntarios?: boolean;
   apenas_colab_vol_cadastra_plano?: boolean;
   prof_subst_cadastra_proj?: boolean;
-  categoria_id?: number;
   edital_cota_distribuicao?: EditalCotaDistribuicaoPayload[];
   periodo_submissao?: PeriodoEditalPayload;
   periodo_execucao?: PeriodoEditalPayload;

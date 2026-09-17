@@ -49,7 +49,6 @@ export type EditalFormValues = {
   titulacaoMinima: string;
   periodoCota: string;
   tipoEdital: string;
-  categoria: string;
   limiteProjetosOrientador: string;
   limitePlanosOrientador: string;
   editalVoluntarios: YesNo;
@@ -77,7 +76,6 @@ export type CreateCallValidationInput = Readonly<{
   titulacaoMinima: string;
   periodoCota: string;
   tipoEdital: string;
-  categoria: string;
   limiteProjetosOrientador: string;
   limitePlanosOrientador: string;
   distribuicaoCotasBolsas: YesNo;
@@ -104,7 +102,6 @@ export function emptyEditalFormValues(
     titulacaoMinima: "",
     periodoCota: "",
     tipoEdital: "PESQUISA",
-    categoria: "",
     limiteProjetosOrientador: "0",
     limitePlanosOrientador: "0",
     editalVoluntarios: "NAO",
@@ -266,7 +263,6 @@ export function collectCreateErrors(
   );
   pushIf(errs, !input.periodoCota, "Selecione o período de cota.");
   pushIf(errs, !input.tipoEdital, "Selecione o tipo de edital.");
-  pushIf(errs, !input.categoria, "Selecione a categoria do edital.");
   pushIf(
     errs,
     !input.limiteProjetosOrientador.trim(),
@@ -335,7 +331,6 @@ function buildSharedPayload(values: EditalFormValues) {
     prof_subst_cadastra_proj: yesNoToBool(
       values.professorSubstitutoCadastraProjeto,
     ),
-    categoria_id: parseInteger(values.categoria),
     edital_cota_distribuicao: buildCotaRows(values),
     periodo_submissao: {
       inicio: toIsoDateTime(values.submissionStart),
@@ -384,7 +379,6 @@ export function hydrateEditalForm(edital: Edital): EditalFormValues {
     titulacaoMinima: edital.titulacao_min,
     periodoCota: String(edital.cota_bolsa?.id ?? ""),
     tipoEdital: edital.tipo,
-    categoria: String(edital.categoria.id),
     limiteProjetosOrientador: String(edital.limite_solicitacoes_orientador),
     limitePlanosOrientador: String(edital.limite_planos_orientador),
     editalVoluntarios: boolToYesNo(edital.edital_para_voluntarios),
@@ -437,7 +431,6 @@ export function validationInputFromValues(
     titulacaoMinima: values.titulacaoMinima,
     periodoCota: values.periodoCota,
     tipoEdital: values.tipoEdital,
-    categoria: values.categoria,
     limiteProjetosOrientador: values.limiteProjetosOrientador,
     limitePlanosOrientador: values.limitePlanosOrientador,
     distribuicaoCotasBolsas: values.distribuicaoCotasBolsas,

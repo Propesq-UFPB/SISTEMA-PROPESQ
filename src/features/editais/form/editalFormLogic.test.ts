@@ -32,7 +32,6 @@ function fixture(overrides: Partial<Edital> = {}): Edital {
     edital_para_voluntarios: true,
     apenas_colab_vol_cadastra_plano: false,
     prof_subst_cadastra_proj: false,
-    categoria: { id: 5, denominacao: "IC" },
     cota_bolsa: { id: 7, codigo: "C1", descricao: "2026" },
     periodo_submissoes: {
       id: 1,
@@ -157,7 +156,6 @@ describe("payloads", () => {
     values.executionEnd = "2027-03-31";
     values.titulacaoMinima = "DOUTORADO";
     values.periodoCota = "7";
-    values.categoria = "5";
 
     const payload = buildCreatePayload(values, "RASCUNHO");
 
@@ -176,7 +174,6 @@ describe("payloads", () => {
     expect(payload.descricao).toBe("Edital PIBIC");
     expect(payload.ano).toBe(2026);
     expect(payload.tipo).toBe("PESQUISA");
-    expect(payload.categoria_id).toBe(5);
     expect(payload.cota_bolsa_id).toBe(7);
     expect(payload.edital_para_voluntarios).toBe(true);
     expect(payload.periodo_execucao?.inicio).toBe(
@@ -268,5 +265,14 @@ describe("assertPdfFile", () => {
     const file = new File(["x"], "big.pdf", { type: "application/pdf" });
     Object.defineProperty(file, "size", { value: 26 * 1024 * 1024 });
     expect(assertPdfFile(file)).toMatch(/Arquivo muito grande/);
+  });
+});
+
+
+describe("edital sem categoria", () => {
+  it("não envia categoria no cadastro nem na edição", () => {
+    const values = hydrateEditalForm(fixture());
+    expect(buildCreatePayload(values, "RASCUNHO")).not.toHaveProperty("categoria_id");
+    expect(buildUpdatePayload(values, "RASCUNHO")).not.toHaveProperty("categoria_id");
   });
 });

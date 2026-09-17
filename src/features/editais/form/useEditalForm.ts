@@ -6,10 +6,6 @@ import {
   type ScholarshipLookup,
 } from "@/features/settings/api/scholarshipSettingsService";
 import {
-  categorySettingsService,
-  type CategoryLookup,
-} from "@/features/settings/api/categorySettingsService";
-import {
   academicUnitService,
   type AcademicUnitLookup,
 } from "@/features/settings/api/academicUnitService";
@@ -154,8 +150,6 @@ export type EditalFormModel = {
   setPeriodoCota: (value: string) => void;
   tipoEdital: string;
   setTipoEdital: (value: string) => void;
-  categoria: string;
-  setCategoria: (value: string) => void;
   limiteProjetosOrientador: string;
   setLimiteProjetosOrientador: (value: string) => void;
   limitePlanosOrientador: string;
@@ -198,10 +192,6 @@ export type EditalFormModel = {
   tipoEditalLoading: boolean;
   tipoEditalError: string | null;
   loadTipoEditalOptions: () => Promise<void>;
-  categoriaOptions: CategoryLookup[];
-  categoriaLoading: boolean;
-  categoriaError: string | null;
-  loadCategoriaOptions: () => Promise<void>;
   unidadeOptions: AcademicUnitLookup[];
   unidadeLoading: boolean;
   unidadeError: string | null;
@@ -267,7 +257,6 @@ export function useEditalForm({
   const [titulacaoMinima, setTitulacaoMinima] = useState(seed.titulacaoMinima);
   const [periodoCota, setPeriodoCota] = useState(seed.periodoCota);
   const [tipoEdital, setTipoEdital] = useState(seed.tipoEdital);
-  const [categoria, setCategoria] = useState(seed.categoria);
   const [limiteProjetosOrientador, setLimiteProjetosOrientador] = useState(
     seed.limiteProjetosOrientador,
   );
@@ -335,10 +324,6 @@ export function useEditalForm({
     () => editalService.typeLookup(),
     "Não foi possível carregar os tipos de edital.",
   );
-  const categoriaLoader = useLookupLoader(
-    () => categorySettingsService.lookup(),
-    "Não foi possível carregar as categorias.",
-  );
   const unidadeLoader = useLookupLoader(
     () => academicUnitService.lookup(),
     "Não foi possível carregar as unidades acadêmicas.",
@@ -399,7 +384,6 @@ export function useEditalForm({
         titulacaoMinima,
         periodoCota,
         tipoEdital,
-        categoria,
         limiteProjetosOrientador,
         limitePlanosOrientador,
         distribuicaoCotasBolsas,
@@ -417,7 +401,6 @@ export function useEditalForm({
       titulacaoMinima,
       periodoCota,
       tipoEdital,
-      categoria,
       limiteProjetosOrientador,
       limitePlanosOrientador,
       distribuicaoCotasBolsas,
@@ -462,7 +445,6 @@ export function useEditalForm({
       titulacaoMinima,
       periodoCota,
       tipoEdital,
-      categoria,
       limiteProjetosOrientador,
       limitePlanosOrientador,
       editalVoluntarios,
@@ -490,7 +472,6 @@ export function useEditalForm({
     titulacaoMinima,
     periodoCota,
     tipoEdital,
-    categoria,
     limiteProjetosOrientador,
     limitePlanosOrientador,
     editalVoluntarios,
@@ -732,8 +713,6 @@ export function useEditalForm({
     setPeriodoCota,
     tipoEdital,
     setTipoEdital,
-    categoria,
-    setCategoria,
     limiteProjetosOrientador,
     setLimiteProjetosOrientador,
     limitePlanosOrientador,
@@ -772,10 +751,6 @@ export function useEditalForm({
     tipoEditalLoading: tipoEditalLoader.loading,
     tipoEditalError: tipoEditalLoader.error,
     loadTipoEditalOptions: tipoEditalLoader.reload,
-    categoriaOptions: categoriaLoader.options,
-    categoriaLoading: categoriaLoader.loading,
-    categoriaError: categoriaLoader.error,
-    loadCategoriaOptions: categoriaLoader.reload,
     unidadeOptions: unidadeLoader.options,
     unidadeLoading: unidadeLoader.loading,
     unidadeError: unidadeLoader.error,
