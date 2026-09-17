@@ -182,7 +182,7 @@ export function WizardStep2Anexo({
         </Field>
 
         <div className="md:col-span-2">
-          <Field label="Descrição resumida" required>
+          <Field label="Resumo" required>
             <textarea
               value={form.gerais.descricaoResumida}
               maxLength={LONG_TEXT_MAX}
@@ -196,7 +196,7 @@ export function WizardStep2Anexo({
                 }))
               }
               className={textareaClassName}
-              placeholder="Apresente uma descrição resumida do projeto."
+              placeholder="Apresente o resumo do projeto."
             />
 
             <CharacterCounter
