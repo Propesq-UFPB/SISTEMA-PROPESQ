@@ -276,3 +276,26 @@ describe("edital sem categoria", () => {
     expect(buildUpdatePayload(values, "RASCUNHO")).not.toHaveProperty("categoria_id");
   });
 });
+
+
+describe("limites de solicitações", () => {
+  it.each(["-1", "1.5", "abc"])("rejeita limites inválidos: %s", value => {
+    const values = hydrateEditalForm(fixture());
+    values.limiteProjetosOrientador = value;
+    values.limitePlanosOrientador = value;
+    const errors = collectCreateErrors(validationInputFromValues(values, "", ""));
+    expect(errors).toContain("O limite de cotas deve ser um inteiro não negativo.");
+    expect(errors).toContain("O limite de planos deve ser um inteiro não negativo.");
+  });
+
+  it.each(["0", "3"])("preserva limites válidos no cadastro e alteração: %s", value => {
+    const values = hydrateEditalForm(fixture());
+    values.limiteProjetosOrientador = value;
+    values.limitePlanosOrientador = value;
+    expect(collectCreateErrors(validationInputFromValues(values, "", ""))).toEqual([]);
+    for (const payload of [buildCreatePayload(values, "RASCUNHO"), buildUpdatePayload(values, "RASCUNHO")]) {
+      expect(payload.limite_solicitacoes_orientador).toBe(Number(value));
+      expect(payload.limite_planos_orientador).toBe(Number(value));
+    }
+  });
+});

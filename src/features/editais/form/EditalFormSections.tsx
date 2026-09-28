@@ -418,10 +418,10 @@ function EditalLimitsSection({ form }: Readonly<{ form: EditalFormModel }>) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <EditalValidationField error={!form.readOnly && (!form.limiteProjetosOrientador.trim() ? "Informe o limite de solicitações de projetos por orientador." : parseInteger(form.limiteProjetosOrientador) < 0 && "O limite de projetos não pode ser negativo.")}>
+            <EditalValidationField error={!form.readOnly && (!form.limiteProjetosOrientador.trim() ? "Informe o limite de solicitações de cotas por orientador." : (!Number.isSafeInteger(Number(form.limiteProjetosOrientador)) || Number(form.limiteProjetosOrientador) < 0) && "O limite de cotas deve ser um inteiro não negativo.")}>
               <label className="text-sm">
                 <span className="block text-xs text-neutral mb-1">
-                  Limite de solicitações de projetos por orientador{" "}
+                  Limite de solicitações de cotas por orientador{" "}
                   <span className="text-red-500">*</span>
                 </span>
                 <input
@@ -433,10 +433,10 @@ function EditalLimitsSection({ form }: Readonly<{ form: EditalFormModel }>) {
               </label>
             </EditalValidationField>
 
-            <EditalValidationField error={!form.readOnly && (!form.limitePlanosOrientador.trim() ? "Informe o limite de planos de trabalho por orientador." : parseInteger(form.limitePlanosOrientador) < 0 && "O limite de planos não pode ser negativo.")}>
+            <EditalValidationField error={!form.readOnly && (!form.limitePlanosOrientador.trim() ? "Informe o limite de planos de trabalho por orientador." : (!Number.isSafeInteger(Number(form.limitePlanosOrientador)) || Number(form.limitePlanosOrientador) < 0) && "O limite de planos deve ser um inteiro não negativo.")}>
               <label className="text-sm">
                 <span className="block text-xs text-neutral mb-1">
-                  Limite de Planos de trabalho por orientador{" "}
+                  Limite de solicitações de planos de trabalho por orientador{" "}
                   <span className="text-red-500">*</span>
                 </span>
                 <input

@@ -266,7 +266,7 @@ export function collectCreateErrors(
   pushIf(
     errs,
     !input.limiteProjetosOrientador.trim(),
-    "Informe o limite de solicitações de projetos por orientador.",
+    "Informe o limite de solicitações de cotas por orientador.",
   );
   pushIf(
     errs,
@@ -275,13 +275,13 @@ export function collectCreateErrors(
   );
   pushIf(
     errs,
-    parseInteger(input.limiteProjetosOrientador) < 0,
-    "O limite de projetos não pode ser negativo.",
+    (!Number.isSafeInteger(Number(input.limiteProjetosOrientador)) || Number(input.limiteProjetosOrientador) < 0),
+    "O limite de cotas deve ser um inteiro não negativo.",
   );
   pushIf(
     errs,
-    parseInteger(input.limitePlanosOrientador) < 0,
-    "O limite de planos não pode ser negativo.",
+    (!Number.isSafeInteger(Number(input.limitePlanosOrientador)) || Number(input.limitePlanosOrientador) < 0),
+    "O limite de planos deve ser um inteiro não negativo.",
   );
 
   if (input.distribuicaoCotasBolsas === "SIM") {
@@ -311,11 +311,11 @@ function buildSharedPayload(values: EditalFormValues) {
     ano: parseInteger(values.editalYear) || yearNow(),
     titulacao_min: values.titulacaoMinima as TitulacaoMin,
     tipo: values.tipoEdital as TipoEdital,
-    limite_solicitacoes_orientador: parseInteger(
+    limite_solicitacoes_orientador: Number(
       values.limiteProjetosOrientador,
     ),
     cota_bolsa_id: parseInteger(values.periodoCota),
-    limite_planos_orientador: parseInteger(values.limitePlanosOrientador),
+    limite_planos_orientador: Number(values.limitePlanosOrientador),
     avaliacao_vigente: yesNoToBool(values.avaliacaoVigente),
     apenas_orient_coordena_plano: yesNoToBool(
       values.apenasCoordenadorOrientaPlano,
