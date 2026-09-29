@@ -29,7 +29,6 @@ export const modalidadesFiltro = ["Todas", ...modalidadesPlano] as const;
 export const emptyWorkPlanDraft: WorkPlanDraft = {
   id: "",
   bolsaId: "",
-  modalidade: "",
   titulo: "",
   title: "",
   solicitarAcaoAfirmativa: false,
@@ -85,7 +84,6 @@ export function mapApiPlan(plan: ApiWorkPlan): WorkPlanDraft {
   return {
     id: String(plan.id),
     bolsaId: plan.bolsa_id == null ? "" : String(plan.bolsa_id),
-    modalidade: (plan.modalidade || "") as WorkPlanModalidade | "",
     titulo: body?.titulo || `Plano de trabalho ${plan.id}`,
     title: body?.titulo || "",
     solicitarAcaoAfirmativa: plan.direcionamento_plano === "ACAO_AFIRMATIVA",
@@ -202,7 +200,6 @@ export function isDraftReadyToSave(
   return Boolean(
     hasProject &&
       Number.isSafeInteger(Number(draft.bolsaId)) && Number(draft.bolsaId) > 0 &&
-      draft.modalidade &&
       draft.titulo.trim() &&
       draft.title.trim() &&
       draft.periodoIni &&
@@ -229,7 +226,6 @@ export function buildCreateWorkPlanPayload(
 ): CreateWorkPlanPayload {
   return {
     pesquisa_id: Number(selectedProject.id),
-    modalidade: draft.modalidade,
     status: "RASCUNHO",
     bolsa_id: Number(draft.bolsaId),
     cronograma_id: Number(selectedProject.id),

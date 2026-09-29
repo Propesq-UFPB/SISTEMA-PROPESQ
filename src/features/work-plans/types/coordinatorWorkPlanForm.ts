@@ -37,7 +37,6 @@ export type CronogramaItem = {
 export type WorkPlanDraft = {
   bolsaId: string;
   id: string;
-  modalidade: WorkPlanModalidade | "";
   titulo: string;
   title: string;
   solicitarAcaoAfirmativa: boolean;

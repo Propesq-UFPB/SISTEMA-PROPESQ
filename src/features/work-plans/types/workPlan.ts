@@ -49,7 +49,6 @@ export type WorkPlan = {
 
 export type CreateWorkPlanPayload = {
   pesquisa_id: number
-  modalidade: string
   status: string
   bolsa_id: number
   cronograma_id: number

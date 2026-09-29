@@ -38,7 +38,6 @@ function draftFixture(overrides: Partial<WorkPlanDraft> = {}): WorkPlanDraft {
   return {
     id: "plano-1",
     bolsaId: "3",
-    modalidade: "PIBIC",
     titulo: "Título do plano",
     title: "Work plan title",
     solicitarAcaoAfirmativa: false,
@@ -175,11 +174,11 @@ describe("buildCreateWorkPlanPayload", () => {
   it("monta payload com shape esperada", () => {
     const payload = buildCreateWorkPlanPayload(
       projectFixture(),
-      draftFixture({ solicitarAcaoAfirmativa: true, modalidade: "PIVIC" }),
+      draftFixture({ solicitarAcaoAfirmativa: true }),
     );
 
     expect(payload.pesquisa_id).toBe(10);
-    expect(payload.modalidade).toBe("PIVIC");
+    expect(payload).not.toHaveProperty("modalidade");
     expect(payload.bolsa_id).toBe(3);
     expect(payload).not.toHaveProperty("tipo_bolsa");
     expect(payload.direcionamento_plano).toBe("ACAO_AFIRMATIVA");
@@ -238,7 +237,6 @@ describe("mapProject / mapApiPlan", () => {
 
     expect(mapped).toMatchObject({
       id: "7",
-      modalidade: "PIBIC",
       titulo: "Plano Y",
       introducaoJustificativa: "Intro",
       objetivos: "Obj",

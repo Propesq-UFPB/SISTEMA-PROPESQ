@@ -16,13 +16,11 @@ import {
 import type {
   SelectableProject,
   WorkPlanDraft,
-  WorkPlanModalidade,
 } from "@/features/work-plans/types/coordinatorWorkPlanForm";
 import {
   MAX_CHARS_ANEXO_II,
   cx,
   formatCronogramaDuration,
-  modalidadesPlano,
 } from "@/features/work-plans/utils/workPlanFormHelpers";
 import {
   AnexoTextarea,
@@ -103,7 +101,6 @@ export function WorkPlanDraftForm({
           <Info label="Código" value={selectedProject.codigo} />
           <Info label="Status" value={selectedProject.status} />
           <Info label="Edital" value={selectedProject.edital} />
-          <Info label="Modalidade" value={selectedProject.modalidadeBolsa} />
           <Info label="Coordenador" value={selectedProject.coordenador} />
           <Info label="Período" value={selectedProject.periodo} />
           <Info label="Centro" value={selectedProject.centro} />
@@ -144,7 +141,7 @@ export function WorkPlanDraftForm({
                     <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral">
                       <span className="inline-flex items-center gap-1 rounded-full bg-neutral/10 px-2 py-1">
                         <BookOpen size={12} />
-                        {plan.modalidade}
+                        {scholarships.find(bolsa => bolsa.id === Number(plan.bolsaId))?.descricao || "Bolsa não informada"}
                       </span>
 
                       <span className="inline-flex items-center gap-1 rounded-full bg-neutral/10 px-2 py-1">
@@ -222,26 +219,6 @@ export function WorkPlanDraftForm({
             {scholarshipsError && <p role="alert" className="text-sm text-red-700">{scholarshipsError} <button type="button" className="underline" onClick={() => void loadScholarships()}>Tentar novamente</button></p>}
             {!scholarshipsLoading && !scholarshipsError && scholarships.length === 0 && <p className="text-sm text-neutral">Nenhuma bolsa cadastrada.</p>}
           </Field>
-          <Field label="Modalidade" required>
-            <select
-              value={draft.modalidade}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  modalidade: event.target.value as WorkPlanModalidade,
-                }))
-              }
-              className={selectClassName}
-            >
-              <option value="">Selecione</option>
-              {modalidadesPlano.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </Field>
-
           <Field
             label="Solicitar Ação Afirmativa"
             hint="Marque esta opção quando desejar solicitar ação afirmativa para o plano."
