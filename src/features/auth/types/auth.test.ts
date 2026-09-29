@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest"
 import { isLegacyAdminRole, mapBackendRole } from "./auth"
 
 describe("mapBackendRole", () => {
+  it("mapeia DOCENTE para a área de coordenador", () => {
+    expect(mapBackendRole("DOCENTE")).toBe("COORDENADOR")
+  })
+
   it("mapeia GESTOR", () => {
     expect(mapBackendRole("GESTOR")).toBe("GESTOR")
   })

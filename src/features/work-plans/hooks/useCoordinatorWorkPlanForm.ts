@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import type { ScholarshipLookup } from "../types/workPlan";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { workPlanService } from "@/features/work-plans/api/workPlanService";
 import type {
@@ -21,6 +22,17 @@ import {
 
 export function useCoordinatorWorkPlanForm() {
   const navigate = useNavigate();
+  const [scholarships, setScholarships] = useState<ScholarshipLookup[]>([]);
+  const [scholarshipsLoading, setScholarshipsLoading] = useState(true);
+  const [scholarshipsError, setScholarshipsError] = useState("");
+  const loadScholarships = useCallback(async () => {
+    setScholarshipsLoading(true);
+    setScholarshipsError("");
+    try { setScholarships(await workPlanService.scholarshipLookup()); }
+    catch (error) { setScholarships([]); setScholarshipsError(resolveErrorMessage(error, "Não foi possível carregar as bolsas.")); }
+    finally { setScholarshipsLoading(false); }
+  }, []);
+  useEffect(() => { void loadScholarships(); }, [loadScholarships]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -113,12 +125,12 @@ export function useCoordinatorWorkPlanForm() {
 
   const canSavePlan = useMemo(
     () =>
-      isDraftReadyToSave(
+      !scholarshipsLoading && !scholarshipsError && scholarships.some(bolsa => bolsa.id === Number(draft.bolsaId)) && isDraftReadyToSave(
         draft,
         Boolean(selectedProject),
         cronogramaDentroDoPeriodo,
       ),
-    [cronogramaDentroDoPeriodo, draft, selectedProject],
+    [cronogramaDentroDoPeriodo, draft, selectedProject, scholarships, scholarshipsLoading, scholarshipsError],
   );
 
   function resetDraft() {
@@ -203,7 +215,7 @@ export function useCoordinatorWorkPlanForm() {
   }
 
   async function savePlan() {
-    if (!selectedProject || !canSavePlan) return;
+    if (saving || !selectedProject || !canSavePlan) return;
 
     setSaving(true);
     setSaveError("");
@@ -236,6 +248,7 @@ export function useCoordinatorWorkPlanForm() {
   }
 
   return {
+    scholarships, scholarshipsLoading, scholarshipsError, loadScholarships,
     saving,
     saved,
     loading,

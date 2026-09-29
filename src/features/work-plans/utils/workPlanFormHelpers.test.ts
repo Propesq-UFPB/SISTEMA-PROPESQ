@@ -37,6 +37,7 @@ function projectFixture(
 function draftFixture(overrides: Partial<WorkPlanDraft> = {}): WorkPlanDraft {
   return {
     id: "plano-1",
+    bolsaId: "3",
     modalidade: "PIBIC",
     titulo: "Título do plano",
     title: "Work plan title",
@@ -65,14 +66,14 @@ describe("matchesProjectFilters", () => {
     ).toBe(true);
   });
 
-  it("rejeita status não permitido", () => {
+  it("mantém projeto submetido que a API retornou como elegível", () => {
     expect(
       matchesProjectFilters(projectFixture({ status: "SUBMETIDO" }), {
         codigo: "",
         nome: "",
         modalidade: "Todas",
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("filtra por código, nome e modalidade", () => {
@@ -147,6 +148,9 @@ describe("isCronogramaDentroDoPeriodo", () => {
 });
 
 describe("isDraftReadyToSave", () => {
+  it.each(["", "0", "-1", "1.5", "abc"])("bloqueia bolsa inválida: %s", bolsaId => {
+    expect(isDraftReadyToSave(draftFixture({ bolsaId }), true, true)).toBe(false);
+  });
   it("pronto quando projeto + campos + cronograma ok", () => {
     expect(isDraftReadyToSave(draftFixture(), true, true)).toBe(true);
   });
@@ -176,7 +180,8 @@ describe("buildCreateWorkPlanPayload", () => {
 
     expect(payload.pesquisa_id).toBe(10);
     expect(payload.modalidade).toBe("PIVIC");
-    expect(payload.tipo_bolsa).toBe("VOLUNTARIO");
+    expect(payload.bolsa_id).toBe(3);
+    expect(payload).not.toHaveProperty("tipo_bolsa");
     expect(payload.direcionamento_plano).toBe("ACAO_AFIRMATIVA");
     expect(payload.corpo_plano_trabalho.titulo).toBe("Título do plano");
     expect(payload.atividades).toHaveLength(1);
@@ -212,7 +217,7 @@ describe("mapProject / mapApiPlan", () => {
       pesquisa_id: 10,
       modalidade: "PIBIC",
       status: "RASCUNHO",
-      tipo_bolsa: "BOLSISTA",
+      bolsa_id: 3,
       cronograma_id: 1,
       direcionamento_plano: "AMPLA_CONCORRENCIA",
       corpo_plano_trabalho: {

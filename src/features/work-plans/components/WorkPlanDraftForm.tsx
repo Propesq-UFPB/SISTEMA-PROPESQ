@@ -1,3 +1,4 @@
+import type { ScholarshipLookup } from "../types/workPlan";
 import React from "react";
 import {
   BookOpen,
@@ -34,6 +35,7 @@ import {
 } from "@/features/work-plans/components/formPrimitives";
 
 export function WorkPlanDraftForm({
+  scholarships, scholarshipsLoading, scholarshipsError, loadScholarships,
   selectedProject,
   existingPlans,
   draft,
@@ -58,6 +60,10 @@ export function WorkPlanDraftForm({
   clearCronograma,
   savePlan,
 }: Readonly<{
+  scholarships: ScholarshipLookup[];
+  scholarshipsLoading: boolean;
+  scholarshipsError: string;
+  loadScholarships: () => Promise<void>;
   selectedProject: SelectableProject;
   existingPlans: WorkPlanDraft[];
   draft: WorkPlanDraft;
@@ -208,6 +214,14 @@ export function WorkPlanDraftForm({
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Field label="Bolsa" required>
+            <select aria-label="Bolsa" value={draft.bolsaId} disabled={scholarshipsLoading || Boolean(scholarshipsError)} onChange={event => setDraft(current => ({ ...current, bolsaId: event.target.value }))} className={selectClassName}>
+              <option value="">{scholarshipsLoading ? "Carregando bolsas..." : "Selecione uma bolsa"}</option>
+              {scholarships.map(bolsa => <option key={bolsa.id} value={bolsa.id}>{bolsa.descricao}</option>)}
+            </select>
+            {scholarshipsError && <p role="alert" className="text-sm text-red-700">{scholarshipsError} <button type="button" className="underline" onClick={() => void loadScholarships()}>Tentar novamente</button></p>}
+            {!scholarshipsLoading && !scholarshipsError && scholarships.length === 0 && <p className="text-sm text-neutral">Nenhuma bolsa cadastrada.</p>}
+          </Field>
           <Field label="Modalidade" required>
             <select
               value={draft.modalidade}

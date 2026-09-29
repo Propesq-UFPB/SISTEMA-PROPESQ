@@ -31,6 +31,7 @@ export function mapBackendRole(role?: BackendRole | AppRole): AppRole {
     case "ALUNO":
     case "DISCENTE":
       return "DISCENTE"
+    case "DOCENTE":
     case "COORDENADOR":
       return "COORDENADOR"
     case "GESTOR":

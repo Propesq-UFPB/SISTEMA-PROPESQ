@@ -77,7 +77,7 @@ export default function WorkPlanDetailsPage({ backTo, canDelete = false }: Props
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
             <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-primary">{plan.modalidade}</span>
             <span className="rounded-full border border-neutral/20 bg-neutral/5 px-3 py-1 text-neutral">{plan.status}</span>
-            <span className="rounded-full border border-neutral/20 bg-neutral/5 px-3 py-1 text-neutral">{plan.tipo_bolsa}</span>
+            <span className="rounded-full border border-neutral/20 bg-neutral/5 px-3 py-1 text-neutral">{plan.bolsa?.descricao || (plan.bolsa_id ? `Bolsa ${plan.bolsa_id}` : "Sem bolsa")}</span>
           </div>
           <h1 className="mt-4 text-2xl font-bold text-primary">{body?.titulo || `Plano de trabalho ${plan.id}`}</h1>
           <div className="mt-5 grid gap-4 text-sm md:grid-cols-3">

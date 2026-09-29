@@ -24,6 +24,7 @@ export type SelectableProject = {
   status: ProjectStatus;
   modalidadeBolsa: WorkPlanModalidade;
   totalPlanos: number;
+  limitePlanos?: number;
 };
 
 export type CronogramaItem = {
@@ -34,6 +35,7 @@ export type CronogramaItem = {
 };
 
 export type WorkPlanDraft = {
+  bolsaId: string;
   id: string;
   modalidade: WorkPlanModalidade | "";
   titulo: string;
