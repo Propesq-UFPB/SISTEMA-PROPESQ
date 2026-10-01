@@ -66,6 +66,7 @@ export type UpdateWorkPlanPayload = Partial<Omit<CreateWorkPlanPayload, "corpo_p
 }
 
 export type WorkPlanListParams = {
+  pesquisa_id?: number
   limit?: number
   offset?: number
 }

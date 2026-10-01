@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, CalendarDays, FileText, FolderKanban, Trash2 } from "lucide-react"
+import { ArrowLeft, CalendarDays, FolderKanban, Trash2 } from "lucide-react"
 import { workPlanService } from "../api/workPlanService"
 import type { WorkPlan } from "../types/workPlan"
 
@@ -87,17 +87,24 @@ export default function WorkPlanDetailsPage({ backTo, canDelete = false }: Props
           </div>
         </section>
 
-        {[
-          ["Introdução e justificativa", body?.introducao],
-          ["Objetivos", body?.objetivos],
-          ["Metodologia", body?.metodologia],
-          ["Referências", body?.referencias],
-        ].map(([title, content]) => (
-          <section key={title} className="rounded-2xl border border-neutral/30 bg-white p-6 shadow-sm">
-            <h2 className="flex items-center gap-2 text-base font-bold text-primary"><FileText size={18} />{title}</h2>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-neutral">{content || "Não informado."}</p>
-          </section>
-        ))}
+        <section className="space-y-5 rounded-2xl border border-neutral/20 bg-white p-6">
+          <h2 className="text-lg font-bold text-primary">Corpo do plano de trabalho</h2>
+          {[
+            ["Introdução e justificativa", body?.introducao],
+            ["Objetivos", body?.objetivos],
+            ["Metodologia", body?.metodologia],
+            ["Referências", body?.referencias],
+          ].map(([title, content]) => (
+            <div key={title}>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-neutral/70">
+                {title}
+              </h3>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-neutral">
+                {content || "Não informado."}
+              </p>
+            </div>
+          ))}
+        </section>
 
         <section className="rounded-2xl border border-neutral/30 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-bold text-primary"><CalendarDays size={18} />Atividades e cronograma</h2>

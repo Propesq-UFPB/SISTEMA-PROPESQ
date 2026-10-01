@@ -43,6 +43,7 @@ export const workPlanService = {
       `${ENDPOINT}${buildQuery({
         limit: params.limit ?? 100,
         offset: params.offset ?? 0,
+        pesquisa_id: params.pesquisa_id,
       })}`,
     )
   },

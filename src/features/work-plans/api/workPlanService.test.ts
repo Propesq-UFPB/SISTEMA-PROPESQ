@@ -11,6 +11,11 @@ const request = vi.mocked(apiRequest)
 afterEach(() => vi.resetAllMocks())
 
 describe("interesse em planos", () => {
+  it("filtra os planos cadastrados pelo projeto selecionado", async () => {
+    request.mockResolvedValue({ results: [], total: 0 });
+    await workPlanService.list({ pesquisa_id: 7, limit: 10, offset: 20 });
+    expect(request).toHaveBeenCalledWith("/work-plans?limit=10&offset=20&pesquisa_id=7");
+  });
   it("carrega o lookup de bolsas com seus IDs e descrições", async () => {
     request.mockResolvedValue([{ id: 4, descricao: "PIBIC" }]);
     expect(await workPlanService.scholarshipLookup()).toEqual([{ id: 4, descricao: "PIBIC" }]);
