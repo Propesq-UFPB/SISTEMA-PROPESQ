@@ -563,6 +563,7 @@ export default function AppHeader() {
     "/gestor/avaliacao/avaliadores": [
       // { to: "/gestor/avaliacao", label: "Overview", icon: <FileSignature size={16} />, end: true },
       { to: "/gestor/avaliacao/avaliadores", label: "Avaliadores", icon: <Users size={16} />, end: true },
+      { to: "/gestor/avaliacao/criterios", label: "Critérios", icon: <ClipboardList size={16} />, end: true },
       { to: "/gestor/avaliacao/distribuicao", label: "Distribuição de Avaliações", icon: <GitBranch size={16} />, end: true },
       //{ to: "/gestor/avaliacao/consolidacao", label: "Consolidação de Avaliações", icon: <ClipboardCheck size={16} />, end: true },
       { to: "/gestor/avaliacao/ipi", label: "Relatório IPI", icon: <FileText size={16} />, end: true },
