@@ -32,6 +32,7 @@ import Dashboard from "./pages/gestor/Dashboard"
 import Evaluators from "./pages/gestor/avaliacao/Evaluators"
 import GestorEvaluationDistribution from "./pages/gestor/avaliacao/GestorEvaluationDistribution"
 import GestorIPIReport from "./pages/gestor/avaliacao/GestorIPIReport"
+import EvaluationCriteria from "./pages/gestor/avaliacao/EvaluationCriteria"
 
 import StudentReplacements from "./pages/gestor/monitoring/StudentReplacements"
 import ReportValidation from "./pages/gestor/monitoring/ReportValidation"
@@ -241,6 +242,7 @@ export default function App() {
         <Route path="/gestor/avaliacao/avaliadores" element={<Protected><Shell><Evaluators /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/distribuicao" element={<Protected><Shell><GestorEvaluationDistribution /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/ipi" element={<Protected><Shell><GestorIPIReport /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/criterios" element={<Protected><GestorProtected><Shell><EvaluationCriteria /></Shell></GestorProtected></Protected>} />
 
         <Route path="/gestor/resultados/ranking" element={<Protected><Shell><GestorFinalRanking /></Shell></Protected>} />
         <Route path="/gestor/resultados/quotas" element={<Protected><Shell><GestorCallQuotas /></Shell></Protected>} />
