@@ -30,6 +30,7 @@ import {
   Search,
   GitBranch,
   Gavel,
+  UserCheck,
 } from "lucide-react"
 
 import LogoImg from "@/utils/img/logo_propesq.png"
@@ -592,6 +593,7 @@ export default function AppHeader() {
       { to: "/gestor/settings/academic-units", label: "Unidades", icon: <Building2 size={16} />, end: true },
       { to: "/gestor/settings/roles", label: "Funções", icon: <BookUser size={16} />, end: true },
       { to: "/gestor/settings/user-types", label: "Usuários", icon: <Users size={16} />, end: true },
+      { to: "/gestor/settings/consultants", label: "Consultores", icon: <UserCheck size={16} />, end: true },
       { to: "/gestor/settings/parameters", label: "Parâmetros", icon: <Settings size={16} />, end: true },
     ],
   }

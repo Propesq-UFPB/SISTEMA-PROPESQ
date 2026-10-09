@@ -53,6 +53,7 @@ import ScholarshipEntities from "./pages/gestor/settings/ScholarshipEntities"
 import AcademicUnits from "./pages/gestor/settings/AcademicUnits"
 import RolesDictionary from "./pages/gestor/settings/RolesDictionary"
 import UserTypes from "./pages/gestor/settings/UserTypes"
+import Consultants from "./pages/gestor/settings/Consultants"
 
 import GestorProjectCommunication from "./pages/gestor/projetos/GestorProjectCommunication"
 import GestorResearchModuleParameters from "./pages/gestor/settings/Parameters"
@@ -263,6 +264,7 @@ export default function App() {
         <Route path="/gestor/settings/academic-units" element={<Protected><Shell><AcademicUnits /></Shell></Protected>} />
         <Route path="/gestor/settings/roles" element={<Protected><Shell><RolesDictionary /></Shell></Protected>} />
         <Route path="/gestor/settings/user-types" element={<Protected><Shell><UserTypes /></Shell></Protected>} />
+        <Route path="/gestor/settings/consultants" element={<Protected><GestorProtected><Shell><Consultants /></Shell></GestorProtected></Protected>} />
         <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorResearchModuleParameters /></Shell></Protected>} />
 
         <Route path="/gestor/projetos/comunicacao" element={<Protected><Shell><GestorProjectCommunication /></Shell></Protected>} />
