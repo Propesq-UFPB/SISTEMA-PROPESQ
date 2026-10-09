@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { editalService, type EditalLookup } from "@/features/editais"
 import type {
   Assignment,
   DistributableProject,
@@ -21,12 +22,45 @@ import {
 } from "../utils/evaluationDistributionHelpers"
 
 export function useGestorEvaluationDistribution() {
+  const [editais, setEditais] = useState<EditalLookup[]>([])
+  const [editaisLoading, setEditaisLoading] = useState(true)
+  const [editaisError, setEditaisError] = useState<string | null>(null)
+  const [selectedEditalId, setSelectedEditalId] = useState("")
   const [projects, setProjects] = useState<DistributableProject[]>(projectsMock)
   const [evaluators, setEvaluators] = useState<Evaluator[]>(evaluatorsMock)
   const [assignments, setAssignments] = useState<Assignment[]>(assignmentsMock)
   const [preview, setPreview] = useState<DistributionPreview | null>(null)
   const [selectedIssueProjectId, setSelectedIssueProjectId] =
     useState<number | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    editalService
+      .lookup()
+      .then((options) => {
+        if (active) setEditais(options)
+      })
+      .catch(() => {
+        if (active) setEditaisError("Não foi possível carregar os editais.")
+      })
+      .finally(() => {
+        if (active) setEditaisLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const selectedEdital =
+    editais.find((edital) => String(edital.id) === selectedEditalId) ?? null
+
+  function handleSelectEdital(id: string) {
+    setSelectedEditalId(id)
+    setPreview(null)
+    setSelectedIssueProjectId(null)
+  }
 
   const pendingProjects = projects.filter(
     (project) => project.status !== "DISTRIBUIDO",
@@ -161,6 +195,8 @@ export function useGestorEvaluationDistribution() {
   }
 
   function handleGenerateSmartPreview() {
+    if (!selectedEdital) return
+
     const nextPreview = buildSmartDistribution({
       projects,
       evaluators,
@@ -172,7 +208,7 @@ export function useGestorEvaluationDistribution() {
   }
 
   function handleConfirmPreview() {
-    if (!preview) return
+    if (!selectedEdital || !preview) return
 
     const today = new Date().toISOString().slice(0, 10)
 
@@ -311,6 +347,8 @@ export function useGestorEvaluationDistribution() {
   }
 
   function handleResendDeclined(assignmentId: number) {
+    if (!selectedEdital) return
+
     const declinedAssignment = assignments.find(
       (assignment) => assignment.id === assignmentId,
     )
@@ -374,6 +412,12 @@ export function useGestorEvaluationDistribution() {
   }
 
   return {
+    editais,
+    editaisLoading,
+    editaisError,
+    selectedEditalId,
+    selectedEdital,
+    handleSelectEdital,
     projects,
     evaluators,
     preview,
