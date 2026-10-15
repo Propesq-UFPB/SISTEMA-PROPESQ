@@ -6,7 +6,6 @@ export type ResearchModuleParameters = {
   maxProjectDurationMonths: number
   scholarshipChangeCutoffDay: number
   emailScholarshipChanges: string
-  emailInventionNotifications: string
   allowPartialReportsIC: boolean
   allowIndependentENICSummaries: boolean
   enicSummariesPerReviewer: number

@@ -230,80 +230,84 @@ export function isSimpleEmail(value: string): boolean {
   )
 }
 
+export type FieldErrors = Record<string, string>
+
+/** Pendências da etapa, indexadas pelo rótulo exibido no formulário. */
+export function getStepValidationErrors(form: FormState, step: Step): FieldErrors {
+  const errors: FieldErrors = {}
+  const required = (label: string, value: string) => {
+    if (!value.trim()) errors[label] = "Campo obrigatório."
+  }
+  const g = form.gerais
+  if (step === 1 || step === 5) {
+    if (g.tipo !== "interno" && !(EXTERNAL_PROJECTS_ENABLED && g.tipo === "externo")) {
+      errors["Tipo do projeto"] = "Selecione um tipo de projeto disponível."
+    }
+  }
+  if (step === 2) {
+    const fields: Array<[string, string]> = [
+      ["Edital de pesquisa", g.editalPesquisa],
+      ["Título", g.titulo], ["Title", g.title],
+      ["Palavras-chave", g.palavrasChave], ["Keywords", g.keywords],
+      ["Resumo", g.descricaoResumida], ["Abstract", g.abstract],
+      ["Introdução / justificativa", g.introducaoJustificativa],
+      ["Objetivos", g.objetivos], ["Metodologia", g.metodologia],
+      ["Resultados esperados", g.resultadosEsperados], ["Referências", g.referencias],
+      ["Unidade", g.unidade], ["Grande área", g.grandeArea], ["Área", g.area],
+    ]
+    fields.forEach(([label, value]) => required(label, value))
+    if (!g.areaConhecimento.trim()) errors["Área"] = "Selecione uma área de conhecimento."
+    if (!isSimpleEmail(g.email.trim())) {
+      errors["E-mail de contato"] = g.email.trim() ? "Informe um e-mail válido" : "Campo obrigatório."
+    }
+    if (!g.periodoIni || !g.periodoFim) {
+      errors["Período do projeto"] = "Informe as datas de início e fim do projeto."
+    } else if (g.periodoFim < g.periodoIni) {
+      errors["Período do projeto"] = "A data final deve ser igual ou posterior à data inicial."
+    }
+  }
+  if (step === 3) {
+    if (!g.cronograma.length) errors["Cronograma"] = "Adicione pelo menos uma atividade ao cronograma."
+  }
+  if (step === 4) {
+    if (!g.membros.length) errors["Membros"] = "Preencha os dados de um membro e clique em Adicionar membro."
+    if (g.tipo === "externo" && !g.comprovanteExterno) errors["Comprovante de aprovação/financiamento"] = "Anexe o comprovante obrigatório para projetos externos."
+  }
+  if (step === 5 && g.tipo === "interno") {
+    required("Linha de pesquisa", g.linhaPesquisa)
+    if (form.interno.vinculadoGrupo === "Sim") required("Grupo de pesquisa", form.interno.grupoPesquisa)
+    if (form.interno.possuiProtocoloEtica === "Sim") {
+      required("Comitê de Ética", form.interno.comiteEticaNome)
+      required("Nº do protocolo", form.interno.protocoloEtica)
+    }
+  }
+  if (step === 5 && EXTERNAL_PROJECTS_ENABLED && g.tipo === "externo") {
+    required("Categoria do projeto", form.externo.categoriaProjeto)
+    required("Subcategoria Nível I", form.externo.subcategoriaNivelI)
+    required("Subcategoria Nível II", form.externo.subcategoriaNivelII)
+    required("Definição da propriedade intelectual", form.externo.definicaoPropriedadeIntelectual)
+  }
+  return errors
+}
+
 export function checkCanGoStep2(form: FormState): boolean {
-  return (
-    form.gerais.tipo === "interno" ||
-    (EXTERNAL_PROJECTS_ENABLED && form.gerais.tipo === "externo")
-  )
+  return Object.keys(getStepValidationErrors(form, 1)).length === 0
 }
 
 export function checkCanGoStep3(form: FormState, canGoStep2: boolean): boolean {
-  const g = form.gerais
-
-  return Boolean(
-    canGoStep2 &&
-      g.editalPesquisa.trim() &&
-      g.titulo.trim() &&
-      g.title.trim() &&
-      g.palavrasChave.trim() &&
-      g.keywords.trim() &&
-      g.descricaoResumida.trim() &&
-      g.abstract.trim() &&
-      g.introducaoJustificativa.trim() &&
-      g.objetivos.trim() &&
-      g.metodologia.trim() &&
-      g.resultadosEsperados.trim() &&
-      g.referencias.trim() &&
-      isSimpleEmail(g.email.trim()) &&
-      g.unidade.trim() &&
-      g.periodoIni &&
-      g.periodoFim &&
-      g.periodoFim >= g.periodoIni &&
-      g.grandeArea.trim() &&
-      g.area.trim() &&
-      g.areaConhecimento.trim(),
-  )
+  return canGoStep2 && Object.keys(getStepValidationErrors(form, 2)).length === 0
 }
 
 export function checkCanGoStep4(form: FormState, canGoStep3: boolean): boolean {
-  if (!canGoStep3) return false
-
-  return Boolean(
-    form.gerais.objetivosDS.length > 0 && form.gerais.cronograma.length > 0,
-  )
+  return canGoStep3 && Object.keys(getStepValidationErrors(form, 3)).length === 0
 }
 
 export function checkCanGoStep5(form: FormState, canGoStep4: boolean): boolean {
-  if (!canGoStep4) return false
-
-  const hasMembers = form.gerais.membros.length > 0
-
-  if (form.gerais.tipo === "externo") {
-    return Boolean(hasMembers && form.gerais.comprovanteExterno)
-  }
-
-  return hasMembers
+  return canGoStep4 && Object.keys(getStepValidationErrors(form, 4)).length === 0
 }
 
 export function checkCanGoStep6(form: FormState, canGoStep5: boolean): boolean {
-  if (!canGoStep5) return false
-
-  if (form.gerais.tipo === "interno") {
-    return isInternalSpecificDataValid(form.gerais.linhaPesquisa, form.interno)
-  }
-
-  if (EXTERNAL_PROJECTS_ENABLED && form.gerais.tipo === "externo") {
-    const e = form.externo
-
-    return Boolean(
-      e.categoriaProjeto.trim() &&
-        e.subcategoriaNivelI.trim() &&
-        e.subcategoriaNivelII.trim() &&
-        e.definicaoPropriedadeIntelectual.trim(),
-    )
-  }
-
-  return false
+  return canGoStep5 && Object.keys(getStepValidationErrors(form, 5)).length === 0
 }
 
 export function checkStepDone(

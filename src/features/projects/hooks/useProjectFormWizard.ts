@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import type { EditalLookup } from "@/features/editais"
 import { projectService } from "../api/projectService"
 import type {
   KnowledgeAreaLookup,
@@ -42,7 +43,7 @@ export function useProjectFormWizard() {
     ...initialMember,
     id: createId("membro"),
   })
-  const [editaisLookup, setEditaisLookup] = useState<LookupOption<number>[]>([])
+  const [editaisLookup, setEditaisLookup] = useState<EditalLookup[]>([])
   const [academicUnits, setAcademicUnits] = useState<LookupOption<number>[]>([])
   const [grandesAreasLookup, setGrandesAreasLookup] = useState<
     KnowledgeAreaLookup[]

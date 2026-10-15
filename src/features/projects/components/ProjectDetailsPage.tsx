@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { ProjectWorkPlans } from "@/features/work-plans/components/ProjectWorkPlans"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   AlertCircle,
@@ -447,6 +448,7 @@ export default function ProjectDetailsPage({
             </p>
           )}
         </section>
+        {role !== "DISCENTE" && <ProjectWorkPlans key={project.id} projectId={project.id} />}
       </div>
     </main>
   )

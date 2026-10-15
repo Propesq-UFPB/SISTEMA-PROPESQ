@@ -1,4 +1,3 @@
-import { projectService } from "@/features/projects/api/projectService";
 import type { ResearchProject } from "@/features/projects/types/project";
 import { workPlanService } from "@/features/work-plans/api/workPlanService";
 import type {
@@ -17,11 +16,6 @@ import { ApiError } from "@/services/apiClient";
 
 export const MAX_CHARS_ANEXO_II = 9000;
 
-export const PROJECT_ALLOWED_STATUSES = new Set<ProjectStatus>([
-  "APROVADO",
-  "VALIDADO",
-]);
-
 export const modalidadesPlano: WorkPlanModalidade[] = [
   "PIBIC",
   "PIBIC-AF",
@@ -34,7 +28,7 @@ export const modalidadesFiltro = ["Todas", ...modalidadesPlano] as const;
 
 export const emptyWorkPlanDraft: WorkPlanDraft = {
   id: "",
-  modalidade: "",
+  bolsaId: "",
   titulo: "",
   title: "",
   solicitarAcaoAfirmativa: false,
@@ -89,7 +83,7 @@ export function mapApiPlan(plan: ApiWorkPlan): WorkPlanDraft {
   const body = plan.corpo_plano_trabalho;
   return {
     id: String(plan.id),
-    modalidade: (plan.modalidade || "") as WorkPlanModalidade | "",
+    bolsaId: plan.bolsa_id == null ? "" : String(plan.bolsa_id),
     titulo: body?.titulo || `Plano de trabalho ${plan.id}`,
     title: body?.titulo || "",
     solicitarAcaoAfirmativa: plan.direcionamento_plano === "ACAO_AFIRMATIVA",
@@ -149,8 +143,6 @@ export function matchesProjectFilters(
   project: SelectableProject,
   filters: ProjectFilters,
 ): boolean {
-  if (!PROJECT_ALLOWED_STATUSES.has(project.status)) return false;
-
   const codigo = filters.codigo.trim().toLowerCase();
   const nome = filters.nome.trim().toLowerCase();
 
@@ -207,7 +199,7 @@ export function isDraftReadyToSave(
 ): boolean {
   return Boolean(
     hasProject &&
-      draft.modalidade &&
+      Number.isSafeInteger(Number(draft.bolsaId)) && Number(draft.bolsaId) > 0 &&
       draft.titulo.trim() &&
       draft.title.trim() &&
       draft.periodoIni &&
@@ -234,9 +226,8 @@ export function buildCreateWorkPlanPayload(
 ): CreateWorkPlanPayload {
   return {
     pesquisa_id: Number(selectedProject.id),
-    modalidade: draft.modalidade,
     status: "RASCUNHO",
-    tipo_bolsa: draft.modalidade.startsWith("PIV") ? "VOLUNTARIO" : "BOLSISTA",
+    bolsa_id: Number(draft.bolsaId),
     cronograma_id: Number(selectedProject.id),
     direcionamento_plano: draft.solicitarAcaoAfirmativa
       ? "ACAO_AFIRMATIVA"
@@ -259,13 +250,34 @@ export async function fetchProjectsAndPlans(): Promise<{
   projects: SelectableProject[];
   plansByProject: Record<string, WorkPlanDraft[]>;
 }> {
-  const [projectResponse, workPlanResponse] = await Promise.all([
-    projectService.list({ limit: 100, offset: 0 }),
-    workPlanService.list({ limit: 200, offset: 0 }),
-  ]);
-
-  return {
-    projects: projectResponse.results.map(mapProject),
-    plansByProject: groupWorkPlansByProject(workPlanResponse.results),
-  };
+  const projects: SelectableProject[] = [];
+  let offset = 0;
+  while (true) {
+    const page = await workPlanService.creationProjects({ limit: 100, offset });
+    projects.push(...page.results.map(project => ({
+      id: String(project.id),
+      codigo: project.codigo || `PROJETO-${project.id}`,
+      titulo: project.titulo,
+      edital: project.edital_rel.descricao,
+      limitePlanos: project.edital_rel.limite_planos_orientador,
+      coordenador: "Usuário autenticado",
+      unidade: "—",
+      centro: "—",
+      periodo: [project.data_inicio, project.data_fim].filter(Boolean).join(" → "),
+      status: project.situacao as ProjectStatus,
+      modalidadeBolsa: "PIBIC" as const,
+      totalPlanos: 0,
+    })));
+    offset += page.results.length;
+    if (offset >= page.total || page.results.length === 0) break;
+  }
+  const plans: ApiWorkPlan[] = [];
+  offset = 0;
+  while (true) {
+    const page = await workPlanService.list({ limit: 100, offset });
+    plans.push(...page.results);
+    offset += page.results.length;
+    if (offset >= page.total || page.results.length === 0) break;
+  }
+  return { projects, plansByProject: groupWorkPlansByProject(plans) };
 }

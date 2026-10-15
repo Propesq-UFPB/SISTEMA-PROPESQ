@@ -1,3 +1,4 @@
+import { getStepValidationErrors } from "../utils/projectFormHelpers"
 import { ChevronRight, ClipboardCheck } from "lucide-react"
 import type { ResearchGroupLookup } from "../types/project"
 import type { FormState } from "../types/projectFormWizard"
@@ -31,6 +32,7 @@ export function WizardStep5Especifico({
   canGoStep6: boolean
   researchGroups: ResearchGroupLookup[]
 }>) {
+  const validationErrors = getStepValidationErrors(form, 5)
   return (
     <Card
       title="Passo 5 — Dados específicos"
@@ -44,7 +46,7 @@ export function WizardStep5Especifico({
       {form.gerais.tipo === "interno" && (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field
-            label="Este projeto está vinculado a algum grupo de pesquisa?"
+            label="Este projeto está vinculado a algum grupo de pesquisa?" error={validationErrors["Este projeto está vinculado a algum grupo de pesquisa?"]}
             required
           >
             <div className="flex gap-4">
@@ -75,7 +77,7 @@ export function WizardStep5Especifico({
           </Field>
 
           <Field
-            label="Grupo de pesquisa"
+            label="Grupo de pesquisa" error={validationErrors["Grupo de pesquisa"]}
             required={form.interno.vinculadoGrupo === "Sim"}
           >
             <select
@@ -105,7 +107,7 @@ export function WizardStep5Especifico({
             </select>
           </Field>
 
-          <Field label="Linha de pesquisa" required>
+          <Field label="Linha de pesquisa" error={validationErrors["Linha de pesquisa"]} required>
             <input
               value={form.gerais.linhaPesquisa}
               list="research-group-lines"
@@ -131,7 +133,7 @@ export function WizardStep5Especifico({
           </Field>
 
           <Field
-            label="Possui protocolo de pesquisa em Comitê de Ética?"
+            label="Possui protocolo de pesquisa em Comitê de Ética?" error={validationErrors["Possui protocolo de pesquisa em Comitê de Ética?"]}
             required
           >
             <div className="flex gap-4">
@@ -168,7 +170,7 @@ export function WizardStep5Especifico({
           </Field>
 
           <Field
-            label="Comitê de Ética"
+            label="Comitê de Ética" error={validationErrors["Comitê de Ética"]}
             required={form.interno.possuiProtocoloEtica === "Sim"}
             hint={
               form.interno.possuiProtocoloEtica === "Sim"
@@ -198,7 +200,7 @@ export function WizardStep5Especifico({
           </Field>
 
           <Field
-            label="Nº do protocolo"
+            label="Nº do protocolo" error={validationErrors["Nº do protocolo"]}
             required={form.interno.possuiProtocoloEtica === "Sim"}
             hint={
               form.interno.possuiProtocoloEtica === "Sim"
@@ -231,7 +233,7 @@ export function WizardStep5Especifico({
 
       {form.gerais.tipo === "externo" && (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label="Categoria do projeto" required>
+          <Field label="Categoria do projeto" error={validationErrors["Categoria do projeto"]} required>
             <select
               value={form.externo.categoriaProjeto}
               onChange={(event) =>
@@ -254,7 +256,7 @@ export function WizardStep5Especifico({
             </select>
           </Field>
 
-          <Field label="Subcategoria Nível I" required>
+          <Field label="Subcategoria Nível I" error={validationErrors["Subcategoria Nível I"]} required>
             <select
               value={form.externo.subcategoriaNivelI}
               onChange={(event) =>
@@ -277,7 +279,7 @@ export function WizardStep5Especifico({
             </select>
           </Field>
 
-          <Field label="Subcategoria Nível II" required>
+          <Field label="Subcategoria Nível II" error={validationErrors["Subcategoria Nível II"]} required>
             <select
               value={form.externo.subcategoriaNivelII}
               onChange={(event) =>
@@ -300,7 +302,7 @@ export function WizardStep5Especifico({
             </select>
           </Field>
 
-          <Field label="Definição da propriedade intelectual" required>
+          <Field label="Definição da propriedade intelectual" error={validationErrors["Definição da propriedade intelectual"]} required>
             <select
               value={form.externo.definicaoPropriedadeIntelectual}
               onChange={(event) =>
@@ -325,7 +327,7 @@ export function WizardStep5Especifico({
 
           <div className="md:col-span-2">
             <Field
-              label="Tratamento da produção intelectual do projeto"
+              label="Tratamento da produção intelectual do projeto" error={validationErrors["Tratamento da produção intelectual do projeto"]}
               hint="Campo de texto para regras ou observações."
             >
               <textarea

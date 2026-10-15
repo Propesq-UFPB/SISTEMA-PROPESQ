@@ -26,7 +26,7 @@ export function SectionTitle({
   title,
   subtitle,
 }: Readonly<{
-  icon: ReactNode 
+  icon: ReactNode
   title: string
   subtitle?: string
 }>) {
