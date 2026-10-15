@@ -1,427 +1,191 @@
 import type {
   Assignment,
+  AssignmentStatus,
+  Candidate,
+  CandidateRow,
   DistributableProject,
   DistributionIssue,
-  DistributionPreview,
   DraftAssignment,
-  Evaluator,
-  AssignmentStatus,
 } from "../types/evaluationDistribution"
 
-export const MIN_EVALUATORS_PER_PROJECT = 2
+export const DEFAULT_PARAMS = {
+  minPerConsultant: 1,
+  maxPerConsultant: 10,
+  perProject: 2,
+}
 
-export const projectsMock: DistributableProject[] = [
-  {
-    id: 1,
-    code: "PVH-2026-001",
-    title: "Aplicação de IA para análise de acessibilidade em ambientes digitais",
-    coordinator: "Dra. Ana Beatriz Lima",
-    unit: "CI",
-    grandeArea: "Ciências Exatas e da Terra",
-    area: "Ciência da Computação",
-    subarea: "Inteligência Artificial",
-    especialidade: "Processamento de Linguagem Natural",
-    status: "PENDENTE",
-  },
-  {
-    id: 2,
-    code: "PVH-2026-002",
-    title: "Monitoramento inteligente de dados acadêmicos em programas institucionais",
-    coordinator: "Dr. Carlos Henrique Souza",
-    unit: "CT",
-    grandeArea: "Engenharias",
-    area: "Engenharia de Produção",
-    subarea: "Pesquisa Operacional",
-    especialidade: "Sistemas de Apoio à Decisão",
-    status: "DISTRIBUIDO",
-  },
-  {
-    id: 3,
-    code: "PVH-2026-003",
-    title: "Métodos computacionais aplicados à análise de sinais biomédicos",
-    coordinator: "Dra. Mariana Costa",
-    unit: "CCS",
-    grandeArea: "Ciências da Saúde",
-    area: "Medicina",
-    subarea: "Engenharia Biomédica",
-    especialidade: "Processamento de Sinais",
-    status: "SUBMETIDO",
-  },
-  {
-    id: 4,
-    code: "PVH-2026-004",
-    title: "Modelagem de indicadores para acompanhamento da produção científica",
-    coordinator: "Dr. Roberto Menezes",
-    unit: "CCHLA",
-    grandeArea: "Ciências Humanas",
-    area: "Educação",
-    subarea: "Políticas Educacionais",
-    especialidade: "Avaliação Institucional",
-    status: "RECUSADO",
-  },
-  {
-    id: 5,
-    code: "PVH-2026-005",
-    title: "Sistemas inteligentes aplicados à análise de dados públicos",
-    coordinator: "Dra. Juliana Freitas",
-    unit: "CI",
-    grandeArea: "Ciências Exatas e da Terra",
-    area: "Ciência da Computação",
-    subarea: "Sistemas de Informação",
-    especialidade: "Mineração de Dados",
-    status: "PENDENTE",
-  },
-]
-
-export const evaluatorsMock: Evaluator[] = [
-  {
-    id: 1,
-    name: "Prof. João Martins",
-    unit: "CI",
-    email: "joao.martins@ufpb.br",
-    grandeAreas: ["Ciências Exatas e da Terra"],
-    areas: ["Ciência da Computação"],
-    subareas: ["Inteligência Artificial", "Sistemas de Computação"],
-    maxAssignments: 4,
-    currentAssignments: 2,
-  },
-  {
-    id: 2,
-    name: "Profa. Helena Duarte",
-    unit: "CT",
-    email: "helena.duarte@ufpb.br",
-    grandeAreas: ["Engenharias", "Ciências Exatas e da Terra"],
-    areas: ["Engenharia de Produção", "Ciência da Computação"],
-    subareas: ["Pesquisa Operacional", "Inteligência Artificial"],
-    maxAssignments: 3,
-    currentAssignments: 1,
-  },
-  {
-    id: 3,
-    name: "Prof. Miguel Andrade",
-    unit: "CCS",
-    email: "miguel.andrade@ufpb.br",
-    grandeAreas: ["Ciências da Saúde"],
-    areas: ["Medicina"],
-    subareas: ["Engenharia Biomédica", "Saúde Coletiva"],
-    maxAssignments: 3,
-    currentAssignments: 3,
-  },
-  {
-    id: 4,
-    name: "Profa. Clara Nogueira",
-    unit: "CCHLA",
-    email: "clara.nogueira@ufpb.br",
-    grandeAreas: ["Ciências Humanas"],
-    areas: ["Educação"],
-    subareas: ["Políticas Educacionais", "Avaliação Institucional"],
-    maxAssignments: 5,
-    currentAssignments: 2,
-  },
-  {
-    id: 5,
-    name: "Prof. Felipe Rocha",
-    unit: "CEAR",
-    email: "felipe.rocha@ufpb.br",
-    grandeAreas: ["Ciências Exatas e da Terra", "Engenharias"],
-    areas: ["Ciência da Computação", "Engenharia Elétrica"],
-    subareas: ["Inteligência Artificial", "Processamento de Sinais"],
-    maxAssignments: 4,
-    currentAssignments: 0,
-  },
-  {
-    id: 6,
-    name: "Profa. Renata Alves",
-    unit: "CI",
-    email: "renata.alves@ufpb.br",
-    grandeAreas: ["Ciências Exatas e da Terra"],
-    areas: ["Ciência da Computação"],
-    subareas: ["Processamento de Linguagem Natural", "Inteligência Artificial"],
-    maxAssignments: 2,
-    currentAssignments: 1,
-    unavailable: true,
-  },
-]
-
-export const assignmentsMock: Assignment[] = [
-  {
-    id: 1,
-    projectId: 2,
-    evaluatorId: 2,
-    status: "ACEITO",
-    sentAt: "2026-06-01",
-  },
-  {
-    id: 2,
-    projectId: 2,
-    evaluatorId: 5,
-    status: "PENDENTE",
-    sentAt: "2026-06-01",
-  },
-  {
-    id: 3,
-    projectId: 4,
-    evaluatorId: 4,
-    status: "RECUSADO",
-    reason: "Conflito de interesse declarado pelo avaliador.",
-    sentAt: "2026-05-31",
-  },
-]
+export function isActive(assignment: Pick<Assignment, "status">) {
+  return assignment.status !== "RECUSADO"
+}
 
 export function assignmentStatusLabel(status: AssignmentStatus) {
-  const map: Record<AssignmentStatus, string> = {
-    PENDENTE: "Pendente",
-    ACEITO: "Aceito",
-    RECUSADO: "Recusado",
-  }
-
-  return map[status]
+  if (status === "ACEITO") return "Aceito"
+  if (status === "RECUSADO") return "Recusado"
+  return "Pendente"
 }
 
-export function assignmentStatusClass(status: AssignmentStatus) {
-  const map: Record<AssignmentStatus, string> = {
-    PENDENTE: "border-amber-200 bg-amber-50 text-amber-700",
-    ACEITO: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    RECUSADO: "border-red-200 bg-red-50 text-red-700",
-  }
-
-  return map[status]
+// Rótulo do score calculado no backend (subárea 160, área 60, grande área 10; adicionais valem metade)
+export function affinityLabel(score: number) {
+  if (score >= 160) return "Mesma subárea"
+  if (score >= 80) return "Subárea (área adicional)"
+  if (score >= 60) return "Mesma área"
+  if (score >= 30) return "Área (área adicional)"
+  if (score >= 10) return "Mesma grande área"
+  if (score > 0) return "Grande área (área adicional)"
+  return "Sem afinidade"
 }
 
-export function hasConflict(
-  project: DistributableProject,
-  evaluator: Evaluator,
-) {
-  return project.unit === evaluator.unit || project.coordinator === evaluator.name
+export function countBy<T>(items: T[], key: (item: T) => number) {
+  const map = new Map<number, number>()
+  for (const item of items) map.set(key(item), (map.get(key(item)) ?? 0) + 1)
+  return map
 }
 
-export function affinityScore(
-  project: DistributableProject,
-  evaluator: Evaluator,
-) {
-  let score = 0
-
-  if (evaluator.grandeAreas.includes(project.grandeArea)) score += 1
-  if (evaluator.areas.includes(project.area)) score += 2
-  if (evaluator.subareas.includes(project.subarea)) score += 3
-
-  return score
+// Convites pendentes/aceitos gravados viram o ponto de partida de um ajuste manual
+export function draftFromAssignments(assignments: Assignment[]): DraftAssignment[] {
+  return assignments
+    .filter((a) => isActive(a) && a.consultantId !== null)
+    .map((a) => ({
+      projectId: a.projectId,
+      consultantId: a.consultantId!,
+      score: null,
+      origin: "EXISTENTE",
+      status: a.status,
+      hasGrades: a.hasGrades,
+    }))
 }
 
-export function activeAssignmentsByProject(
+export function computeIssues(
+  projects: DistributableProject[],
+  draft: DraftAssignment[],
+  perProject: number,
+): DistributionIssue[] {
+  const perProjectCount = countBy(draft, (a) => a.projectId)
+  return projects
+    .map((p) => ({ projectId: p.id, missing: perProject - (perProjectCount.get(p.id) ?? 0) }))
+    .filter((issue) => issue.missing > 0)
+}
+
+export function toggleDraftAssignment(
+  draft: DraftAssignment[],
   projectId: number,
-  assignments: Assignment[],
-) {
-  return assignments.filter(
-    (assignment) =>
-      assignment.projectId === projectId && assignment.status !== "RECUSADO",
+  candidate: Candidate,
+): DraftAssignment[] {
+  const existing = draft.find(
+    (a) => a.projectId === projectId && a.consultantId === candidate.consultantId,
   )
-}
 
-export function getProjectActiveCount(
-  projectId: number,
-  assignments: Assignment[],
-  draftAssignments: DraftAssignment[],
-) {
-  const active = activeAssignmentsByProject(projectId, assignments).length
-
-  const drafted = draftAssignments.filter(
-    (assignment) => assignment.projectId === projectId,
-  ).length
-
-  return active + drafted
-}
-
-export function evaluatorIdsForProject(
-  projectId: number,
-  assignments: Assignment[],
-  draftAssignments: DraftAssignment[],
-): Set<number> {
-  const ids = new Set<number>()
-
-  for (const assignment of activeAssignmentsByProject(projectId, assignments)) {
-    ids.add(assignment.evaluatorId)
+  if (existing) {
+    if (existing.hasGrades) return draft
+    return draft.filter((a) => a !== existing)
   }
 
-  for (const assignment of draftAssignments) {
-    if (assignment.projectId === projectId) {
-      ids.add(assignment.evaluatorId)
-    }
-  }
-
-  return ids
+  return [
+    ...draft,
+    {
+      projectId,
+      consultantId: candidate.consultantId,
+      score: candidate.score,
+      origin: "MANUAL",
+      status: null,
+      hasGrades: false,
+    },
+  ]
 }
 
-export function getEvaluatorProjectedLoad(
-  evaluatorId: number,
-  evaluators: Evaluator[],
-  draftAssignments: DraftAssignment[],
-) {
-  const evaluator = evaluators.find((item) => item.id === evaluatorId)
+export function candidateRows(
+  candidates: Candidate[],
+  draft: DraftAssignment[],
+  projectId: number,
+  maxPerConsultant: number,
+): CandidateRow[] {
+  const loads = countBy(draft, (a) => a.consultantId)
 
-  if (!evaluator) return 0
-
-  return (
-    evaluator.currentAssignments +
-    draftAssignments.filter(
-      (assignment) => assignment.evaluatorId === evaluatorId,
-    ).length
-  )
-}
-
-export function canEvaluateWithProjectedLoad({
-  project,
-  evaluator,
-  evaluators,
-  draftAssignments,
-}: {
-  project: DistributableProject
-  evaluator: Evaluator
-  evaluators: Evaluator[]
-  draftAssignments: DraftAssignment[]
-}) {
-  const projectedLoad = getEvaluatorProjectedLoad(
-    evaluator.id,
-    evaluators,
-    draftAssignments,
-  )
-
-  return (
-    !evaluator.unavailable &&
-    !hasConflict(project, evaluator) &&
-    affinityScore(project, evaluator) > 0 &&
-    projectedLoad < evaluator.maxAssignments
-  )
-}
-
-export function smartScore({
-  project,
-  evaluator,
-  evaluators,
-  draftAssignments,
-}: {
-  project: DistributableProject
-  evaluator: Evaluator
-  evaluators: Evaluator[]
-  draftAssignments: DraftAssignment[]
-}) {
-  const affinity = affinityScore(project, evaluator)
-
-  const projectedLoad = getEvaluatorProjectedLoad(
-    evaluator.id,
-    evaluators,
-    draftAssignments,
-  )
-
-  const loadRatio = projectedLoad / evaluator.maxAssignments
-
-  return affinity * 100 - loadRatio * 30
-}
-
-export function countEligibleCandidates(
-  project: DistributableProject,
-  evaluators: Evaluator[],
-) {
-  return evaluators.filter(
-    (evaluator) =>
-      !evaluator.unavailable &&
-      !hasConflict(project, evaluator) &&
-      affinityScore(project, evaluator) > 0,
-  ).length
-}
-
-export function buildSmartDistribution({
-  projects,
-  evaluators,
-  assignments,
-}: {
-  projects: DistributableProject[]
-  evaluators: Evaluator[]
-  assignments: Assignment[]
-}): DistributionPreview {
-  const draftAssignments: DraftAssignment[] = []
-  const issues: DistributionIssue[] = []
-
-  const projectsToDistribute = projects
-    .filter((project) => project.status !== "DISTRIBUIDO")
+  return candidates
+    .map((candidate) => {
+      const entry = draft.find(
+        (a) => a.projectId === projectId && a.consultantId === candidate.consultantId,
+      )
+      const draftLoad = loads.get(candidate.consultantId) ?? 0
+      return {
+        ...candidate,
+        draftLoad,
+        inDraft: Boolean(entry),
+        locked: Boolean(entry?.hasGrades),
+        overMax: draftLoad >= maxPerConsultant,
+      }
+    })
     .sort(
       (a, b) =>
-        countEligibleCandidates(a, evaluators) -
-        countEligibleCandidates(b, evaluators),
+        Number(b.inDraft) - Number(a.inDraft) || b.score - a.score || a.draftLoad - b.draftLoad,
     )
+}
 
-  projectsToDistribute.forEach((project) => {
-    const activeAssignments = activeAssignmentsByProject(project.id, assignments)
-
-    let missing = Math.max(
-      MIN_EVALUATORS_PER_PROJECT - activeAssignments.length,
-      0,
-    )
-
-    const alreadyAssignedIds = new Set([
-      ...activeAssignments.map((assignment) => assignment.evaluatorId),
-      ...draftAssignments
-        .filter((assignment) => assignment.projectId === project.id)
-        .map((assignment) => assignment.evaluatorId),
-    ])
-
-    while (missing > 0) {
-      const candidates = evaluators
-        .filter(
-          (evaluator) =>
-            !alreadyAssignedIds.has(evaluator.id) &&
-            canEvaluateWithProjectedLoad({
-              project,
-              evaluator,
-              evaluators,
-              draftAssignments,
-            }),
-        )
-        .sort(
-          (a, b) =>
-            smartScore({
-              project,
-              evaluator: b,
-              evaluators,
-              draftAssignments,
-            }) -
-            smartScore({
-              project,
-              evaluator: a,
-              evaluators,
-              draftAssignments,
-            }),
-        )
-
-      const selected = candidates[0]
-
-      if (!selected) {
-        issues.push({
-          projectId: project.id,
-          missing,
-          reason:
-            "Não há avaliadores elegíveis suficientes com afinidade, sem conflito e com carga disponível.",
-        })
-
-        break
-      }
-
-      alreadyAssignedIds.add(selected.id)
-
-      draftAssignments.push({
-        id: Date.now() + draftAssignments.length + selected.id,
-        projectId: project.id,
-        evaluatorId: selected.id,
-        score: affinityScore(project, selected),
-        generatedBy: "AUTO",
-      })
-
-      missing -= 1
-    }
-  })
+// O que a confirmação vai fazer em relação ao que está gravado
+export function confirmImpact(assignments: Assignment[], draft: DraftAssignment[]) {
+  const key = (projectId: number, consultantId: number | null) => `${projectId}:${consultantId}`
+  const active = assignments.filter(isActive)
+  const activeKeys = new Set(active.map((a) => key(a.projectId, a.consultantId)))
+  const draftKeys = new Set(draft.map((a) => key(a.projectId, a.consultantId)))
 
   return {
-    draftAssignments,
-    issues,
+    newInvites: draft.filter((a) => !activeKeys.has(key(a.projectId, a.consultantId))).length,
+    removed: active.filter((a) => !a.hasGrades && !draftKeys.has(key(a.projectId, a.consultantId)))
+      .length,
   }
+}
+
+export function assignmentSummary(assignments: Assignment[]) {
+  return {
+    total: assignments.length,
+    pendentes: assignments.filter((a) => a.status === "PENDENTE").length,
+    aceitos: assignments.filter((a) => a.status === "ACEITO").length,
+    recusados: assignments.filter((a) => a.status === "RECUSADO").length,
+  }
+}
+
+export function projectAreaLabel(project: DistributableProject) {
+  if (!project.area) return "Sem área informada"
+  return [project.area.grandeArea, project.area.area].filter(Boolean).join(" › ")
+}
+
+// Pendente: sem convite ativo; distribuído: atingiu o número de consultores; incompleto: entre os dois
+export function areaSummary(
+  projects: DistributableProject[],
+  assignments: Assignment[],
+  perProject: number,
+) {
+  const activeCount = countBy(assignments.filter(isActive), (a) => a.projectId)
+  const map = new Map<
+    string,
+    { area: string; total: number; pendentes: number; distribuidos: number; incompletos: number }
+  >()
+
+  for (const project of projects) {
+    const area = projectAreaLabel(project)
+    const current = map.get(area) ?? {
+      area,
+      total: 0,
+      pendentes: 0,
+      distribuidos: 0,
+      incompletos: 0,
+    }
+    const count = activeCount.get(project.id) ?? 0
+
+    current.total += 1
+    if (count === 0) current.pendentes += 1
+    else if (count >= perProject) current.distribuidos += 1
+    else current.incompletos += 1
+
+    map.set(area, current)
+  }
+
+  return [...map.values()].sort(
+    (a, b) => b.pendentes + b.incompletos - (a.pendentes + a.incompletos) || b.total - a.total,
+  )
+}
+
+export function formatDate(value: string | null) {
+  if (!value) return "—"
+  return new Date(value).toLocaleDateString("pt-BR")
 }

@@ -1,13 +1,15 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Plus, Trash2, Users } from "lucide-react"
-import { useEditalConsultants } from "../hooks/useEditalConsultants"
+import type { useEditalConsultants } from "../hooks/useEditalConsultants"
 import { areaLabel, consultantTags } from "../utils/consultantHelpers"
 import { SearchableSelect } from "./SearchableSelect"
 
-export function EditalConsultantsSection({ editalId }: Readonly<{ editalId: number }>) {
-  const { linked, available, loading, saving, error, add, addAll, remove } =
-    useEditalConsultants(editalId)
+// Recebe o estado do hook pela página, que o compartilha com a distribuição
+export function EditalConsultantsSection({
+  state,
+}: Readonly<{ state: ReturnType<typeof useEditalConsultants> }>) {
+  const { linked, available, loading, saving, error, add, addAll, remove } = state
   const [selected, setSelected] = useState("")
 
   async function handleAdd() {

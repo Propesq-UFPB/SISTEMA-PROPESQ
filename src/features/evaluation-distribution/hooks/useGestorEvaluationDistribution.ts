@@ -1,24 +1,26 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { editalService, type EditalLookup } from "@/features/editais"
+import { useEditalConsultants } from "@/features/consultants/hooks/useEditalConsultants"
+import { apiErrorMessage } from "@/features/consultants/utils/consultantHelpers"
+import { distributionService, type ConfirmResult } from "../api/distributionService"
 import type {
   Assignment,
+  Candidate,
   DistributableProject,
-  DistributionIssue,
-  DistributionPreview,
-  Evaluator,
+  DistributionDraft,
+  DistributionParams,
 } from "../types/evaluationDistribution"
 import {
-  affinityScore,
-  assignmentsMock,
-  buildSmartDistribution,
-  canEvaluateWithProjectedLoad,
-  evaluatorIdsForProject,
-  evaluatorsMock,
-  getProjectActiveCount,
-  getEvaluatorProjectedLoad,
-  hasConflict,
-  MIN_EVALUATORS_PER_PROJECT,
-  projectsMock,
+  areaSummary as buildAreaSummary,
+  assignmentSummary as buildAssignmentSummary,
+  candidateRows,
+  computeIssues,
+  confirmImpact,
+  countBy,
+  DEFAULT_PARAMS,
+  draftFromAssignments,
+  isActive,
+  toggleDraftAssignment,
 } from "../utils/evaluationDistributionHelpers"
 
 export function useGestorEvaluationDistribution() {
@@ -26,12 +28,24 @@ export function useGestorEvaluationDistribution() {
   const [editaisLoading, setEditaisLoading] = useState(true)
   const [editaisError, setEditaisError] = useState<string | null>(null)
   const [selectedEditalId, setSelectedEditalId] = useState("")
-  const [projects, setProjects] = useState<DistributableProject[]>(projectsMock)
-  const [evaluators, setEvaluators] = useState<Evaluator[]>(evaluatorsMock)
-  const [assignments, setAssignments] = useState<Assignment[]>(assignmentsMock)
-  const [preview, setPreview] = useState<DistributionPreview | null>(null)
-  const [selectedIssueProjectId, setSelectedIssueProjectId] =
-    useState<number | null>(null)
+
+  const [projects, setProjects] = useState<DistributableProject[]>([])
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<"preview" | "confirm" | null>(null)
+  const [lastResult, setLastResult] = useState<ConfirmResult | null>(null)
+
+  const [params, setParams] = useState<DistributionParams>(DEFAULT_PARAMS)
+  const [draft, setDraft] = useState<DistributionDraft | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [candidatesLoading, setCandidatesLoading] = useState(false)
+
+  const selectedEdital =
+    editais.find((edital) => String(edital.id) === selectedEditalId) ?? null
+  const editalId = selectedEdital?.id ?? null
+  const editalConsultants = useEditalConsultants(editalId)
 
   useEffect(() => {
     let active = true
@@ -53,362 +67,166 @@ export function useGestorEvaluationDistribution() {
     }
   }, [])
 
-  const selectedEdital =
-    editais.find((edital) => String(edital.id) === selectedEditalId) ?? null
+  const loadPanorama = useCallback(async () => {
+    if (editalId === null) return
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await distributionService.panorama(editalId)
+      setProjects(data.projects)
+      setAssignments(data.assignments)
+    } catch (err) {
+      setError(apiErrorMessage(err, "Não foi possível carregar a distribuição do edital."))
+    } finally {
+      setLoading(false)
+    }
+  }, [editalId])
+
+  useEffect(() => {
+    setProjects([])
+    setAssignments([])
+    void loadPanorama()
+  }, [loadPanorama])
+
+  // Candidatos do projeto em ajuste (afinidade calculada no backend)
+  useEffect(() => {
+    if (editalId === null || selectedProjectId === null || !draft) {
+      setCandidates([])
+      return
+    }
+
+    let cancelled = false
+    setCandidatesLoading(true)
+    distributionService
+      .candidates(editalId, selectedProjectId)
+      .then((rows) => {
+        if (!cancelled) setCandidates(rows)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(apiErrorMessage(err, "Não foi possível carregar os candidatos."))
+      })
+      .finally(() => {
+        if (!cancelled) setCandidatesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [editalId, selectedProjectId, Boolean(draft)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelectEdital(id: string) {
     setSelectedEditalId(id)
-    setPreview(null)
-    setSelectedIssueProjectId(null)
+    setDraft(null)
+    setSelectedProjectId(null)
+    setLastResult(null)
   }
 
-  const pendingProjects = projects.filter(
-    (project) => project.status !== "DISTRIBUIDO",
+  const activeCountByProject = useMemo(
+    () => countBy(assignments.filter(isActive), (a) => a.projectId),
+    [assignments],
   )
 
-  const distributedProjects = projects.filter(
-    (project) => project.status === "DISTRIBUIDO",
+  const isCovered = (projectId: number) =>
+    (activeCountByProject.get(projectId) ?? 0) >= params.perProject
+
+  const pendingProjects = projects.filter((p) => !activeCountByProject.get(p.id))
+  const distributedProjects = projects.filter((p) => isCovered(p.id))
+
+  const issues = useMemo(
+    () => (draft ? computeIssues(projects, draft.assignments, params.perProject) : []),
+    [draft, projects, params.perProject],
   )
 
-  const issueProjects = useMemo(() => {
-    if (!preview) return []
+  const issueProjects = issues.flatMap((issue) => {
+    const project = projects.find((p) => p.id === issue.projectId)
+    return project ? [{ issue, project }] : []
+  })
 
-    return preview.issues.flatMap((issue) => {
-      const project = projects.find((item) => item.id === issue.projectId)
-      return project ? [{ issue, project }] : []
-    })
-  }, [preview, projects])
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null
 
-  const selectedIssueProject =
-    projects.find((project) => project.id === selectedIssueProjectId) ??
-    issueProjects[0]?.project ??
-    null
+  const candidatesForSelected = useMemo(
+    () =>
+      draft && selectedProjectId !== null
+        ? candidateRows(candidates, draft.assignments, selectedProjectId, params.maxPerConsultant)
+        : [],
+    [candidates, draft, selectedProjectId, params.maxPerConsultant],
+  )
 
-  const totalDraftAssignments = preview?.draftAssignments.length ?? 0
+  const impact = useMemo(
+    () => (draft ? confirmImpact(assignments, draft.assignments) : null),
+    [assignments, draft],
+  )
 
-  const projectsCompletedInPreview = useMemo(() => {
-    if (!preview) return 0
-
-    return pendingProjects.filter((project) => {
-      const activeCount = getProjectActiveCount(
-        project.id,
-        assignments,
-        preview.draftAssignments,
-      )
-
-      return activeCount >= MIN_EVALUATORS_PER_PROJECT
-    }).length
-  }, [preview, pendingProjects, assignments])
-
-  const assignmentSummary = {
-    total: assignments.length,
-    pendentes: assignments.filter((item) => item.status === "PENDENTE").length,
-    aceitos: assignments.filter((item) => item.status === "ACEITO").length,
-    recusados: assignments.filter((item) => item.status === "RECUSADO").length,
-  }
-
-  const areaSummary = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        area: string
-        total: number
-        pendentes: number
-        distribuidos: number
-        incompletos: number
-      }
-    >()
-
-    projects.forEach((project) => {
-      const current = map.get(project.area) ?? {
-        area: project.area,
-        total: 0,
-        pendentes: 0,
-        distribuidos: 0,
-        incompletos: 0,
-      }
-
-      current.total += 1
-
-      if (project.status === "DISTRIBUIDO") current.distribuidos += 1
-      if (project.status === "INCOMPLETO") current.incompletos += 1
-      if (project.status !== "DISTRIBUIDO") current.pendentes += 1
-
-      map.set(project.area, current)
-    })
-
-    return Array.from(map.values()).sort((a, b) => b.pendentes - a.pendentes)
-  }, [projects])
+  const summary = buildAssignmentSummary(assignments)
+  const areaSummary = useMemo(
+    () => buildAreaSummary(projects, assignments, params.perProject),
+    [projects, assignments, params.perProject],
+  )
 
   const recentDeclinedAssignments = assignments
-    .filter((assignment) => assignment.status === "RECUSADO")
+    .filter((a) => a.status === "RECUSADO")
+    .sort((a, b) => (b.answeredAt ?? "").localeCompare(a.answeredAt ?? ""))
     .slice(0, 5)
 
-  const manualCandidatesForIssue = useMemo(() => {
-    if (!selectedIssueProject || !preview) return []
-
-    const assignedIds = evaluatorIdsForProject(
-      selectedIssueProject.id,
-      assignments,
-      preview.draftAssignments,
-    )
-
-    return evaluators
-      .map((evaluator) => {
-        const score = affinityScore(selectedIssueProject, evaluator)
-
-        const projectedLoad = getEvaluatorProjectedLoad(
-          evaluator.id,
-          evaluators,
-          preview.draftAssignments,
-        )
-
-        const alreadyAssigned = assignedIds.has(evaluator.id)
-
-        const blocked =
-          !alreadyAssigned &&
-          (!canEvaluateWithProjectedLoad({
-            project: selectedIssueProject,
-            evaluator,
-            evaluators,
-            draftAssignments: preview.draftAssignments,
-          }) ||
-            Boolean(evaluator.unavailable))
-
-        return {
-          evaluator,
-          score,
-          projectedLoad,
-          alreadyAssigned,
-          blocked,
-          conflict: hasConflict(selectedIssueProject, evaluator),
-        }
-      })
-      .sort((a, b) => b.score - a.score || a.projectedLoad - b.projectedLoad)
-      .slice(0, 8)
-  }, [selectedIssueProject, preview, assignments, evaluators])
-
-  function syncSelectedIssue(issues: DistributionIssue[]) {
-    setSelectedIssueProjectId(
-      issues.length > 0 ? issues[0].projectId : null,
-    )
+  async function handleGeneratePreview() {
+    if (editalId === null) return
+    setBusy("preview")
+    setError(null)
+    setLastResult(null)
+    try {
+      const preview = await distributionService.preview(editalId, params)
+      setDraft({ mode: "PREVIA", assignments: preview })
+      const firstIssue = computeIssues(projects, preview, params.perProject)[0]
+      setSelectedProjectId(firstIssue?.projectId ?? null)
+    } catch (err) {
+      setError(apiErrorMessage(err, "Não foi possível gerar a prévia."))
+    } finally {
+      setBusy(null)
+    }
   }
 
-  function handleGenerateSmartPreview() {
-    if (!selectedEdital) return
+  function handleAdjustCurrent(projectId: number | null = null) {
+    setLastResult(null)
+    setDraft({ mode: "AJUSTE", assignments: draftFromAssignments(assignments) })
+    setSelectedProjectId(projectId)
+  }
 
-    const nextPreview = buildSmartDistribution({
-      projects,
-      evaluators,
-      assignments,
+  function handleClearDraft() {
+    setDraft(null)
+    setSelectedProjectId(null)
+  }
+
+  function handleToggleCandidate(candidate: Candidate) {
+    if (!draft || selectedProjectId === null) return
+    setDraft({
+      ...draft,
+      assignments: toggleDraftAssignment(draft.assignments, selectedProjectId, candidate),
     })
-
-    setPreview(nextPreview)
-    syncSelectedIssue(nextPreview.issues)
   }
 
-  function handleConfirmPreview() {
-    if (!selectedEdital || !preview) return
-
-    const today = new Date().toISOString().slice(0, 10)
-
-    const newAssignments: Assignment[] = preview.draftAssignments.map(
-      (assignment, index) => ({
-        id: Date.now() + index,
-        projectId: assignment.projectId,
-        evaluatorId: assignment.evaluatorId,
-        status: "PENDENTE",
-        sentAt: today,
-      }),
-    )
-
-    setAssignments((current) => [...current, ...newAssignments])
-
-    setEvaluators((current) =>
-      current.map((evaluator) => {
-        const added = preview.draftAssignments.filter(
-          (assignment) => assignment.evaluatorId === evaluator.id,
-        ).length
-
-        return {
-          ...evaluator,
-          currentAssignments: evaluator.currentAssignments + added,
-        }
-      }),
-    )
-
-    setProjects((current) =>
-      current.map((project) => {
-        const activeCount = getProjectActiveCount(
-          project.id,
-          assignments,
-          preview.draftAssignments,
-        )
-
-        if (activeCount >= MIN_EVALUATORS_PER_PROJECT) {
-          return {
-            ...project,
-            status: "DISTRIBUIDO",
-          }
-        }
-
-        if (preview.issues.some((issue) => issue.projectId === project.id)) {
-          return {
-            ...project,
-            status: "INCOMPLETO",
-          }
-        }
-
-        return project
-      }),
-    )
-
-    setPreview(null)
-    setSelectedIssueProjectId(null)
+  async function handleConfirm() {
+    if (editalId === null || !draft) return
+    setBusy("confirm")
+    setError(null)
+    try {
+      const result = await distributionService.confirm(editalId, draft.assignments)
+      setLastResult(result)
+      setDraft(null)
+      setSelectedProjectId(null)
+      await Promise.all([loadPanorama(), editalConsultants.reload()])
+    } catch (err) {
+      setError(apiErrorMessage(err, "Não foi possível confirmar a distribuição."))
+    } finally {
+      setBusy(null)
+    }
   }
 
-  function handleClearPreview() {
-    setPreview(null)
-    setSelectedIssueProjectId(null)
-  }
-
-  function handleManualAddForIssue(evaluatorId: number) {
-    if (!selectedIssueProject || !preview) return
-
-    const evaluator = evaluators.find((item) => item.id === evaluatorId)
-
-    if (!evaluator) return
-
-    const assignedIds = evaluatorIdsForProject(
-      selectedIssueProject.id,
-      assignments,
-      preview.draftAssignments,
-    )
-
-    const alreadyAssigned = assignedIds.has(evaluator.id)
-
-    if (alreadyAssigned) {
-      const nextDraftAssignments = preview.draftAssignments.filter(
-        (assignment) =>
-          !(
-            assignment.projectId === selectedIssueProject.id &&
-            assignment.evaluatorId === evaluator.id
-          ),
-      )
-
-      setPreview({
-        draftAssignments: nextDraftAssignments,
-        issues: preview.issues,
-      })
-
-      return
-    }
-
-    if (
-      !canEvaluateWithProjectedLoad({
-        project: selectedIssueProject,
-        evaluator,
-        evaluators,
-        draftAssignments: preview.draftAssignments,
-      })
-    ) {
-      return
-    }
-
-    const newDraftAssignment = {
-      id: Date.now(),
-      projectId: selectedIssueProject.id,
-      evaluatorId: evaluator.id,
-      score: affinityScore(selectedIssueProject, evaluator),
-      generatedBy: "AUTO" as const,
-    }
-
-    const nextDraftAssignments = [...preview.draftAssignments, newDraftAssignment]
-
-    const activeCount = getProjectActiveCount(
-      selectedIssueProject.id,
-      assignments,
-      nextDraftAssignments,
-    )
-
-    const nextIssues =
-      activeCount >= MIN_EVALUATORS_PER_PROJECT
-        ? preview.issues.filter(
-            (issue) => issue.projectId !== selectedIssueProject.id,
-          )
-        : preview.issues
-
-    setPreview({
-      draftAssignments: nextDraftAssignments,
-      issues: nextIssues,
-    })
-
-    syncSelectedIssue(nextIssues)
-  }
-
-  function handleResendDeclined(assignmentId: number) {
-    if (!selectedEdital) return
-
-    const declinedAssignment = assignments.find(
-      (assignment) => assignment.id === assignmentId,
-    )
-
-    const project = projects.find(
-      (item) => item.id === declinedAssignment?.projectId,
-    )
-
-    if (!declinedAssignment || !project) return
-
-    const alreadyAssignedIds = new Set<number>()
-    for (const assignment of assignments) {
-      if (
-        assignment.projectId === project.id &&
-        assignment.status !== "RECUSADO"
-      ) {
-        alreadyAssignedIds.add(assignment.evaluatorId)
-      }
-    }
-
-    const replacement = evaluators
-      .filter((evaluator) => {
-        return (
-          !alreadyAssignedIds.has(evaluator.id) &&
-          evaluator.id !== declinedAssignment.evaluatorId &&
-          !evaluator.unavailable &&
-          !hasConflict(project, evaluator) &&
-          affinityScore(project, evaluator) > 0 &&
-          evaluator.currentAssignments < evaluator.maxAssignments
-        )
-      })
-      .sort((a, b) => {
-        const aLoad = a.currentAssignments / a.maxAssignments
-        const bLoad = b.currentAssignments / b.maxAssignments
-
-        return affinityScore(project, b) - affinityScore(project, a) || aLoad - bLoad
-      })[0]
-
-    if (!replacement) return
-
-    const newAssignment: Assignment = {
-      id: Date.now(),
-      projectId: project.id,
-      evaluatorId: replacement.id,
-      status: "PENDENTE",
-      sentAt: new Date().toISOString().slice(0, 10),
-    }
-
-    setAssignments((current) => [...current, newAssignment])
-
-    setEvaluators((current) =>
-      current.map((evaluator) =>
-        evaluator.id === replacement.id
-          ? {
-              ...evaluator,
-              currentAssignments: evaluator.currentAssignments + 1,
-            }
-          : evaluator,
-      ),
-    )
+  // Recusa: abre o ajuste da distribuição atual já no projeto que perdeu o consultor
+  function handleRedistributeDeclined(assignmentId: number) {
+    const declined = assignments.find((a) => a.id === assignmentId)
+    if (!declined) return
+    if (draft) setSelectedProjectId(declined.projectId)
+    else handleAdjustCurrent(declined.projectId)
   }
 
   return {
@@ -418,24 +236,34 @@ export function useGestorEvaluationDistribution() {
     selectedEditalId,
     selectedEdital,
     handleSelectEdital,
+    editalConsultants,
     projects,
-    evaluators,
-    preview,
-    setSelectedIssueProjectId,
+    assignments,
+    loading,
+    error,
+    busy,
+    lastResult,
+    params,
+    setParams,
+    draft,
+    issues,
+    issueProjects,
+    impact,
     pendingProjects,
     distributedProjects,
-    issueProjects,
-    selectedIssueProject,
-    totalDraftAssignments,
-    projectsCompletedInPreview,
-    assignmentSummary,
+    selectedProject,
+    setSelectedProjectId,
+    candidatesForSelected,
+    candidatesLoading,
+    summary,
     areaSummary,
     recentDeclinedAssignments,
-    manualCandidatesForIssue,
-    handleGenerateSmartPreview,
-    handleConfirmPreview,
-    handleClearPreview,
-    handleManualAddForIssue,
-    handleResendDeclined,
+    isCovered,
+    handleGeneratePreview,
+    handleAdjustCurrent,
+    handleClearDraft,
+    handleToggleCandidate,
+    handleConfirm,
+    handleRedistributeDeclined,
   }
 }

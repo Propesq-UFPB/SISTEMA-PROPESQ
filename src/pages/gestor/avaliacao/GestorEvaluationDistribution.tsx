@@ -1,9 +1,10 @@
-import { ArrowLeft, FileSearch } from "lucide-react"
+import { AlertCircle, ArrowLeft, FileSearch } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Helmet } from "react-helmet"
 import { EditalConsultantsSection } from "@/features/consultants/components/EditalConsultantsSection"
 import { AreaSummarySection } from "@/features/evaluation-distribution/components/AreaSummarySection"
 import { BatchDistributionSection } from "@/features/evaluation-distribution/components/BatchDistributionSection"
+import { DraftAssignmentsSection } from "@/features/evaluation-distribution/components/DraftAssignmentsSection"
 import { EditalSelectorSection } from "@/features/evaluation-distribution/components/EditalSelectorSection"
 import { ExistingAssignmentsSection } from "@/features/evaluation-distribution/components/ExistingAssignmentsSection"
 import { IssuesAdjustmentSection } from "@/features/evaluation-distribution/components/IssuesAdjustmentSection"
@@ -18,25 +19,35 @@ export default function GestorEvaluationDistribution() {
     selectedEditalId,
     selectedEdital,
     handleSelectEdital,
+    editalConsultants,
     projects,
-    evaluators,
-    preview,
+    assignments,
+    loading,
+    error,
+    busy,
+    lastResult,
+    params,
+    setParams,
+    draft,
+    issues,
+    issueProjects,
+    impact,
     pendingProjects,
     distributedProjects,
-    issueProjects,
-    selectedIssueProject,
-    totalDraftAssignments,
-    projectsCompletedInPreview,
-    assignmentSummary,
+    selectedProject,
+    setSelectedProjectId,
+    candidatesForSelected,
+    candidatesLoading,
+    summary,
     areaSummary,
     recentDeclinedAssignments,
-    manualCandidatesForIssue,
-    setSelectedIssueProjectId,
-    handleGenerateSmartPreview,
-    handleConfirmPreview,
-    handleClearPreview,
-    handleManualAddForIssue,
-    handleResendDeclined,
+    isCovered,
+    handleGeneratePreview,
+    handleAdjustCurrent,
+    handleClearDraft,
+    handleToggleCandidate,
+    handleConfirm,
+    handleRedistributeDeclined,
   } = useGestorEvaluationDistribution()
 
   return (
@@ -67,47 +78,80 @@ export default function GestorEvaluationDistribution() {
 
           {selectedEdital ? (
             <>
-              <EditalConsultantsSection editalId={selectedEdital.id} />
+              <EditalConsultantsSection state={editalConsultants} />
 
               <PageHeader
                 totalProjects={projects.length}
                 pendingProjects={pendingProjects.length}
                 distributedProjects={distributedProjects.length}
-                issueCount={preview?.issues.length ?? 0}
+                issueCount={issues.length}
               />
 
-              <BatchDistributionSection
-                preview={preview}
-                pendingProjectsCount={pendingProjects.length}
-                totalDraftAssignments={totalDraftAssignments}
-                projectsCompletedInPreview={projectsCompletedInPreview}
-                onGenerateSmartPreview={handleGenerateSmartPreview}
-                onConfirmPreview={handleConfirmPreview}
-                onClearPreview={handleClearPreview}
-              />
-
-              <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                <div className="space-y-6">
-                  <AreaSummarySection areaSummary={areaSummary} />
-
-                  <ExistingAssignmentsSection
-                    assignmentSummary={assignmentSummary}
-                    recentDeclinedAssignments={recentDeclinedAssignments}
-                    projects={projects}
-                    evaluators={evaluators}
-                    onResendDeclined={handleResendDeclined}
-                  />
+              {error && (
+                <div className="flex gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                  {error}
                 </div>
+              )}
 
-                <IssuesAdjustmentSection
-                  issueProjects={issueProjects}
-                  selectedIssueProject={selectedIssueProject}
-                  preview={preview}
-                  manualCandidatesForIssue={manualCandidatesForIssue}
-                  onSelectIssueProject={setSelectedIssueProjectId}
-                  onManualAddForIssue={handleManualAddForIssue}
-                />
-              </section>
+              {loading ? (
+                <p className="text-sm text-neutral">Carregando projetos e convites...</p>
+              ) : (
+                <>
+                  <BatchDistributionSection
+                    params={params}
+                    onParamsChange={setParams}
+                    draft={draft}
+                    busy={busy}
+                    hasAssignments={assignments.some((a) => a.status !== "RECUSADO")}
+                    pendingProjectsCount={pendingProjects.length}
+                    completedInDraft={draft ? projects.length - issues.length : 0}
+                    issueCount={issues.length}
+                    impact={impact}
+                    lastResult={lastResult}
+                    onGeneratePreview={() => void handleGeneratePreview()}
+                    onAdjustCurrent={() => handleAdjustCurrent()}
+                    onConfirm={() => void handleConfirm()}
+                    onClear={handleClearDraft}
+                  />
+
+                  {draft && (
+                    <DraftAssignmentsSection
+                      draft={draft}
+                      projects={projects}
+                      consultants={editalConsultants.linked}
+                      perProject={params.perProject}
+                      selectedProjectId={selectedProject?.id ?? null}
+                      onSelectProject={setSelectedProjectId}
+                    />
+                  )}
+
+                  <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+                    <div className="space-y-6">
+                      <AreaSummarySection areaSummary={areaSummary} />
+
+                      <ExistingAssignmentsSection
+                        summary={summary}
+                        recentDeclinedAssignments={recentDeclinedAssignments}
+                        projects={projects}
+                        isCovered={isCovered}
+                        onRedistributeDeclined={handleRedistributeDeclined}
+                      />
+                    </div>
+
+                    <IssuesAdjustmentSection
+                      hasDraft={Boolean(draft)}
+                      issueProjects={issueProjects}
+                      selectedProject={selectedProject}
+                      candidates={candidatesForSelected}
+                      candidatesLoading={candidatesLoading}
+                      maxPerConsultant={params.maxPerConsultant}
+                      onSelectProject={setSelectedProjectId}
+                      onToggleCandidate={handleToggleCandidate}
+                    />
+                  </section>
+                </>
+              )}
             </>
           ) : (
             <section className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-neutral/20 bg-white px-6 py-16 text-center">
