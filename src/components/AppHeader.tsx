@@ -55,7 +55,7 @@ function matchesAny(pathname: string, candidates: string[]) {
 const SPECIAL_ACTIVE_MATCHERS: Record<string, (pathname: string) => boolean> = {
   "/gestor/projetos": (pathname) => matchesPrefix(pathname, "/gestor/projetos"),
 
-  "/gestor/avaliacao/avaliadores": (pathname) => matchesPrefix(pathname, "/gestor/avaliacao"),
+  "/gestor/avaliacao/distribuicao": (pathname) => matchesPrefix(pathname, "/gestor/avaliacao"),
   "/gestor/resultados/ranking": (pathname) => matchesPrefix(pathname, "/gestor/resultados"),
   "/gestor/monitoring/replacements": (pathname) => matchesPrefix(pathname, "/gestor/monitoring"),
   "/gestor/calls/CreateCall": (pathname) => matchesPrefix(pathname, "/gestor/calls"),
@@ -543,7 +543,7 @@ export default function AppHeader() {
   const gestorPrimary: NavItem[] = [
     { to: "/dashboard", label: "Dashboard", icon: <Home size={16} /> },
     { to: "/gestor/projetos", label: "Projetos", icon: <FolderKanban size={16} /> },
-    { to: "/gestor/avaliacao/avaliadores", label: "Avaliação", icon: <FileSignature size={16} /> },
+    { to: "/gestor/avaliacao/distribuicao", label: "Avaliação", icon: <FileSignature size={16} /> },
     { to: "/gestor/resultados/ranking", label: "Resultados", icon: <Award size={16} /> },
    // { to: "/gestor/monitoring/replacements", label: "Acompanhamento", icon: <BadgeCheck size={16} /> },
     { to: "/gestor/calls/CreateCall", label: "Editais", icon: <LineChart size={16} /> },
@@ -561,7 +561,7 @@ export default function AppHeader() {
       { to: "/gestor/projetos/status", label: "Alterar Situação", icon: <Workflow size={16} />, end: true },
       { to: "/gestor/projetos/comunicacao", label: "Comunicação", icon: <Megaphone size={16} />, end: true },
     ],
-    "/gestor/avaliacao/avaliadores": [
+    "/gestor/avaliacao/distribuicao": [
       // { to: "/gestor/avaliacao", label: "Overview", icon: <FileSignature size={16} />, end: true },
       { to: "/gestor/avaliacao/distribuicao", label: "Distribuição de Avaliações", icon: <GitBranch size={16} />, end: true },
       { to: "/gestor/avaliacao/avaliadores", label: "Avaliadores", icon: <Users size={16} />, end: true },

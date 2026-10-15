@@ -1,160 +1,27 @@
+import { ApiError } from "@/services/apiClient"
+import type { ConsultantPayload } from "../api/consultantService"
 import type {
   Consultant,
   ConsultantFormValues,
-  InternalUser,
-  InternalUserRole,
-  KnowledgeArea,
   KnowledgeAreaPath,
 } from "../types/consultant"
 
-// Dados mockados até a API de consultores ficar pronta.
-export const internalUsersMock: InternalUser[] = [
-  { id: 1, nome: "Ana Beatriz Souza", email: "ana.souza@ufpb.br", papel: "DOCENTE" },
-  { id: 2, nome: "Carlos Eduardo Lima", email: "carlos.lima@ufpb.br", papel: "COORDENADOR" },
-  { id: 3, nome: "Fernanda Rocha", email: "fernanda.rocha@ufpb.br", papel: "GESTOR" },
-  { id: 4, nome: "João Pedro Almeida", email: "joao.almeida@ufpb.br", papel: "DOCENTE" },
-  { id: 5, nome: "Mariana Costa", email: "mariana.costa@ufpb.br", papel: "DOCENTE" },
-  { id: 6, nome: "Rafael Nascimento", email: "rafael.nascimento@ufpb.br", papel: "COORDENADOR" },
-  { id: 7, nome: "Juliana Ferreira", email: "juliana.ferreira@ufpb.br", papel: "DOCENTE" },
-  { id: 8, nome: "Paulo Henrique Dias", email: "paulo.dias@ufpb.br", papel: "GESTOR" },
-]
-
-type KnowledgeAreaTree = Record<string, Record<string, Record<string, string[]>>>
-
-const knowledgeAreaTreeMock: KnowledgeAreaTree = {
-  "Ciências Exatas e da Terra": {
-    "Ciência da Computação": {
-      "Teoria da Computação": [
-        "Computabilidade e Modelos de Computação",
-        "Linguagens Formais e Autômatos",
-      ],
-      "Metodologia e Técnicas da Computação": [
-        "Engenharia de Software",
-        "Banco de Dados",
-        "Sistemas de Informação",
-      ],
-      "Sistemas de Computação": ["Hardware", "Arquitetura de Sistemas de Computação"],
-    },
-    Matemática: {
-      Álgebra: ["Conjuntos", "Teoria dos Números"],
-      Análise: ["Análise Complexa", "Análise Funcional"],
-    },
-  },
-  "Ciências da Saúde": {
-    Medicina: {
-      "Clínica Médica": ["Cardiologia", "Endocrinologia"],
-      Cirurgia: ["Cirurgia Plástica e Restauradora"],
-    },
-    Enfermagem: {
-      "Enfermagem Médico-Cirúrgica": [],
-      "Enfermagem de Saúde Pública": [],
-    },
-  },
-  "Ciências Humanas": {
-    Educação: {
-      "Ensino-Aprendizagem": ["Tecnologia Educacional", "Avaliação da Aprendizagem"],
-    },
-  },
-  "Ciências Sociais Aplicadas": {
-    Administração: {
-      "Administração de Empresas": ["Mercadologia", "Administração Financeira"],
-    },
-  },
-}
-
-function flattenKnowledgeAreas(tree: KnowledgeAreaTree): KnowledgeArea[] {
-  const rows: KnowledgeArea[] = []
-  const push = (grandeArea: string, area: string, subArea = "", especialidade = "") =>
-    rows.push({ id: rows.length + 1, grandeArea, area, subArea, especialidade })
-
-  for (const [grandeArea, areas] of Object.entries(tree)) {
-    for (const [area, subAreas] of Object.entries(areas)) {
-      push(grandeArea, area)
-      for (const [subArea, especialidades] of Object.entries(subAreas)) {
-        push(grandeArea, area, subArea)
-        especialidades.forEach((especialidade) =>
-          push(grandeArea, area, subArea, especialidade),
-        )
-      }
-    }
-  }
-
-  return rows
-}
-
-export const knowledgeAreasMock = flattenKnowledgeAreas(knowledgeAreaTreeMock)
-
-function areaIdOf(...path: string[]) {
-  const [grandeArea, area, subArea = "", especialidade = ""] = path
-  return (
-    knowledgeAreasMock.find(
-      (row) =>
-        row.grandeArea === grandeArea &&
-        row.area === area &&
-        row.subArea === subArea &&
-        row.especialidade === especialidade,
-    )?.id ?? 0
-  )
-}
-
-export const consultantsMock: Consultant[] = [
-  {
-    id: 1,
-    userId: 1,
-    tipo: "INTERNO",
-    isPropesq: false,
-    isVoluntario: true,
-    isCnpq: false,
-    areaPrincipalId: areaIdOf(
-      "Ciências Exatas e da Terra",
-      "Ciência da Computação",
-      "Metodologia e Técnicas da Computação",
-      "Engenharia de Software",
-    ),
-    areasAdicionaisIds: [
-      areaIdOf("Ciências Exatas e da Terra", "Ciência da Computação", "Metodologia e Técnicas da Computação", "Banco de Dados"),
-      areaIdOf("Ciências Exatas e da Terra", "Matemática"),
-    ],
-    ativo: true,
-  },
-  {
-    id: 2,
-    userId: 3,
-    tipo: "INTERNO",
-    isPropesq: true,
-    isVoluntario: false,
-    isCnpq: false,
-    areaPrincipalId: areaIdOf("Ciências Sociais Aplicadas", "Administração", "Administração de Empresas"),
-    areasAdicionaisIds: [],
-    ativo: true,
-  },
-  {
-    id: 3,
-    userId: 5,
-    tipo: "INTERNO",
-    isPropesq: false,
-    isVoluntario: false,
-    isCnpq: false,
-    areaPrincipalId: areaIdOf("Ciências da Saúde", "Medicina", "Clínica Médica", "Cardiologia"),
-    areasAdicionaisIds: [areaIdOf("Ciências da Saúde", "Enfermagem")],
-    ativo: false,
-  },
-]
-
-export const USER_ROLE_LABEL: Record<InternalUserRole, string> = {
-  DOCENTE: "Docente",
+export const FUNCAO_LABEL: Record<string, string> = {
   COORDENADOR: "Coordenador",
   GESTOR: "Gestor",
 }
 
+export function funcaoLabel(funcao: string) {
+  return FUNCAO_LABEL[funcao.toUpperCase()] ?? funcao
+}
+
 export const EMPTY_CONSULTANT_FORM: ConsultantFormValues = {
-  userId: null,
-  tipo: "INTERNO",
+  user: null,
   isPropesq: false,
   isVoluntario: false,
   isCnpq: false,
-  areaPrincipalId: null,
-  areasAdicionaisIds: [],
+  areaPrincipal: null,
+  areasAdicionais: [],
   ativo: true,
 }
 
@@ -165,52 +32,80 @@ export const EMPTY_AREA_PATH: KnowledgeAreaPath = {
   especialidade: "",
 }
 
-export function areaPathParts(area: KnowledgeAreaPath | undefined) {
+export function areaPathParts(area: KnowledgeAreaPath | null | undefined) {
   if (!area) return []
   return [area.grandeArea, area.area, area.subArea, area.especialidade].filter(Boolean)
 }
 
-export function areaLabel(area: KnowledgeAreaPath | undefined) {
+export function areaLabel(area: KnowledgeAreaPath | null | undefined) {
   const parts = areaPathParts(area)
   return parts.length > 0 ? parts.join(" › ") : "—"
 }
 
-// O registro mais específico selecionado; exige ao menos grande área e área.
-export function resolveAreaId(areas: KnowledgeArea[], path: KnowledgeAreaPath) {
-  if (!path.grandeArea || !path.area) return null
-
-  return (
-    areas.find(
-      (row) =>
-        row.grandeArea === path.grandeArea &&
-        row.area === path.area &&
-        row.subArea === path.subArea &&
-        row.especialidade === path.especialidade,
-    )?.id ?? null
-  )
+export function toAreaPath(area: KnowledgeAreaPath | null | undefined): KnowledgeAreaPath {
+  if (!area) return EMPTY_AREA_PATH
+  const { grandeArea, area: areaName, subArea, especialidade } = area
+  return { grandeArea, area: areaName, subArea, especialidade }
 }
 
-export function consultantTags(consultant: Consultant) {
+export function toFormValues(consultant: Consultant): ConsultantFormValues {
+  const { user, isPropesq, isVoluntario, isCnpq, areaPrincipal, areasAdicionais, ativo } =
+    consultant
+  return { user, isPropesq, isVoluntario, isCnpq, areaPrincipal, areasAdicionais, ativo }
+}
+
+export function consultantTags(consultant: Pick<Consultant, "isPropesq" | "isVoluntario" | "isCnpq">) {
   const tags: string[] = []
-
-  if (consultant.tipo === "INTERNO") {
-    if (consultant.isPropesq) tags.push("PROPESQ")
-    if (consultant.isVoluntario) tags.push("Voluntário")
-  } else if (consultant.isCnpq) {
-    tags.push("CNPq")
-  }
-
+  if (consultant.isPropesq) tags.push("PROPESQ")
+  if (consultant.isVoluntario) tags.push("Voluntário")
+  if (consultant.isCnpq) tags.push("CNPq")
   return tags
 }
 
 export function validateConsultantForm(values: ConsultantFormValues) {
-  const errors: Partial<Record<"userId" | "areaPrincipalId", string>> = {}
+  const errors: Partial<Record<"user" | "areaPrincipal", string>> = {}
 
-  if (values.userId === null) errors.userId = "Selecione o usuário."
-  if (values.areaPrincipalId === null) {
-    errors.areaPrincipalId =
+  if (values.user === null) errors.user = "Selecione o usuário."
+  if (values.areaPrincipal === null) {
+    errors.areaPrincipal =
       "A área principal é obrigatória: selecione ao menos a grande área e a área."
   }
 
   return errors
+}
+
+export function toConsultantPayload(
+  values: ConsultantFormValues,
+  editing: boolean,
+): ConsultantPayload {
+  const principalId = values.areaPrincipal?.id
+
+  return {
+    ...(!editing && { usuario_id: values.user?.id }),
+    area_principal_id: principalId,
+    areas_adicionais_ids: values.areasAdicionais
+      .map((area) => area.id)
+      .filter((id) => id !== principalId),
+    is_propesq: values.isPropesq,
+    is_voluntario: values.isVoluntario,
+    is_cnpq: values.isCnpq,
+    ativo: values.ativo,
+  }
+}
+
+export function apiErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof ApiError) {
+    const msg: unknown = err.payload?.message ?? err.message
+    if (Array.isArray(msg)) return msg.join(" ")
+    return typeof msg === "string" && msg ? msg : fallback
+  }
+  return fallback
+}
+
+export function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase()
 }

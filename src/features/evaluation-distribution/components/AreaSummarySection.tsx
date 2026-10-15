@@ -1,5 +1,5 @@
 import { BarChart3 } from "lucide-react"
-import { SectionTitle, TableCell, TableHead } from "./formPrimitives"
+import { SectionTitle } from "./formPrimitives"
 
 export function AreaSummarySection({
   areaSummary,
@@ -17,34 +17,38 @@ export function AreaSummarySection({
       <SectionTitle
         icon={<BarChart3 size={18} />}
         title="Resumo por área"
-        subtitle="Visão agregada para o gestor."
+        subtitle="Projetos distribuídos sobre o total de cada área."
       />
 
-      <div className="overflow-hidden rounded-2xl border border-neutral/10">
-        <table className="min-w-full divide-y divide-neutral/10 text-sm">
-          <thead className="bg-neutral-light/70">
-            <tr>
-              <TableHead>Área</TableHead>
-              <TableHead align="right">Total</TableHead>
-              <TableHead align="right">Pendentes</TableHead>
-              <TableHead align="right">Distribuídos</TableHead>
-              <TableHead align="right">Incompletos</TableHead>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-neutral/10 bg-white">
-            {areaSummary.map((item) => (
-              <tr key={item.area}>
-                <TableCell>{item.area}</TableCell>
-                <TableCell align="right">{item.total}</TableCell>
-                <TableCell align="right">{item.pendentes}</TableCell>
-                <TableCell align="right">{item.distribuidos}</TableCell>
-                <TableCell align="right">{item.incompletos}</TableCell>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ul className="space-y-4">
+        {areaSummary.map((item) => {
+          const percent = item.total ? Math.round((item.distribuidos / item.total) * 100) : 0
+          return (
+            <li key={item.area}>
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="font-medium text-neutral-dark" title={item.area}>
+                  {item.area}
+                </span>
+                <span className="shrink-0 font-semibold text-neutral-dark">
+                  {item.distribuidos}/{item.total}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-light">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+              </div>
+              {(item.pendentes > 0 || item.incompletos > 0) && (
+                <p className="mt-1 text-[11px] text-neutral">
+                  {item.pendentes > 0 && `${item.pendentes} sem convite`}
+                  {item.pendentes > 0 && item.incompletos > 0 && " · "}
+                  {item.incompletos > 0 && (
+                    <span className="text-amber-700">{item.incompletos} incompleto(s)</span>
+                  )}
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </section>
   )
 }
