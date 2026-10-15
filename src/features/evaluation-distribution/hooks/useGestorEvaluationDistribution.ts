@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { editalService, type EditalLookup } from "@/features/editais"
+import { useEditalSelection } from "@/features/editais"
 import { useEditalConsultants } from "@/features/consultants/hooks/useEditalConsultants"
 import { apiErrorMessage } from "@/features/consultants/utils/consultantHelpers"
 import { distributionService, type ConfirmResult } from "../api/distributionService"
@@ -24,10 +24,14 @@ import {
 } from "../utils/evaluationDistributionHelpers"
 
 export function useGestorEvaluationDistribution() {
-  const [editais, setEditais] = useState<EditalLookup[]>([])
-  const [editaisLoading, setEditaisLoading] = useState(true)
-  const [editaisError, setEditaisError] = useState<string | null>(null)
-  const [selectedEditalId, setSelectedEditalId] = useState("")
+  const {
+    editais,
+    loading: editaisLoading,
+    error: editaisError,
+    selectedEditalId,
+    selectedEdital,
+    selectEdital,
+  } = useEditalSelection()
 
   const [projects, setProjects] = useState<DistributableProject[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -42,30 +46,8 @@ export function useGestorEvaluationDistribution() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [candidatesLoading, setCandidatesLoading] = useState(false)
 
-  const selectedEdital =
-    editais.find((edital) => String(edital.id) === selectedEditalId) ?? null
   const editalId = selectedEdital?.id ?? null
   const editalConsultants = useEditalConsultants(editalId)
-
-  useEffect(() => {
-    let active = true
-
-    editalService
-      .lookup()
-      .then((options) => {
-        if (active) setEditais(options)
-      })
-      .catch(() => {
-        if (active) setEditaisError("Não foi possível carregar os editais.")
-      })
-      .finally(() => {
-        if (active) setEditaisLoading(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [])
 
   const loadPanorama = useCallback(async () => {
     if (editalId === null) return
@@ -115,7 +97,7 @@ export function useGestorEvaluationDistribution() {
   }, [editalId, selectedProjectId, Boolean(draft)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelectEdital(id: string) {
-    setSelectedEditalId(id)
+    selectEdital(id)
     setDraft(null)
     setSelectedProjectId(null)
     setLastResult(null)

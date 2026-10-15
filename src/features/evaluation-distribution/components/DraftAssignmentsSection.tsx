@@ -72,7 +72,7 @@ export function DraftAssignmentsSection({
           subtitle="Clique em um projeto para trocar, incluir ou remover consultores."
         />
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-neutral">
+          <label className="flex items-center gap-2 whitespace-nowrap text-xs text-neutral">
             <input
               type="checkbox"
               checked={onlyIssues}
@@ -105,8 +105,8 @@ export function DraftAssignmentsSection({
         </span>
       </div>
 
-      <div className="max-h-[480px] overflow-auto rounded-2xl border border-neutral/10">
-        <table className="w-full min-w-[820px] text-sm">
+      <div className="max-h-[70vh] overflow-auto rounded-2xl border border-neutral/10">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
             <tr>
               <th className="px-4 py-2 text-left font-semibold">Projeto</th>

@@ -99,6 +99,8 @@ export function SearchableSelect({
       const option = filtered[highlighted]
       if (option) select(option)
     } else if (event.key === "Escape" || event.key === "Tab") {
+      // Esc consumido aqui não deve fechar um modal em volta
+      if (event.key === "Escape" && open) event.preventDefault()
       close()
     }
   }

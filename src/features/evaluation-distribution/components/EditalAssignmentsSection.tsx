@@ -87,7 +87,7 @@ export function EditalAssignmentsSection({
 
   return (
     <section className="rounded-3xl border border-neutral/10 bg-white p-5 shadow-sm space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
         <SectionTitle
           icon={<FolderKanban size={18} />}
           title="Atribuições do edital"
@@ -118,21 +118,21 @@ export function EditalAssignmentsSection({
             ))}
           </select>
 
-          <div className="relative">
+          <div className="relative min-w-[12rem] flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={view === "PROJETO" ? "Buscar projeto, área ou consultor..." : "Buscar consultor..."}
-              className="h-10 w-64 rounded-xl border border-neutral/20 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+              className="h-10 w-full rounded-xl border border-neutral/20 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/10"
             />
           </div>
         </div>
       </div>
 
-      <div className="max-h-[560px] overflow-auto rounded-2xl border border-neutral/10">
+      <div className="max-h-[70vh] overflow-auto rounded-2xl border border-neutral/10">
         {view === "PROJETO" ? (
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
               <tr>
                 <th className="px-4 py-2 text-left font-semibold">Projeto</th>
@@ -186,7 +186,7 @@ export function EditalAssignmentsSection({
             </tbody>
           </table>
         ) : (
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
               <tr>
                 <th className="px-4 py-2 text-left font-semibold">Consultor</th>
