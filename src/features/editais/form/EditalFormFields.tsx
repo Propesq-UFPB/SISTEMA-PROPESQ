@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from "react";
 import type { YesNo } from "./editalFormLogic";
 
 type YesNoFieldProps = Readonly<{
@@ -37,6 +38,33 @@ export function YesNoField({ label, value, onChange, disabled }: YesNoFieldProps
           <span>Não</span>
         </label>
       </div>
+    </div>
+  );
+}
+
+export function EditalValidationField({
+  children,
+  error,
+  className,
+}: Readonly<{
+  children?: ReactNode;
+  error?: string | false;
+  className?: string;
+}>) {
+  const errorId = useId();
+
+  return (
+    <div
+      role="group"
+      aria-describedby={error ? errorId : undefined}
+      className={`${className ?? ""} ${error ? "[&_input]:border-amber-500 [&_select]:border-amber-500" : ""}`}
+    >
+      {children}
+      {error && (
+        <p id={errorId} className="mt-1 text-xs font-medium text-amber-800">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

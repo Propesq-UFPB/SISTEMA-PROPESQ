@@ -6,10 +6,6 @@ import {
   type ScholarshipLookup,
 } from "@/features/settings/api/scholarshipSettingsService";
 import {
-  categorySettingsService,
-  type CategoryLookup,
-} from "@/features/settings/api/categorySettingsService";
-import {
   academicUnitService,
   type AcademicUnitLookup,
 } from "@/features/settings/api/academicUnitService";
@@ -28,6 +24,7 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
   collectCreateErrors,
+  createQuotaDistribution,
   emptyEditalFormValues,
   fileSignature,
   hasPdfForPublish,
@@ -37,6 +34,7 @@ import {
   yearNow,
   type EditalFormMode,
   type EditalFormValues,
+  type QuotaDistributionForm,
   type YesNo,
 } from "./editalFormLogic";
 
@@ -152,8 +150,6 @@ export type EditalFormModel = {
   setPeriodoCota: (value: string) => void;
   tipoEdital: string;
   setTipoEdital: (value: string) => void;
-  categoria: string;
-  setCategoria: (value: string) => void;
   limiteProjetosOrientador: string;
   setLimiteProjetosOrientador: (value: string) => void;
   limitePlanosOrientador: string;
@@ -174,14 +170,16 @@ export type EditalFormModel = {
   setDivulgarResultado: (value: YesNo) => void;
   distribuicaoCotasBolsas: YesNo;
   setDistribuicaoCotasBolsas: (value: YesNo) => void;
-  tipoBolsa: string;
-  setTipoBolsa: (value: string) => void;
-  quantidadeCotas: string;
-  setQuantidadeCotas: (value: string) => void;
-  fppiMinimo: string;
-  setFppiMinimo: (value: string) => void;
-  mediaMinimaProjetos: string;
-  setMediaMinimaProjetos: (value: string) => void;
+  quotaDistributions: QuotaDistributionForm[];
+  expandedQuotaDistributionId: number | null;
+  addQuotaDistribution: () => void;
+  toggleQuotaDistribution: (id: number) => void;
+  updateQuotaDistribution: (
+    id: number,
+    field: keyof Omit<QuotaDistributionForm, "id">,
+    value: string,
+  ) => void;
+  removeQuotaDistribution: (id: number) => void;
   bolsaOptions: ScholarshipLookup[];
   bolsaLoading: boolean;
   bolsaError: string | null;
@@ -194,10 +192,6 @@ export type EditalFormModel = {
   tipoEditalLoading: boolean;
   tipoEditalError: string | null;
   loadTipoEditalOptions: () => Promise<void>;
-  categoriaOptions: CategoryLookup[];
-  categoriaLoading: boolean;
-  categoriaError: string | null;
-  loadCategoriaOptions: () => Promise<void>;
   unidadeOptions: AcademicUnitLookup[];
   unidadeLoading: boolean;
   unidadeError: string | null;
@@ -263,7 +257,6 @@ export function useEditalForm({
   const [titulacaoMinima, setTitulacaoMinima] = useState(seed.titulacaoMinima);
   const [periodoCota, setPeriodoCota] = useState(seed.periodoCota);
   const [tipoEdital, setTipoEdital] = useState(seed.tipoEdital);
-  const [categoria, setCategoria] = useState(seed.categoria);
   const [limiteProjetosOrientador, setLimiteProjetosOrientador] = useState(
     seed.limiteProjetosOrientador,
   );
@@ -296,12 +289,17 @@ export function useEditalForm({
   const [distribuicaoCotasBolsas, setDistribuicaoCotasBolsas] = useState<YesNo>(
     seed.distribuicaoCotasBolsas,
   );
-  const [tipoBolsa, setTipoBolsa] = useState(seed.tipoBolsa);
-  const [quantidadeCotas, setQuantidadeCotas] = useState(seed.quantidadeCotas);
-  const [fppiMinimo, setFppiMinimo] = useState(seed.fppiMinimo);
-  const [mediaMinimaProjetos, setMediaMinimaProjetos] = useState(
-    seed.mediaMinimaProjetos,
+  const [quotaDistributions, setQuotaDistributions] = useState<
+    QuotaDistributionForm[]
+  >(
+    seed.quotaDistributions,
   );
+  const [expandedQuotaDistributionId, setExpandedQuotaDistributionId] =
+    useState<number | null>(
+      initialEdital?.edital_cota_distribuicao.length
+        ? null
+        : (seed.quotaDistributions[0]?.id ?? null),
+    );
   const [unidadeIds, setUnidadeIds] = useState<number[]>(seed.unidadeIds);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -325,10 +323,6 @@ export function useEditalForm({
   const tipoEditalLoader = useLookupLoader(
     () => editalService.typeLookup(),
     "Não foi possível carregar os tipos de edital.",
-  );
-  const categoriaLoader = useLookupLoader(
-    () => categorySettingsService.lookup(),
-    "Não foi possível carregar as categorias.",
   );
   const unidadeLoader = useLookupLoader(
     () => academicUnitService.lookup(),
@@ -390,14 +384,10 @@ export function useEditalForm({
         titulacaoMinima,
         periodoCota,
         tipoEdital,
-        categoria,
         limiteProjetosOrientador,
         limitePlanosOrientador,
         distribuicaoCotasBolsas,
-        tipoBolsa,
-        quantidadeCotas,
-        fppiMinimo,
-        mediaMinimaProjetos,
+        quotaDistributions,
       }),
     [
       editalYear,
@@ -411,14 +401,10 @@ export function useEditalForm({
       titulacaoMinima,
       periodoCota,
       tipoEdital,
-      categoria,
       limiteProjetosOrientador,
       limitePlanosOrientador,
       distribuicaoCotasBolsas,
-      tipoBolsa,
-      quantidadeCotas,
-      fppiMinimo,
-      mediaMinimaProjetos,
+      quotaDistributions,
     ],
   );
 
@@ -459,7 +445,6 @@ export function useEditalForm({
       titulacaoMinima,
       periodoCota,
       tipoEdital,
-      categoria,
       limiteProjetosOrientador,
       limitePlanosOrientador,
       editalVoluntarios,
@@ -470,10 +455,7 @@ export function useEditalForm({
       tecnicoAdministrativoPodeCoordenar,
       divulgarResultado,
       distribuicaoCotasBolsas,
-      tipoBolsa,
-      quantidadeCotas,
-      fppiMinimo,
-      mediaMinimaProjetos,
+      quotaDistributions,
       unidadeIds,
       existingAnexo,
     };
@@ -490,7 +472,6 @@ export function useEditalForm({
     titulacaoMinima,
     periodoCota,
     tipoEdital,
-    categoria,
     limiteProjetosOrientador,
     limitePlanosOrientador,
     editalVoluntarios,
@@ -501,10 +482,7 @@ export function useEditalForm({
     tecnicoAdministrativoPodeCoordenar,
     divulgarResultado,
     distribuicaoCotasBolsas,
-    tipoBolsa,
-    quantidadeCotas,
-    fppiMinimo,
-    mediaMinimaProjetos,
+    quotaDistributions,
     unidadeIds,
     existingAnexo,
   ]);
@@ -658,6 +636,42 @@ export function useEditalForm({
     );
   }, []);
 
+  const addQuotaDistribution = useCallback(() => {
+    const distribution = createQuotaDistribution();
+    setQuotaDistributions(current => [...current, distribution]);
+    setExpandedQuotaDistributionId(distribution.id);
+  }, []);
+
+  const toggleQuotaDistribution = useCallback((id: number) => {
+    setExpandedQuotaDistributionId(current => current === id ? null : id);
+  }, []);
+
+  const updateQuotaDistribution = useCallback(
+    (
+      id: number,
+      field: keyof Omit<QuotaDistributionForm, "id">,
+      value: string,
+    ) => {
+      setQuotaDistributions(current =>
+        current.map(distribution =>
+          distribution.id === id
+            ? { ...distribution, [field]: value }
+            : distribution,
+        ),
+      );
+    },
+    [],
+  );
+
+  const removeQuotaDistribution = useCallback((id: number) => {
+    setQuotaDistributions(current =>
+      current.length > 1
+        ? current.filter(distribution => distribution.id !== id)
+        : current,
+    );
+    setExpandedQuotaDistributionId(current => current === id ? null : current);
+  }, []);
+
   const saveDraft = useCallback(() => {
     void submitEdital("RASCUNHO");
   }, [submitEdital]);
@@ -699,8 +713,6 @@ export function useEditalForm({
     setPeriodoCota,
     tipoEdital,
     setTipoEdital,
-    categoria,
-    setCategoria,
     limiteProjetosOrientador,
     setLimiteProjetosOrientador,
     limitePlanosOrientador,
@@ -721,14 +733,12 @@ export function useEditalForm({
     setDivulgarResultado,
     distribuicaoCotasBolsas,
     setDistribuicaoCotasBolsas,
-    tipoBolsa,
-    setTipoBolsa,
-    quantidadeCotas,
-    setQuantidadeCotas,
-    fppiMinimo,
-    setFppiMinimo,
-    mediaMinimaProjetos,
-    setMediaMinimaProjetos,
+    quotaDistributions,
+    expandedQuotaDistributionId,
+    addQuotaDistribution,
+    toggleQuotaDistribution,
+    updateQuotaDistribution,
+    removeQuotaDistribution,
     bolsaOptions: bolsaLoader.options,
     bolsaLoading: bolsaLoader.loading,
     bolsaError: bolsaLoader.error,
@@ -741,10 +751,6 @@ export function useEditalForm({
     tipoEditalLoading: tipoEditalLoader.loading,
     tipoEditalError: tipoEditalLoader.error,
     loadTipoEditalOptions: tipoEditalLoader.reload,
-    categoriaOptions: categoriaLoader.options,
-    categoriaLoading: categoriaLoader.loading,
-    categoriaError: categoriaLoader.error,
-    loadCategoriaOptions: categoriaLoader.reload,
     unidadeOptions: unidadeLoader.options,
     unidadeLoading: unidadeLoader.loading,
     unidadeError: unidadeLoader.error,

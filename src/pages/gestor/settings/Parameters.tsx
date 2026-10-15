@@ -53,7 +53,6 @@ function toParams(data: Params & { updatedAt?: string }): Params {
     maxProjectDurationMonths: data.maxProjectDurationMonths,
     scholarshipChangeCutoffDay: data.scholarshipChangeCutoffDay,
     emailScholarshipChanges: data.emailScholarshipChanges,
-    emailInventionNotifications: data.emailInventionNotifications,
     allowPartialReportsIC: data.allowPartialReportsIC,
     allowIndependentENICSummaries: data.allowIndependentENICSummaries,
     enicSummariesPerReviewer: data.enicSummariesPerReviewer,
@@ -66,7 +65,6 @@ const DEFAULTS: Params = {
   maxProjectDurationMonths: 12,
   scholarshipChangeCutoffDay: 20,
   emailScholarshipChanges: "",
-  emailInventionNotifications: "",
   allowPartialReportsIC: false,
   allowIndependentENICSummaries: false,
   enicSummariesPerReviewer: 5,
@@ -110,13 +108,6 @@ export default function GestorResearchModuleParameters({
 
     if (form.emailScholarshipChanges.trim() && !isEmailValid(form.emailScholarshipChanges)) {
       e.emailScholarshipChanges = "Email inválido."
-    }
-
-    if (
-      form.emailInventionNotifications.trim() &&
-      !isEmailValid(form.emailInventionNotifications)
-    ) {
-      e.emailInventionNotifications = "Email inválido."
     }
 
     if (form.enicSummariesPerReviewer <= 0) {
@@ -382,16 +373,6 @@ export default function GestorResearchModuleParameters({
             onChange={(v) => setForm((p) => ({ ...p, emailScholarshipChanges: v }))}
             error={errors.emailScholarshipChanges}
             hint="Pode ser um email institucional ou lista de distribuição."
-          />
-
-          <FieldText
-            label="Email para recebimento de notificações de invenção"
-            value={form.emailInventionNotifications}
-            placeholder="ex.: inovacao@ufpb.br"
-            disabled={loading}
-            onChange={(v) => setForm((p) => ({ ...p, emailInventionNotifications: v }))}
-            error={errors.emailInventionNotifications}
-            hint="Usado quando houver fluxo/registro de invenção."
           />
 
           <FieldToggle

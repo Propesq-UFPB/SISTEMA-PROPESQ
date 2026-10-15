@@ -13,6 +13,29 @@ import type {
 export type YesNo = "SIM" | "NAO";
 export type EditalFormMode = "create" | "edit";
 
+export type QuotaDistributionForm = {
+  id: number;
+  tipoBolsa: string;
+  quantidade: string;
+  fppiMin: string;
+  mediaMinProj: string;
+};
+
+let nextQuotaDistributionId = 1;
+
+export function createQuotaDistribution(
+  values: Partial<Omit<QuotaDistributionForm, "id">> = {},
+): QuotaDistributionForm {
+  return {
+    id: nextQuotaDistributionId++,
+    tipoBolsa: "",
+    quantidade: "0",
+    fppiMin: "0,00",
+    mediaMinProj: "0,0",
+    ...values,
+  };
+}
+
 export type EditalFormValues = {
   savedEditalId: number | null;
   status: StatusEdital;
@@ -26,7 +49,6 @@ export type EditalFormValues = {
   titulacaoMinima: string;
   periodoCota: string;
   tipoEdital: string;
-  categoria: string;
   limiteProjetosOrientador: string;
   limitePlanosOrientador: string;
   editalVoluntarios: YesNo;
@@ -37,10 +59,7 @@ export type EditalFormValues = {
   tecnicoAdministrativoPodeCoordenar: YesNo;
   divulgarResultado: YesNo;
   distribuicaoCotasBolsas: YesNo;
-  tipoBolsa: string;
-  quantidadeCotas: string;
-  fppiMinimo: string;
-  mediaMinimaProjetos: string;
+  quotaDistributions: QuotaDistributionForm[];
   unidadeIds: number[];
   existingAnexo: EditalAnexoMeta | null;
 };
@@ -57,14 +76,10 @@ export type CreateCallValidationInput = Readonly<{
   titulacaoMinima: string;
   periodoCota: string;
   tipoEdital: string;
-  categoria: string;
   limiteProjetosOrientador: string;
   limitePlanosOrientador: string;
   distribuicaoCotasBolsas: YesNo;
-  tipoBolsa: string;
-  quantidadeCotas: string;
-  fppiMinimo: string;
-  mediaMinimaProjetos: string;
+  quotaDistributions: QuotaDistributionForm[];
 }>;
 
 export function yearNow() {
@@ -87,7 +102,6 @@ export function emptyEditalFormValues(
     titulacaoMinima: "",
     periodoCota: "",
     tipoEdital: "PESQUISA",
-    categoria: "",
     limiteProjetosOrientador: "0",
     limitePlanosOrientador: "0",
     editalVoluntarios: "NAO",
@@ -98,10 +112,7 @@ export function emptyEditalFormValues(
     tecnicoAdministrativoPodeCoordenar: "NAO",
     divulgarResultado: "NAO",
     distribuicaoCotasBolsas: "NAO",
-    tipoBolsa: "",
-    quantidadeCotas: "0",
-    fppiMinimo: "0,00",
-    mediaMinimaProjetos: "0,0",
+    quotaDistributions: [createQuotaDistribution()],
     unidadeIds: [],
     existingAnexo: null,
   };
@@ -183,29 +194,47 @@ function collectDistribuicaoErrors(
   errs: string[],
   input: CreateCallValidationInput,
 ) {
-  pushIf(errs, !input.tipoBolsa, "Selecione o tipo da bolsa.");
-  pushIf(errs, !input.quantidadeCotas.trim(), "Informe a quantidade de cotas.");
-  pushIf(errs, !input.fppiMinimo.trim(), "Informe o FPPI mínimo.");
   pushIf(
     errs,
-    !input.mediaMinimaProjetos.trim(),
-    "Informe a média mínima dos projetos.",
+    input.quotaDistributions.length === 0,
+    "Adicione pelo menos uma distribuição de cotas.",
   );
-  pushIf(
-    errs,
-    parseInteger(input.quantidadeCotas) < 0,
-    "A quantidade de cotas não pode ser negativa.",
-  );
-  pushIf(
-    errs,
-    parseDecimal(input.fppiMinimo) < 0,
-    "O FPPI mínimo não pode ser negativo.",
-  );
-  pushIf(
-    errs,
-    parseDecimal(input.mediaMinimaProjetos) < 0,
-    "A média mínima dos projetos não pode ser negativa.",
-  );
+
+  input.quotaDistributions.forEach((distribution, index) => {
+    const label = `distribuição ${index + 1}`;
+
+    pushIf(errs, !distribution.tipoBolsa, `Selecione o tipo da bolsa da ${label}.`);
+    pushIf(
+      errs,
+      !distribution.quantidade.trim(),
+      `Informe a quantidade de cotas da ${label}.`,
+    );
+    pushIf(
+      errs,
+      !distribution.fppiMin.trim(),
+      `Informe o FPPI mínimo da ${label}.`,
+    );
+    pushIf(
+      errs,
+      !distribution.mediaMinProj.trim(),
+      `Informe a média mínima dos projetos da ${label}.`,
+    );
+    pushIf(
+      errs,
+      parseInteger(distribution.quantidade) <= 0,
+      `A quantidade de cotas da ${label} deve ser maior que zero.`,
+    );
+    pushIf(
+      errs,
+      parseDecimal(distribution.fppiMin) <= 0,
+      `O FPPI mínimo da ${label} deve ser maior que zero.`,
+    );
+    pushIf(
+      errs,
+      parseDecimal(distribution.mediaMinProj) <= 0,
+      `A média mínima dos projetos da ${label} deve ser maior que zero.`,
+    );
+  });
 }
 
 export function collectCreateErrors(
@@ -234,11 +263,10 @@ export function collectCreateErrors(
   );
   pushIf(errs, !input.periodoCota, "Selecione o período de cota.");
   pushIf(errs, !input.tipoEdital, "Selecione o tipo de edital.");
-  pushIf(errs, !input.categoria, "Selecione a categoria do edital.");
   pushIf(
     errs,
     !input.limiteProjetosOrientador.trim(),
-    "Informe o limite de solicitações de projetos por orientador.",
+    "Informe o limite de solicitações de cotas por orientador.",
   );
   pushIf(
     errs,
@@ -247,13 +275,13 @@ export function collectCreateErrors(
   );
   pushIf(
     errs,
-    parseInteger(input.limiteProjetosOrientador) < 0,
-    "O limite de projetos não pode ser negativo.",
+    (!Number.isSafeInteger(Number(input.limiteProjetosOrientador)) || Number(input.limiteProjetosOrientador) < 0),
+    "O limite de cotas deve ser um inteiro não negativo.",
   );
   pushIf(
     errs,
-    parseInteger(input.limitePlanosOrientador) < 0,
-    "O limite de planos não pode ser negativo.",
+    (!Number.isSafeInteger(Number(input.limitePlanosOrientador)) || Number(input.limitePlanosOrientador) < 0),
+    "O limite de planos deve ser um inteiro não negativo.",
   );
 
   if (input.distribuicaoCotasBolsas === "SIM") {
@@ -268,15 +296,13 @@ function buildCotaRows(
 ): EditalCotaDistribuicaoPayload[] {
   if (values.distribuicaoCotasBolsas !== "SIM") return [];
 
-  return [
-    {
-      id_bolsa: parseInteger(values.tipoBolsa),
-      quantidade: parseInteger(values.quantidadeCotas),
-      fppi_min: parseDecimal(values.fppiMinimo),
-      media_min_proj: parseDecimal(values.mediaMinimaProjetos),
-      exige_doutorado: values.titulacaoMinima === "DOUTORADO",
-    },
-  ];
+  return values.quotaDistributions.map(distribution => ({
+    id_bolsa: parseInteger(distribution.tipoBolsa),
+    quantidade: parseInteger(distribution.quantidade),
+    fppi_min: parseDecimal(distribution.fppiMin),
+    media_min_proj: parseDecimal(distribution.mediaMinProj),
+    exige_doutorado: values.titulacaoMinima === "DOUTORADO",
+  }));
 }
 
 function buildSharedPayload(values: EditalFormValues) {
@@ -285,11 +311,11 @@ function buildSharedPayload(values: EditalFormValues) {
     ano: parseInteger(values.editalYear) || yearNow(),
     titulacao_min: values.titulacaoMinima as TitulacaoMin,
     tipo: values.tipoEdital as TipoEdital,
-    limite_solicitacoes_orientador: parseInteger(
+    limite_solicitacoes_orientador: Number(
       values.limiteProjetosOrientador,
     ),
     cota_bolsa_id: parseInteger(values.periodoCota),
-    limite_planos_orientador: parseInteger(values.limitePlanosOrientador),
+    limite_planos_orientador: Number(values.limitePlanosOrientador),
     avaliacao_vigente: yesNoToBool(values.avaliacaoVigente),
     apenas_orient_coordena_plano: yesNoToBool(
       values.apenasCoordenadorOrientaPlano,
@@ -305,7 +331,6 @@ function buildSharedPayload(values: EditalFormValues) {
     prof_subst_cadastra_proj: yesNoToBool(
       values.professorSubstitutoCadastraProjeto,
     ),
-    categoria_id: parseInteger(values.categoria),
     edital_cota_distribuicao: buildCotaRows(values),
     periodo_submissao: {
       inicio: toIsoDateTime(values.submissionStart),
@@ -341,8 +366,6 @@ export function buildUpdatePayload(
 }
 
 export function hydrateEditalForm(edital: Edital): EditalFormValues {
-  const row = edital.edital_cota_distribuicao[0];
-
   return {
     savedEditalId: edital.id,
     status: edital.status,
@@ -356,7 +379,6 @@ export function hydrateEditalForm(edital: Edital): EditalFormValues {
     titulacaoMinima: edital.titulacao_min,
     periodoCota: String(edital.cota_bolsa?.id ?? ""),
     tipoEdital: edital.tipo,
-    categoria: String(edital.categoria.id),
     limiteProjetosOrientador: String(edital.limite_solicitacoes_orientador),
     limitePlanosOrientador: String(edital.limite_planos_orientador),
     editalVoluntarios: boolToYesNo(edital.edital_para_voluntarios),
@@ -374,11 +396,19 @@ export function hydrateEditalForm(edital: Edital): EditalFormValues {
       edital.tec_admin_coord_proj,
     ),
     divulgarResultado: boolToYesNo(edital.divulgar_resultado),
-    distribuicaoCotasBolsas: row ? "SIM" : "NAO",
-    tipoBolsa: row ? String(row.id_bolsa) : "",
-    quantidadeCotas: row ? String(row.quantidade) : "0",
-    fppiMinimo: row ? formatDecimal(row.fppi_min, 2) : "0,00",
-    mediaMinimaProjetos: row ? formatDecimal(row.media_min_proj, 1) : "0,0",
+    distribuicaoCotasBolsas:
+      edital.edital_cota_distribuicao.length > 0 ? "SIM" : "NAO",
+    quotaDistributions:
+      edital.edital_cota_distribuicao.length > 0
+        ? edital.edital_cota_distribuicao.map(row =>
+            createQuotaDistribution({
+              tipoBolsa: String(row.id_bolsa),
+              quantidade: String(row.quantidade),
+              fppiMin: formatDecimal(row.fppi_min, 2),
+              mediaMinProj: formatDecimal(row.media_min_proj, 1),
+            }),
+          )
+        : [createQuotaDistribution()],
     unidadeIds: edital.unidade_ids ?? [],
     existingAnexo: edital.anexo ?? null,
   };
@@ -401,13 +431,9 @@ export function validationInputFromValues(
     titulacaoMinima: values.titulacaoMinima,
     periodoCota: values.periodoCota,
     tipoEdital: values.tipoEdital,
-    categoria: values.categoria,
     limiteProjetosOrientador: values.limiteProjetosOrientador,
     limitePlanosOrientador: values.limitePlanosOrientador,
     distribuicaoCotasBolsas: values.distribuicaoCotasBolsas,
-    tipoBolsa: values.tipoBolsa,
-    quantidadeCotas: values.quantidadeCotas,
-    fppiMinimo: values.fppiMinimo,
-    mediaMinimaProjetos: values.mediaMinimaProjetos,
+    quotaDistributions: values.quotaDistributions,
   };
 }

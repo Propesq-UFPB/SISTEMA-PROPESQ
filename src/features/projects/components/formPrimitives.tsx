@@ -49,19 +49,29 @@ export function Field({
   hint,
   children,
   required,
+  error,
 }: Readonly<{
   label: string
   hint?: string
   required?: boolean
+  error?: string
   children: React.ReactNode
 }>) {
+  const errorId = React.useId()
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      role="group"
+      aria-label={label}
+      aria-describedby={error ? errorId : undefined}
+      className={cx("flex flex-col gap-2", error && "[&_input]:border-amber-500 [&_select]:border-amber-500 [&_textarea]:border-amber-500")}
+    >
       <label className="text-xs font-bold uppercase tracking-wide text-neutral">
         {label} {required && <span className="text-red-600">*</span>}
       </label>
 
       {children}
+
+      {error && <p id={errorId} className="text-xs font-medium text-amber-800">{error}</p>}
 
       {hint && <p className="text-[11px] text-neutral">{hint}</p>}
     </div>

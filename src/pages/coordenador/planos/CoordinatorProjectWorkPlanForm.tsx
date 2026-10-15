@@ -7,13 +7,13 @@ import { WorkPlanDraftForm } from "@/features/work-plans/components/WorkPlanDraf
 
 export default function CoordinatorProjectWorkPlanForm() {
   const {
+    scholarships, scholarshipsLoading, scholarshipsError, loadScholarships,
     saving,
     saved,
     loading,
     loadError,
     saveError,
     selectedProjectId,
-    plansByProject,
     draft,
     setDraft,
     cronogramaAtividade,
@@ -22,8 +22,6 @@ export default function CoordinatorProjectWorkPlanForm() {
     setCronogramaMesInicio,
     cronogramaMesFim,
     setCronogramaMesFim,
-    filters,
-    setFilters,
     selectedProject,
     existingPlans,
     duracaoPeriodoMeses,
@@ -33,7 +31,6 @@ export default function CoordinatorProjectWorkPlanForm() {
     cronogramaDentroDoPeriodo,
     canSavePlan,
     resetDraft,
-    clearFilters,
     selectProject,
     duplicateLastPlan,
     addCronogramaItem,
@@ -81,7 +78,7 @@ export default function CoordinatorProjectWorkPlanForm() {
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral">
-              Selecione um projeto aprovado ou validado e cadastre o plano com
+              Selecione um de seus projetos de edital publicado e cadastre o plano com
               os campos exigidos pelo Anexo II.
             </p>
           </div>
@@ -101,15 +98,15 @@ export default function CoordinatorProjectWorkPlanForm() {
           loading={loading}
           projects={filteredProjects}
           selectedProjectId={selectedProjectId}
-          plansByProject={plansByProject}
-          filters={filters}
-          onFiltersChange={setFilters}
-          onClearFilters={clearFilters}
           onSelect={selectProject}
         />
 
         {selectedProject ? (
           <WorkPlanDraftForm
+            scholarships={scholarships}
+            scholarshipsLoading={scholarshipsLoading}
+            scholarshipsError={scholarshipsError}
+            loadScholarships={loadScholarships}
             selectedProject={selectedProject}
             existingPlans={existingPlans}
             draft={draft}

@@ -32,7 +32,6 @@ function fixture(overrides: Partial<Edital> = {}): Edital {
     edital_para_voluntarios: true,
     apenas_colab_vol_cadastra_plano: false,
     prof_subst_cadastra_proj: false,
-    categoria: { id: 5, denominacao: "IC" },
     cota_bolsa: { id: 7, codigo: "C1", descricao: "2026" },
     periodo_submissoes: {
       id: 1,
@@ -77,10 +76,11 @@ describe("hydrateEditalForm", () => {
     expect(values.periodoCota).toBe("7");
   });
 
-  it("hidrata a primeira linha de cotas", () => {
+  it("hidrata as linhas de cotas", () => {
     const values = hydrateEditalForm(fixture());
     expect(values.distribuicaoCotasBolsas).toBe("SIM");
-    expect(values.tipoBolsa).toBe("4");
+    expect(values.quotaDistributions).toHaveLength(1);
+    expect(values.quotaDistributions[0]?.tipoBolsa).toBe("4");
   });
 
   it("hidrata cotas vazias como NAO", () => {
@@ -107,8 +107,26 @@ describe("hydrateEditalForm", () => {
 
   it("formata decimais com vírgula", () => {
     const values = hydrateEditalForm(fixture());
-    expect(values.fppiMinimo).toBe("10,50");
-    expect(values.mediaMinimaProjetos).toBe("7,0");
+    expect(values.quotaDistributions[0]?.fppiMin).toBe("10,50");
+    expect(values.quotaDistributions[0]?.mediaMinProj).toBe("7,0");
+  });
+
+  it("preserva múltiplas distribuições", () => {
+    const edital = fixture();
+    edital.edital_cota_distribuicao.push({
+      id: 2,
+      id_edital: 11,
+      id_bolsa: 8,
+      quantidade: 5,
+      fppi_min: 8,
+      media_min_proj: 6.5,
+      exige_doutorado: true,
+    });
+
+    const values = hydrateEditalForm(edital);
+
+    expect(values.quotaDistributions).toHaveLength(2);
+    expect(values.quotaDistributions[1]?.tipoBolsa).toBe("8");
   });
 });
 
@@ -138,7 +156,6 @@ describe("payloads", () => {
     values.executionEnd = "2027-03-31";
     values.titulacaoMinima = "DOUTORADO";
     values.periodoCota = "7";
-    values.categoria = "5";
 
     const payload = buildCreatePayload(values, "RASCUNHO");
 
@@ -157,7 +174,6 @@ describe("payloads", () => {
     expect(payload.descricao).toBe("Edital PIBIC");
     expect(payload.ano).toBe(2026);
     expect(payload.tipo).toBe("PESQUISA");
-    expect(payload.categoria_id).toBe(5);
     expect(payload.cota_bolsa_id).toBe(7);
     expect(payload.edital_para_voluntarios).toBe(true);
     expect(payload.periodo_execucao?.inicio).toBe(
@@ -170,6 +186,27 @@ describe("payloads", () => {
     const values = hydrateEditalForm(fixture({ edital_cota_distribuicao: [] }));
     const payload = buildUpdatePayload(values, "RASCUNHO");
     expect(payload.edital_cota_distribuicao).toEqual([]);
+  });
+
+  it("buildUpdatePayload envia múltiplas distribuições", () => {
+    const values = hydrateEditalForm(fixture());
+    values.quotaDistributions.push({
+      id: 999,
+      tipoBolsa: "8",
+      quantidade: "5",
+      fppiMin: "8,50",
+      mediaMinProj: "6,5",
+    });
+
+    const payload = buildUpdatePayload(values, "RASCUNHO");
+
+    expect(payload.edital_cota_distribuicao).toHaveLength(2);
+    expect(payload.edital_cota_distribuicao?.[1]).toMatchObject({
+      id_bolsa: 8,
+      quantidade: 5,
+      fppi_min: 8.5,
+      media_min_proj: 6.5,
+    });
   });
 
   it("buildUpdatePayload manda codigo vazio para apagar no backend", () => {
@@ -194,7 +231,7 @@ describe("collectCreateErrors", () => {
     const errors = collectCreateErrors(
       validationInputFromValues(values, "", ""),
     );
-    expect(errors).toContain("Selecione o tipo da bolsa.");
+    expect(errors).toContain("Selecione o tipo da bolsa da distribuição 1.");
   });
 });
 
@@ -228,5 +265,37 @@ describe("assertPdfFile", () => {
     const file = new File(["x"], "big.pdf", { type: "application/pdf" });
     Object.defineProperty(file, "size", { value: 26 * 1024 * 1024 });
     expect(assertPdfFile(file)).toMatch(/Arquivo muito grande/);
+  });
+});
+
+
+describe("edital sem categoria", () => {
+  it("não envia categoria no cadastro nem na edição", () => {
+    const values = hydrateEditalForm(fixture());
+    expect(buildCreatePayload(values, "RASCUNHO")).not.toHaveProperty("categoria_id");
+    expect(buildUpdatePayload(values, "RASCUNHO")).not.toHaveProperty("categoria_id");
+  });
+});
+
+
+describe("limites de solicitações", () => {
+  it.each(["-1", "1.5", "abc"])("rejeita limites inválidos: %s", value => {
+    const values = hydrateEditalForm(fixture());
+    values.limiteProjetosOrientador = value;
+    values.limitePlanosOrientador = value;
+    const errors = collectCreateErrors(validationInputFromValues(values, "", ""));
+    expect(errors).toContain("O limite de cotas deve ser um inteiro não negativo.");
+    expect(errors).toContain("O limite de planos deve ser um inteiro não negativo.");
+  });
+
+  it.each(["0", "3"])("preserva limites válidos no cadastro e alteração: %s", value => {
+    const values = hydrateEditalForm(fixture());
+    values.limiteProjetosOrientador = value;
+    values.limitePlanosOrientador = value;
+    expect(collectCreateErrors(validationInputFromValues(values, "", ""))).toEqual([]);
+    for (const payload of [buildCreatePayload(values, "RASCUNHO"), buildUpdatePayload(values, "RASCUNHO")]) {
+      expect(payload.limite_solicitacoes_orientador).toBe(Number(value));
+      expect(payload.limite_planos_orientador).toBe(Number(value));
+    }
   });
 });

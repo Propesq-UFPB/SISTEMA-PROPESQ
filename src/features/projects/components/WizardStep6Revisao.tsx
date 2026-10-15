@@ -256,7 +256,7 @@ export function WizardStep6Revisao({
 
         <div className="mt-4 grid grid-cols-1 gap-4">
           <Info
-            label="Descrição resumida"
+            label="Resumo"
             value={form.gerais.descricaoResumida}
             preWrap
           />
