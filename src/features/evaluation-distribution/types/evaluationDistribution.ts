@@ -25,6 +25,10 @@ export type Assignment = {
   answeredAt: string | null
 }
 
+export type ProjectAssignment = Assignment & {
+  evaluatorEmail: string
+}
+
 export type DistributionParams = {
   minPerConsultant: number
   maxPerConsultant: number

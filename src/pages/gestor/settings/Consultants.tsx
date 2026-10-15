@@ -1,6 +1,18 @@
 import { useState } from "react"
 import { Helmet } from "react-helmet"
-import { AlertCircle, Check, Info, Pencil, Plus, Search, Trash2, UserCheck, X } from "lucide-react"
+import {
+  AlertCircle,
+  Check,
+  ClipboardList,
+  Info,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserCheck,
+  X,
+} from "lucide-react"
+import { ConsultantAssignmentsDrawer } from "@/features/consultants/components/ConsultantAssignmentsDrawer"
 import { ConsultantFormModal } from "@/features/consultants/components/ConsultantFormModal"
 import { useConsultants } from "@/features/consultants/hooks/useConsultants"
 import type {
@@ -38,6 +50,7 @@ export default function Consultants() {
   } = useConsultants()
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [viewing, setViewing] = useState<Consultant | null>(null)
 
   function openCreate() {
     setActionError(null)
@@ -169,14 +182,14 @@ export default function Consultants() {
           <h3 className="text-sm font-semibold text-primary">Lista de consultores</h3>
         </div>
 
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
           <thead className="bg-neutral-50 text-neutral">
             <tr>
               <th className="text-left font-semibold px-5 py-3">Consultor</th>
               <th className="text-left font-semibold px-5 py-3">Perfil</th>
               <th className="text-left font-semibold px-5 py-3">Áreas de conhecimento</th>
               <th className="text-left font-semibold px-5 py-3 w-[180px]">Status</th>
-              <th className="text-right font-semibold px-5 py-3 w-[240px]">Ações</th>
+              <th className="text-right font-semibold px-5 py-3 w-[380px]">Ações</th>
             </tr>
           </thead>
 
@@ -264,6 +277,14 @@ export default function Consultants() {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
+                          onClick={() => setViewing(consultant)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold"
+                        >
+                          <ClipboardList size={16} />
+                          Atribuições
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEdit(consultant)}
                           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold"
                         >
@@ -287,6 +308,13 @@ export default function Consultants() {
           </tbody>
         </table>
       </section>
+
+      {viewing && (
+        <ConsultantAssignmentsDrawer
+          consultant={{ id: viewing.id, name: viewing.user.nome, email: viewing.user.email }}
+          onClose={() => setViewing(null)}
+        />
+      )}
 
       {modal && (
         <ConsultantFormModal

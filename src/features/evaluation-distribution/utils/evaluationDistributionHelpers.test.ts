@@ -12,6 +12,8 @@ import {
   computeIssues,
   confirmImpact,
   draftFromAssignments,
+  groupByConsultant,
+  matchesAssignmentFilter,
   toggleDraftAssignment,
 } from "./evaluationDistributionHelpers"
 
@@ -174,5 +176,30 @@ describe("resumos", () => {
     expect(affinityLabel(160)).toBe("Mesma subárea")
     expect(affinityLabel(80)).toBe("Subárea (área adicional)")
     expect(affinityLabel(0)).toBe("Sem afinidade")
+  })
+})
+
+describe("visões das atribuições", () => {
+  it("agrupa por consultor e usa o nome em atribuições antigas sem consultor", () => {
+    const groups = groupByConsultant([
+      assignment(1, 10, 2),
+      assignment(2, 20, 2),
+      { ...assignment(3, 30, 9), consultantId: null, evaluatorName: "Antigo" },
+      assignment(4, 30, 1),
+    ])
+    expect(groups.map((g) => [g.name, g.consultantId, g.assignments.length])).toEqual([
+      ["Antigo", null, 1],
+      ["Consultor 1", 1, 1],
+      ["Consultor 2", 2, 2],
+    ])
+  })
+
+  it("filtra por status, tratando 'avaliado' como convite com notas", () => {
+    const graded = assignment(1, 10, 1, { status: "ACEITO", hasGrades: true })
+    const accepted = assignment(2, 10, 2, { status: "ACEITO" })
+    expect(matchesAssignmentFilter(graded, "AVALIADO")).toBe(true)
+    expect(matchesAssignmentFilter(accepted, "AVALIADO")).toBe(false)
+    expect(matchesAssignmentFilter(accepted, "ACEITO")).toBe(true)
+    expect(matchesAssignmentFilter(accepted, "ALL")).toBe(true)
   })
 })

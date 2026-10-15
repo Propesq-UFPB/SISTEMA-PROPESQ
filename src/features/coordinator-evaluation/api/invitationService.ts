@@ -5,7 +5,7 @@ import type { EvaluationInvitation } from "../types/invitation"
 
 type AreaResponse = Parameters<typeof toKnowledgeArea>[0]
 
-type MinhaAtribuicaoResponse = {
+export type AtribuicaoAvaliadorResponse = {
   id: number
   status: AssignmentStatus
   motivo_recusa: string | null
@@ -18,7 +18,7 @@ type MinhaAtribuicaoResponse = {
 
 const ENDPOINT = "/distribuicao/atribuicoes"
 
-function toInvitation(row: MinhaAtribuicaoResponse): EvaluationInvitation {
+export function toInvitation(row: AtribuicaoAvaliadorResponse): EvaluationInvitation {
   return {
     id: row.id,
     status: row.status,
@@ -44,7 +44,7 @@ function toInvitation(row: MinhaAtribuicaoResponse): EvaluationInvitation {
 
 export const invitationService = {
   async mine() {
-    const rows = await apiRequest<MinhaAtribuicaoResponse[]>(`${ENDPOINT}/minhas`)
+    const rows = await apiRequest<AtribuicaoAvaliadorResponse[]>(`${ENDPOINT}/minhas`)
     return rows.map(toInvitation)
   },
   accept(id: number) {

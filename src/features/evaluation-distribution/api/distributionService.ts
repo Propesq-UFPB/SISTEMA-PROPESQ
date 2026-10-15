@@ -1,10 +1,15 @@
-import { apiRequest } from "@/services/apiClient"
+import { apiRequest, buildQuery } from "@/services/apiClient"
+import {
+  toInvitation,
+  type AtribuicaoAvaliadorResponse,
+} from "@/features/coordinator-evaluation/api/invitationService"
 import { toKnowledgeArea } from "@/features/consultants/api/consultantService"
 import type {
   Assignment,
   AssignmentStatus,
   Candidate,
   DistributableProject,
+  ProjectAssignment,
   DistributionParams,
   DraftAssignment,
 } from "../types/evaluationDistribution"
@@ -55,6 +60,18 @@ type CandidateResponse = {
   score: number
   carga: number
   atribuido: boolean
+}
+
+type ProjetoAtribuicaoResponse = {
+  id: number
+  consultor_id: number | null
+  avaliador_nome: string
+  avaliador_email: string
+  status: AssignmentStatus
+  motivo_recusa: string | null
+  tem_notas: boolean
+  criado_em: string
+  respondido_em: string | null
 }
 
 export type ConfirmResult = {
@@ -129,6 +146,34 @@ export const distributionService = {
         })),
       }),
     })
+  },
+
+  async projectAssignments(projectId: number) {
+    const rows = await apiRequest<ProjetoAtribuicaoResponse[]>(
+      `${ENDPOINT}/projetos/${projectId}/atribuicoes`,
+    )
+    return rows.map(
+      (a): ProjectAssignment => ({
+        id: a.id,
+        projectId,
+        consultantId: a.consultor_id,
+        evaluatorName: a.avaliador_nome,
+        evaluatorEmail: a.avaliador_email,
+        status: a.status,
+        reason: a.motivo_recusa,
+        hasGrades: a.tem_notas,
+        sentAt: a.criado_em,
+        answeredAt: a.respondido_em,
+      }),
+    )
+  },
+
+  // Mesmo formato dos convites vistos pelo próprio avaliador
+  async consultantAssignments(consultantId: number, editalId?: number) {
+    const rows = await apiRequest<AtribuicaoAvaliadorResponse[]>(
+      `${ENDPOINT}/consultores/${consultantId}/atribuicoes${buildQuery({ edital_id: editalId })}`,
+    )
+    return rows.map(toInvitation)
   },
 
   async candidates(editalId: number, projectId: number) {

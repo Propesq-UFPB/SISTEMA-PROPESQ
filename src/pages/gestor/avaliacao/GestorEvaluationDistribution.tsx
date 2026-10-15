@@ -1,7 +1,10 @@
+import { useState } from "react"
 import { AlertCircle, ArrowLeft, FileSearch } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Helmet } from "react-helmet"
+import { ConsultantAssignmentsDrawer } from "@/features/consultants/components/ConsultantAssignmentsDrawer"
 import { EditalConsultantsSection } from "@/features/consultants/components/EditalConsultantsSection"
+import { EditalAssignmentsSection } from "@/features/evaluation-distribution/components/EditalAssignmentsSection"
 import { AreaSummarySection } from "@/features/evaluation-distribution/components/AreaSummarySection"
 import { BatchDistributionSection } from "@/features/evaluation-distribution/components/BatchDistributionSection"
 import { DraftAssignmentsSection } from "@/features/evaluation-distribution/components/DraftAssignmentsSection"
@@ -49,6 +52,8 @@ export default function GestorEvaluationDistribution() {
     handleConfirm,
     handleRedistributeDeclined,
   } = useGestorEvaluationDistribution()
+
+  const [openConsultant, setOpenConsultant] = useState<{ id: number; name: string } | null>(null)
 
   return (
     <div className="min-h-screen bg-neutral-light">
@@ -150,6 +155,13 @@ export default function GestorEvaluationDistribution() {
                       onToggleCandidate={handleToggleCandidate}
                     />
                   </section>
+
+                  <EditalAssignmentsSection
+                    projects={projects}
+                    assignments={assignments}
+                    perProject={params.perProject}
+                    onOpenConsultant={setOpenConsultant}
+                  />
                 </>
               )}
             </>
@@ -169,6 +181,14 @@ export default function GestorEvaluationDistribution() {
           )}
         </div>
       </div>
+
+      {openConsultant && (
+        <ConsultantAssignmentsDrawer
+          consultant={openConsultant}
+          initialEditalId={selectedEdital?.id ?? null}
+          onClose={() => setOpenConsultant(null)}
+        />
+      )}
     </div>
   )
 }

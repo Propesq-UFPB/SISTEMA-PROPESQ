@@ -185,6 +185,37 @@ export function areaSummary(
   )
 }
 
+export type AssignmentFilter = "ALL" | AssignmentStatus | "AVALIADO"
+
+export function matchesAssignmentFilter(assignment: Assignment, filter: AssignmentFilter) {
+  if (filter === "ALL") return true
+  if (filter === "AVALIADO") return assignment.hasGrades
+  return assignment.status === filter
+}
+
+// Agrupa os convites do edital por consultor (ou pelo nome do avaliador, em atribuições antigas)
+export function groupByConsultant(assignments: Assignment[]) {
+  const groups = new Map<
+    string,
+    { key: string; consultantId: number | null; name: string; assignments: Assignment[] }
+  >()
+
+  for (const assignment of assignments) {
+    const key =
+      assignment.consultantId !== null ? `c${assignment.consultantId}` : `n${assignment.evaluatorName}`
+    const group = groups.get(key) ?? {
+      key,
+      consultantId: assignment.consultantId,
+      name: assignment.evaluatorName,
+      assignments: [],
+    }
+    group.assignments.push(assignment)
+    groups.set(key, group)
+  }
+
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+}
+
 export function formatDate(value: string | null) {
   if (!value) return "—"
   return new Date(value).toLocaleDateString("pt-BR")
