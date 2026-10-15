@@ -1,6 +1,7 @@
 import { ArrowLeft, FileSearch } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Helmet } from "react-helmet"
+import { EditalConsultantsSection } from "@/features/consultants/components/EditalConsultantsSection"
 import { AreaSummarySection } from "@/features/evaluation-distribution/components/AreaSummarySection"
 import { BatchDistributionSection } from "@/features/evaluation-distribution/components/BatchDistributionSection"
 import { EditalSelectorSection } from "@/features/evaluation-distribution/components/EditalSelectorSection"
@@ -66,6 +67,8 @@ export default function GestorEvaluationDistribution() {
 
           {selectedEdital ? (
             <>
+              <EditalConsultantsSection editalId={selectedEdital.id} />
+
               <PageHeader
                 totalProjects={projects.length}
                 pendingProjects={pendingProjects.length}

@@ -1,19 +1,18 @@
 import { useState } from "react"
 import { Helmet } from "react-helmet"
-import { Check, Info, Pencil, Plus, Search, Trash2, UserCheck, X } from "lucide-react"
+import { AlertCircle, Check, Info, Pencil, Plus, Search, Trash2, UserCheck, X } from "lucide-react"
 import { ConsultantFormModal } from "@/features/consultants/components/ConsultantFormModal"
 import { useConsultants } from "@/features/consultants/hooks/useConsultants"
 import type {
   Consultant,
   ConsultantFormValues,
   ConsultantStatusFilter,
-  ConsultantTypeFilter,
 } from "@/features/consultants/types/consultant"
 import {
   areaLabel,
   consultantTags,
   EMPTY_CONSULTANT_FORM,
-  USER_ROLE_LABEL,
+  toFormValues,
 } from "@/features/consultants/utils/consultantHelpers"
 
 type ModalState = { editingId: number | null; initialValues: ConsultantFormValues }
@@ -23,16 +22,16 @@ export default function Consultants() {
     consultants,
     filtered,
     stats,
-    areas,
-    usersById,
-    areasById,
+    loading,
+    loadError,
+    actionError,
+    setActionError,
+    notice,
+    saving,
     query,
     setQuery,
-    typeFilter,
-    setTypeFilter,
     statusFilter,
     setStatusFilter,
-    availableUsersFor,
     saveConsultant,
     toggleActive,
     removeConsultant,
@@ -41,18 +40,27 @@ export default function Consultants() {
   const [modal, setModal] = useState<ModalState | null>(null)
 
   function openCreate() {
+    setActionError(null)
     setModal({ editingId: null, initialValues: EMPTY_CONSULTANT_FORM })
   }
 
   function openEdit(consultant: Consultant) {
-    const { id, ...values } = consultant
-    setModal({ editingId: id, initialValues: values })
+    setActionError(null)
+    setModal({ editingId: consultant.id, initialValues: toFormValues(consultant) })
+  }
+
+  function closeModal() {
+    if (saving) return
+    setActionError(null)
+    setModal(null)
   }
 
   function handleRemove(consultant: Consultant) {
-    const name = usersById.get(consultant.userId)?.nome ?? "este consultor"
-    if (!window.confirm(`Remover ${name} da lista de consultores?`)) return
-    removeConsultant(consultant.id)
+    const message =
+      `Remover ${consultant.user.nome} da lista de consultores?\n\n` +
+      "Se ele já tiver avaliações atribuídas, será apenas desativado."
+    if (!window.confirm(message)) return
+    void removeConsultant(consultant)
   }
 
   return (
@@ -104,13 +112,19 @@ export default function Consultants() {
           ))}
         </div>
 
-        <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4 flex gap-2">
-          <Info size={16} className="mt-0.5 shrink-0 text-neutral" />
-          <p className="text-xs text-neutral">
-            Protótipo com dados de exemplo: as alterações não são salvas até a API de consultores
-            ficar pronta.
-          </p>
-        </div>
+        {notice && (
+          <div className="rounded-xl border border-neutral-light bg-neutral-50 p-4 flex gap-2">
+            <Info size={16} className="mt-0.5 shrink-0 text-neutral" />
+            <p className="text-xs text-neutral">{notice}</p>
+          </div>
+        )}
+
+        {!modal && (actionError || loadError) && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex gap-2">
+            <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-600" />
+            <p className="text-xs text-red-700">{actionError ?? loadError}</p>
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-neutral-light bg-white p-5">
@@ -129,19 +143,6 @@ export default function Consultants() {
           </div>
 
           <div className="flex items-end gap-3 flex-wrap justify-end">
-            <div>
-              <label className="text-xs text-neutral">Vínculo</label>
-              <select
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value as ConsultantTypeFilter)}
-                className="mt-1 block rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="ALL">Todos</option>
-                <option value="INTERNO">Interno</option>
-                <option value="EXTERNO">Externo</option>
-              </select>
-            </div>
-
             <div>
               <label className="text-xs text-neutral">Status</label>
               <select
@@ -172,7 +173,7 @@ export default function Consultants() {
           <thead className="bg-neutral-50 text-neutral">
             <tr>
               <th className="text-left font-semibold px-5 py-3">Consultor</th>
-              <th className="text-left font-semibold px-5 py-3">Vínculo</th>
+              <th className="text-left font-semibold px-5 py-3">Perfil</th>
               <th className="text-left font-semibold px-5 py-3">Áreas de conhecimento</th>
               <th className="text-left font-semibold px-5 py-3 w-[180px]">Status</th>
               <th className="text-right font-semibold px-5 py-3 w-[240px]">Ações</th>
@@ -180,7 +181,13 @@ export default function Consultants() {
           </thead>
 
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-5 py-6 text-neutral">
+                  Carregando consultores...
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-6 text-neutral">
                   Nenhum consultor encontrado.
@@ -188,24 +195,20 @@ export default function Consultants() {
               </tr>
             ) : (
               filtered.map((consultant) => {
-                const user = usersById.get(consultant.userId)
                 const tags = consultantTags(consultant)
 
                 return (
                   <tr key={consultant.id} className="border-t border-neutral-light align-top">
                     <td className="px-5 py-3">
-                      <p className="font-semibold text-primary">{user?.nome ?? "—"}</p>
-                      <p className="text-xs text-neutral">
-                        {user ? `${USER_ROLE_LABEL[user.papel]} • ${user.email}` : "—"}
-                      </p>
+                      <p className="font-semibold text-primary">{consultant.user.nome}</p>
+                      <p className="text-xs text-neutral">{consultant.user.email}</p>
                     </td>
 
                     <td className="px-5 py-3">
-                      <p className="text-neutral">
-                        {consultant.tipo === "INTERNO" ? "Interno" : "Externo"}
-                      </p>
-                      {tags.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
+                      {tags.length === 0 ? (
+                        <p className="text-neutral">—</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
                           {tags.map((tag) => (
                             <span
                               key={tag}
@@ -221,14 +224,14 @@ export default function Consultants() {
                     <td className="px-5 py-3">
                       <p className="text-neutral-dark">
                         <span className="text-xs font-semibold text-neutral">Principal: </span>
-                        {areaLabel(areasById.get(consultant.areaPrincipalId))}
+                        {areaLabel(consultant.areaPrincipal)}
                       </p>
-                      {consultant.areasAdicionaisIds.length > 0 && (
+                      {consultant.areasAdicionais.length > 0 && (
                         <div className="mt-1 text-xs text-neutral">
                           <span className="font-semibold">Adicionais:</span>
                           <ul className="mt-0.5 space-y-0.5">
-                            {consultant.areasAdicionaisIds.map((id) => (
-                              <li key={id}>{areaLabel(areasById.get(id))}</li>
+                            {consultant.areasAdicionais.map((area) => (
+                              <li key={area.id}>{areaLabel(area)}</li>
                             ))}
                           </ul>
                         </div>
@@ -249,7 +252,7 @@ export default function Consultants() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => toggleActive(consultant.id)}
+                          onClick={() => void toggleActive(consultant)}
                           className="text-xs font-semibold text-primary hover:underline"
                         >
                           {consultant.ativo ? "Desativar" : "Ativar"}
@@ -289,12 +292,11 @@ export default function Consultants() {
         <ConsultantFormModal
           editing={modal.editingId !== null}
           initialValues={modal.initialValues}
-          users={availableUsersFor(modal.editingId)}
-          areas={areas}
-          onClose={() => setModal(null)}
-          onSave={(values) => {
-            saveConsultant(values, modal.editingId)
-            setModal(null)
+          saving={saving}
+          error={actionError}
+          onClose={closeModal}
+          onSave={async (values) => {
+            if (await saveConsultant(values, modal.editingId)) setModal(null)
           }}
         />
       )}

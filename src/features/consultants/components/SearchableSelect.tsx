@@ -22,6 +22,7 @@ export function SearchableSelect({
   placeholder = "Digite para pesquisar...",
   disabled = false,
   emptyMessage = "Nenhum resultado encontrado.",
+  onQueryChange,
 }: Readonly<{
   options: SearchableOption[]
   value: string
@@ -29,6 +30,8 @@ export function SearchableSelect({
   placeholder?: string
   disabled?: boolean
   emptyMessage?: string
+  // Notifica o texto digitado, para buscas feitas no servidor
+  onQueryChange?: (query: string) => void
 }>) {
   const listId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,6 +77,7 @@ export function SearchableSelect({
   function close() {
     setOpen(false)
     setQuery("")
+    onQueryChange?.("")
   }
 
   function select(option: SearchableOption) {
@@ -113,6 +117,7 @@ export function SearchableSelect({
         onClick={openList}
         onChange={(event) => {
           setQuery(event.target.value)
+          onQueryChange?.(event.target.value)
           setHighlighted(0)
           setOpen(true)
         }}
