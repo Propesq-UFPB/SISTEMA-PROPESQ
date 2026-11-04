@@ -68,7 +68,6 @@ export default function ProjectListPage({ role, title = "Projetos de pesquisa" }
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary"><FolderKanban size={14}/> Módulo de projetos</div>
             <h1 className="mt-3 text-2xl font-bold text-primary">{title}</h1>
-            <p className="mt-1 text-sm text-neutral">Dados carregados pelo endpoint <code>/research-projects</code>.</p>
           </div>
           {paths[role].create && <Link to={paths[role].create!} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16}/> Novo projeto</Link>}
         </section>

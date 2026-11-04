@@ -7,10 +7,21 @@ import {
   CheckCircle2,
   FileText,
   Info,
+  Layers,
   RefreshCw,
   Upload,
 } from "lucide-react"
+import { useState } from "react"
 import { Helmet } from "react-helmet"
+import { AdditionalAreasField } from "@/features/consultants/components/AdditionalAreasField"
+import { KnowledgeAreaPicker } from "@/features/consultants/components/KnowledgeAreaPicker"
+import { useMyEvaluatorAreas } from "@/features/consultants/hooks/useMyEvaluatorAreas"
+import type {
+  KnowledgeArea,
+  KnowledgeAreaPath,
+  MyEvaluatorAreas,
+} from "@/features/consultants/types/consultant"
+import { toAreaPath } from "@/features/consultants/utils/consultantHelpers"
 
 const qualisAreas = [
   "Ciência da Computação",
@@ -112,6 +123,134 @@ function SectionTitle({
         {subtitle ? <p className="mt-1 text-sm text-neutral">{subtitle}</p> : null}
       </div>
     </div>
+  )
+}
+
+function EvaluatorAreasForm({
+  initial,
+  saving,
+  saveError,
+  onSave,
+}: Readonly<{
+  initial: MyEvaluatorAreas
+  saving: boolean
+  saveError: string | null
+  onSave: (principal: KnowledgeArea, adicionais: KnowledgeArea[]) => Promise<boolean>
+}>) {
+  const initialPrincipal = initial.areaPrincipal ?? initial.suggestedArea
+  const [principalPath, setPrincipalPath] = useState<KnowledgeAreaPath>(() =>
+    toAreaPath(initialPrincipal),
+  )
+  const [principal, setPrincipal] = useState<KnowledgeArea | null>(initialPrincipal)
+  const [adicionais, setAdicionais] = useState(initial.areasAdicionais)
+  const [saved, setSaved] = useState(false)
+
+  const ano = new Date().getFullYear()
+  const fromDocente = initial.areaPrincipal === null && principal?.id === initial.suggestedArea?.id
+
+  function changePrincipal(path: KnowledgeAreaPath, area: KnowledgeArea | null) {
+    setPrincipalPath(path)
+    setPrincipal(area)
+    setAdicionais((current) => current.filter((item) => item.id !== area?.id))
+    setSaved(false)
+  }
+
+  async function save() {
+    if (!principal) return
+    setSaved(await onSave(principal, adicionais))
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {initial.updatedThisYear ? (
+          <StatusBadge variant="success">Atualizado em {ano}</StatusBadge>
+        ) : (
+          <StatusBadge variant="warning">Atualização de {ano} pendente</StatusBadge>
+        )}
+        <StatusBadge>
+          Última atualização:{" "}
+          {initial.updatedAt
+            ? new Date(initial.updatedAt).toLocaleDateString("pt-BR")
+            : "nunca"}
+        </StatusBadge>
+      </div>
+
+      {!initial.updatedThisYear && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex gap-3">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-700" />
+            <p className="text-sm leading-6 text-amber-800">
+              Revise e salve suas áreas para submeter projetos de pesquisa em {ano}. A
+              atualização vale até o fim do ano.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-xl border border-neutral-light p-4">
+        <p className="text-xs font-semibold text-primary">Área principal *</p>
+        {fromDocente && (
+          <p className="flex items-center gap-1 text-xs text-neutral">
+            <Info size={14} className="shrink-0" />
+            Preenchida a partir do seu cadastro docente. Altere se necessário.
+          </p>
+        )}
+        <KnowledgeAreaPicker value={principalPath} onChange={changePrincipal} required />
+      </div>
+
+      <AdditionalAreasField
+        label="Áreas secundárias"
+        areas={adicionais}
+        excludedId={principal?.id}
+        onChange={(areas) => {
+          setAdicionais(areas)
+          setSaved(false)
+        }}
+      />
+
+      {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+      {saved && (
+        <p className="flex items-center gap-1 text-sm text-emerald-700">
+          <CheckCircle2 size={16} />
+          Áreas salvas. Elas já valem para o seu perfil de avaliador.
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={save}
+        disabled={!principal || saving}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {saving ? "Salvando..." : "Salvar áreas CNPq"}
+      </button>
+    </div>
+  )
+}
+
+function EvaluatorAreasSection() {
+  const { areas, loading, loadError, saving, saveError, save } = useMyEvaluatorAreas()
+
+  return (
+    <section className="rounded-3xl border border-primary/10 bg-white p-6 shadow-sm">
+      <SectionTitle
+        icon={<Layers size={18} />}
+        title="Áreas de conhecimento CNPq"
+        subtitle="Usadas no seu perfil de avaliador para a distribuição de projetos. Informe a área principal e, se houver, as secundárias."
+      />
+
+      {loading && <p className="text-sm text-neutral">Carregando...</p>}
+      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+      {areas && (
+        <EvaluatorAreasForm
+          initial={areas}
+          saving={saving}
+          saveError={saveError}
+          onSave={save}
+        />
+      )}
+    </section>
   )
 }
 
@@ -298,6 +437,8 @@ export default function CoordinatorProductionIPI() {
                 </div>
               </div>
             </section>
+
+            <EvaluatorAreasSection />
 
             <section className="rounded-3xl border border-primary/10 bg-white p-6 shadow-sm">
               <SectionTitle

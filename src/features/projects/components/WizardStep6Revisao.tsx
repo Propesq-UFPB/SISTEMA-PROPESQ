@@ -26,6 +26,7 @@ export function WizardStep6Revisao({
   saving,
   submitted,
   canGoStep6,
+  evaluatorAreasPending,
   backTo,
   setForm,
   setSubmitted,
@@ -43,6 +44,7 @@ export function WizardStep6Revisao({
   saving: boolean
   submitted: boolean
   canGoStep6: boolean
+  evaluatorAreasPending: boolean
   backTo: string
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   setSubmitted: React.Dispatch<React.SetStateAction<boolean>>
@@ -64,6 +66,7 @@ export function WizardStep6Revisao({
   } else if (submitted) {
     submitButtonLabel = "Submetido"
   }
+  const submitDisabled = saving || submitted || !canGoStep6 || evaluatorAreasPending
 
   return (
     <Card
@@ -402,10 +405,10 @@ export function WizardStep6Revisao({
         <button
           type="button"
           onClick={submit}
-          disabled={saving || submitted || !canGoStep6}
+          disabled={submitDisabled}
           className={cx(
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
-            saving || submitted || !canGoStep6
+            submitDisabled
               ? "cursor-not-allowed bg-neutral/10 text-neutral"
               : "bg-primary text-white hover:bg-primary/90",
           )}

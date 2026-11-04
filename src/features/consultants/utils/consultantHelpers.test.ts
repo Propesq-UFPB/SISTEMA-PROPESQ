@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { ApiError } from "@/services/apiClient"
-import { toConsultant } from "@/features/consultants/api/consultantService"
+import { toConsultant, toMyEvaluatorAreas } from "@/features/consultants/api/consultantService"
 import type { ConsultantFormValues, KnowledgeArea } from "@/features/consultants/types/consultant"
 import {
   apiErrorMessage,
@@ -115,6 +115,55 @@ describe("toConsultant", () => {
       isVoluntario: false,
       isCnpq: false,
       ativo: true,
+    })
+  })
+})
+
+describe("toMyEvaluatorAreas", () => {
+  const row = {
+    id: 10,
+    grande_area: "Ciências Exatas e da Terra",
+    area: "Ciência da Computação",
+    sub_area: "",
+    especialidade: "",
+  }
+
+  it("mapeia o perfil de quem ainda não é consultor", () => {
+    expect(
+      toMyEvaluatorAreas({
+        consultor_id: null,
+        area_principal: null,
+        areas_adicionais: [],
+        areas_atualizadas_em: null,
+        atualizado_no_ano: false,
+        area_sugerida: row,
+      }),
+    ).toEqual({
+      consultantId: null,
+      areaPrincipal: null,
+      areasAdicionais: [],
+      updatedAt: null,
+      updatedThisYear: false,
+      suggestedArea: area(10),
+    })
+  })
+
+  it("mapeia as áreas e a data de atualização", () => {
+    const result = toMyEvaluatorAreas({
+      consultor_id: 1,
+      area_principal: row,
+      areas_adicionais: [{ ...row, id: 11, sub_area: "Teoria da Computação" }],
+      areas_atualizadas_em: "2026-11-04T12:00:00.000Z",
+      atualizado_no_ano: true,
+      area_sugerida: null,
+    })
+
+    expect(result).toMatchObject({
+      consultantId: 1,
+      areaPrincipal: area(10),
+      areasAdicionais: [area(11, "Teoria da Computação")],
+      updatedAt: "2026-11-04T12:00:00.000Z",
+      updatedThisYear: true,
     })
   })
 })

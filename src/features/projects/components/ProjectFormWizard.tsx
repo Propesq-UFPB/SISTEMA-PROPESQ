@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
-import { ArrowLeft, FileText } from "lucide-react"
+import { AlertCircle, ArrowLeft, FileText } from "lucide-react"
 import { Helmet } from "react-helmet"
+import { useMyEvaluatorAreas } from "@/features/consultants/hooks/useMyEvaluatorAreas"
 import { useProjectFormWizard } from "../hooks/useProjectFormWizard"
 import type { Step } from "../types/projectFormWizard"
 import { StepPill } from "./formPrimitives"
@@ -15,6 +16,8 @@ export type ProjectFormWizardProps = {
   backTo: string
   pageTitle?: string
   heading?: string
+  // Coordenadores precisam ter atualizado as áreas de avaliação no ano para submeter.
+  requireEvaluatorAreas?: boolean
 }
 
 const STEP_PILLS: Array<{ step: Step; label: string }> = [
@@ -37,8 +40,12 @@ export default function ProjectFormWizard({
   backTo,
   pageTitle = "Cadastrar Projetos • PROPESQ",
   heading = "Cadastrar projeto",
+  requireEvaluatorAreas = false,
 }: Readonly<ProjectFormWizardProps>) {
   const wizard = useProjectFormWizard()
+  const evaluatorAreas = useMyEvaluatorAreas(requireEvaluatorAreas)
+  const evaluatorAreasPending =
+    requireEvaluatorAreas && evaluatorAreas.areas?.updatedThisYear === false
 
   const editalName = lookupName(
     wizard.editaisLookup,
@@ -135,6 +142,7 @@ export default function ProjectFormWizard({
           saving={wizard.saving}
           submitted={wizard.submitted}
           canGoStep6={wizard.canGoStep6}
+          evaluatorAreasPending={evaluatorAreasPending}
           backTo={backTo}
           setForm={wizard.setForm}
           setSubmitted={wizard.setSubmitted}
@@ -198,6 +206,23 @@ export default function ProjectFormWizard({
             ))}
           </div>
         </div>
+
+        {evaluatorAreasPending && (
+          <div
+            className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4"
+            role="alert"
+          >
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-700" />
+            <p className="text-sm leading-6 text-amber-800">
+              Antes de preencher o projeto, atualize suas áreas de conhecimento
+              CNPq de {new Date().getFullYear()} em{" "}
+              <Link to="/coordenador/producao/ipi" className="font-semibold underline">
+                Produção › IPI
+              </Link>
+              . Sem essa atualização não será possível submeter.
+            </p>
+          </div>
+        )}
 
         {wizard.submitError && wizard.step !== 2 && (
           <div
