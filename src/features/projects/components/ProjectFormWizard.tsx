@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { ArrowLeft, FileText } from "lucide-react"
 import { Helmet } from "react-helmet"
+import { useMyEvaluatorAreas } from "@/features/consultants/hooks/useMyEvaluatorAreas"
 import { useProjectFormWizard } from "../hooks/useProjectFormWizard"
 import type { Step } from "../types/projectFormWizard"
 import { StepPill } from "./formPrimitives"
@@ -15,6 +16,8 @@ export type ProjectFormWizardProps = {
   backTo: string
   pageTitle?: string
   heading?: string
+  // Coordenadores precisam ter atualizado as áreas de avaliação no ano para submeter.
+  requireEvaluatorAreas?: boolean
 }
 
 const STEP_PILLS: Array<{ step: Step; label: string }> = [
@@ -37,8 +40,12 @@ export default function ProjectFormWizard({
   backTo,
   pageTitle = "Cadastrar Projetos • PROPESQ",
   heading = "Cadastrar projeto",
+  requireEvaluatorAreas = false,
 }: Readonly<ProjectFormWizardProps>) {
   const wizard = useProjectFormWizard()
+  const evaluatorAreas = useMyEvaluatorAreas(requireEvaluatorAreas)
+  const evaluatorAreasPending =
+    requireEvaluatorAreas && evaluatorAreas.areas?.updatedThisYear === false
 
   const editalName = lookupName(
     wizard.editaisLookup,
@@ -135,6 +142,7 @@ export default function ProjectFormWizard({
           saving={wizard.saving}
           submitted={wizard.submitted}
           canGoStep6={wizard.canGoStep6}
+          evaluatorAreasPending={evaluatorAreasPending}
           backTo={backTo}
           setForm={wizard.setForm}
           setSubmitted={wizard.setSubmitted}

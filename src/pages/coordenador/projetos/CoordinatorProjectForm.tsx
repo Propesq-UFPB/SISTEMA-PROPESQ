@@ -6,6 +6,7 @@ export default function CoordinatorProjectForm() {
       backTo="/coordenador/projetos"
       pageTitle="Cadastrar projeto • PROPESQ"
       heading="Cadastrar projeto"
+      requireEvaluatorAreas
     />
   )
 }
