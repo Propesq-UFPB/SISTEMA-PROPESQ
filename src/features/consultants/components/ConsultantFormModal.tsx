@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Check, Info, Plus, X } from "lucide-react"
+import { Check, Info, X } from "lucide-react"
 import { consultantService } from "../api/consultantService"
 import type {
   ConsultantFormValues,
@@ -7,13 +7,8 @@ import type {
   KnowledgeArea,
   KnowledgeAreaPath,
 } from "../types/consultant"
-import {
-  areaLabel,
-  EMPTY_AREA_PATH,
-  funcaoLabel,
-  toAreaPath,
-  validateConsultantForm,
-} from "../utils/consultantHelpers"
+import { funcaoLabel, toAreaPath, validateConsultantForm } from "../utils/consultantHelpers"
+import { AdditionalAreasField } from "./AdditionalAreasField"
 import { KnowledgeAreaPicker } from "./KnowledgeAreaPicker"
 import { SearchableSelect } from "./SearchableSelect"
 
@@ -104,17 +99,10 @@ export function ConsultantFormModal({
     toAreaPath(initialValues.areaPrincipal),
   )
   const [principalFromDocente, setPrincipalFromDocente] = useState(false)
-  const [additionalPath, setAdditionalPath] = useState<KnowledgeAreaPath>(EMPTY_AREA_PATH)
-  const [additional, setAdditional] = useState<KnowledgeArea | null>(null)
   const eligible = useEligibleUsers(!editing)
 
   const errors = validateConsultantForm(values)
   const hasErrors = Object.keys(errors).length > 0
-
-  const additionalDuplicate =
-    additional !== null &&
-    (additional.id === values.areaPrincipal?.id ||
-      values.areasAdicionais.some((area) => area.id === additional.id))
 
   // Mantém o usuário selecionado nas opções mesmo quando a busca não o retorna.
   const userOptions = [
@@ -154,21 +142,6 @@ export function ConsultantFormModal({
       areaPrincipal: area,
       areasAdicionais: values.areasAdicionais.filter((item) => item.id !== area?.id),
     })
-  }
-
-  function changeAdditional(path: KnowledgeAreaPath, area: KnowledgeArea | null) {
-    setAdditionalPath(path)
-    setAdditional(area)
-  }
-
-  function addAdditional() {
-    if (additional === null || additionalDuplicate) return
-    update({ areasAdicionais: [...values.areasAdicionais, additional] })
-    changeAdditional(EMPTY_AREA_PATH, null)
-  }
-
-  function removeAdditional(id: number) {
-    update({ areasAdicionais: values.areasAdicionais.filter((area) => area.id !== id) })
   }
 
   function submit() {
@@ -266,49 +239,12 @@ export function ConsultantFormModal({
             )}
           </div>
 
-          <div className="space-y-3 rounded-xl border border-neutral-light p-4">
-            <p className="text-xs font-semibold text-primary">
-              Áreas de conhecimento adicionais
-            </p>
-            <KnowledgeAreaPicker value={additionalPath} onChange={changeAdditional} />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-red-600">
-                {additionalDuplicate && "Essa área já foi selecionada."}
-              </p>
-              <button
-                type="button"
-                onClick={addAdditional}
-                disabled={additional === null || additionalDuplicate}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-neutral-light px-3 py-2 text-sm font-semibold text-primary hover:bg-neutral-50 disabled:opacity-50"
-              >
-                <Plus size={16} />
-                Adicionar área
-              </button>
-            </div>
-
-            {values.areasAdicionais.length === 0 ? (
-              <p className="text-xs text-neutral/70">Nenhuma área adicional.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {values.areasAdicionais.map((area) => (
-                  <span
-                    key={area.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-neutral-light bg-neutral-50 py-1 pl-3 pr-1 text-xs text-neutral-dark"
-                  >
-                    {areaLabel(area)}
-                    <button
-                      type="button"
-                      onClick={() => removeAdditional(area.id)}
-                      className="rounded-full p-0.5 hover:bg-neutral-light"
-                      aria-label="Remover área"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <AdditionalAreasField
+            label="Áreas de conhecimento adicionais"
+            areas={values.areasAdicionais}
+            excludedId={values.areaPrincipal?.id}
+            onChange={(areasAdicionais) => update({ areasAdicionais })}
+          />
 
           <div className="space-y-2">
             <label className="text-xs text-neutral">Status</label>

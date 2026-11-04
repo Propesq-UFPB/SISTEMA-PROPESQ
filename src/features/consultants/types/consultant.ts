@@ -32,6 +32,16 @@ export type Consultant = {
   ativo: boolean
 }
 
+// Áreas de avaliação do usuário logado; `consultantId` é nulo enquanto ele não for consultor.
+export type MyEvaluatorAreas = {
+  consultantId: number | null
+  areaPrincipal: KnowledgeArea | null
+  areasAdicionais: KnowledgeArea[]
+  updatedAt: string | null
+  updatedThisYear: boolean
+  suggestedArea: KnowledgeArea | null
+}
+
 export type EditalConsultant = Consultant & {
   carga: number
   vinculadoEm: string

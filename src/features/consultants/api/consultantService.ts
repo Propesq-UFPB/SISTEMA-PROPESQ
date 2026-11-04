@@ -5,6 +5,7 @@ import type {
   EditalConsultant,
   EligibleUser,
   KnowledgeArea,
+  MyEvaluatorAreas,
 } from "../types/consultant"
 
 type AreaConhecimentoResponse = {
@@ -36,6 +37,15 @@ type EditalConsultorResponse = ConsultorResponse & {
 type UsuarioElegivelResponse = ConsultantUser & {
   funcao: string
   area_conhecimento: AreaConhecimentoResponse | null
+}
+
+type MinhasAreasResponse = {
+  consultor_id: number | null
+  area_principal: AreaConhecimentoResponse | null
+  areas_adicionais: AreaConhecimentoResponse[]
+  areas_atualizadas_em: string | null
+  atualizado_no_ano: boolean
+  area_sugerida: AreaConhecimentoResponse | null
 }
 
 type ConsultorPage = {
@@ -78,6 +88,17 @@ export function toConsultant(row: ConsultorResponse): Consultant {
     areaPrincipal: toKnowledgeArea(row.area_principal),
     areasAdicionais: row.areas_adicionais.map(toKnowledgeArea),
     ativo: row.ativo,
+  }
+}
+
+export function toMyEvaluatorAreas(row: MinhasAreasResponse): MyEvaluatorAreas {
+  return {
+    consultantId: row.consultor_id,
+    areaPrincipal: row.area_principal && toKnowledgeArea(row.area_principal),
+    areasAdicionais: row.areas_adicionais.map(toKnowledgeArea),
+    updatedAt: row.areas_atualizadas_em,
+    updatedThisYear: row.atualizado_no_ano,
+    suggestedArea: row.area_sugerida && toKnowledgeArea(row.area_sugerida),
   }
 }
 
@@ -128,6 +149,17 @@ export const consultantService = {
     return toConsultant(
       await apiRequest<ConsultorResponse>(`${ENDPOINT}/${id}`, {
         method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    )
+  },
+  async myAreas() {
+    return toMyEvaluatorAreas(await apiRequest<MinhasAreasResponse>(`${ENDPOINT}/me`))
+  },
+  async updateMyAreas(payload: { area_principal_id: number; areas_adicionais_ids: number[] }) {
+    return toMyEvaluatorAreas(
+      await apiRequest<MinhasAreasResponse>(`${ENDPOINT}/me`, {
+        method: "PUT",
         body: JSON.stringify(payload),
       }),
     )
