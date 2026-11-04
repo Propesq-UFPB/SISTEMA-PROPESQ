@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ArrowLeft, FileText } from "lucide-react"
+import { AlertCircle, ArrowLeft, FileText } from "lucide-react"
 import { Helmet } from "react-helmet"
 import { useMyEvaluatorAreas } from "@/features/consultants/hooks/useMyEvaluatorAreas"
 import { useProjectFormWizard } from "../hooks/useProjectFormWizard"
@@ -206,6 +206,23 @@ export default function ProjectFormWizard({
             ))}
           </div>
         </div>
+
+        {evaluatorAreasPending && (
+          <div
+            className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4"
+            role="alert"
+          >
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-700" />
+            <p className="text-sm leading-6 text-amber-800">
+              Antes de preencher o projeto, atualize suas áreas de conhecimento
+              CNPq de {new Date().getFullYear()} em{" "}
+              <Link to="/coordenador/producao/ipi" className="font-semibold underline">
+                Produção › IPI
+              </Link>
+              . Sem essa atualização não será possível submeter.
+            </p>
+          </div>
+        )}
 
         {wizard.submitError && wizard.step !== 2 && (
           <div

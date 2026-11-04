@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"
 import {
-  AlertCircle,
   CalendarDays,
   FileText,
   GraduationCap,
@@ -393,20 +392,6 @@ export function WizardStep6Revisao({
           ))}
         </div>
       </div>
-
-      {evaluatorAreasPending && (
-        <div className="mt-8 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-700" />
-          <p className="text-sm leading-6 text-amber-800">
-            Para submeter projetos em {new Date().getFullYear()}, atualize suas áreas de
-            conhecimento CNPq em{" "}
-            <Link to="/coordenador/producao/ipi" className="font-semibold underline">
-              Produção › IPI
-            </Link>
-            .
-          </p>
-        </div>
-      )}
 
       <div className="mt-8 flex justify-between">
         <button
