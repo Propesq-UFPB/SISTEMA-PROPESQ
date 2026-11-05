@@ -97,6 +97,8 @@ describe("toConsultant", () => {
       toConsultant({
         id: 1,
         usuario: { id: 7, nome: "Maria", email: "maria@ufpb.br" },
+        tipo: "INTERNO",
+        externo: null,
         area_principal: apiArea,
         areas_adicionais: [{ ...apiArea, id: 11, sub_area: "Teoria da Computação" }],
         is_propesq: true,
@@ -109,6 +111,8 @@ describe("toConsultant", () => {
     ).toEqual({
       id: 1,
       user: { id: 7, nome: "Maria", email: "maria@ufpb.br" },
+      tipo: "INTERNO",
+      externo: null,
       areaPrincipal: area(10),
       areasAdicionais: [area(11, "Teoria da Computação")],
       isPropesq: true,

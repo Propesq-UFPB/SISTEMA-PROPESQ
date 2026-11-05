@@ -12,7 +12,7 @@ import { AdditionalAreasField } from "./AdditionalAreasField"
 import { KnowledgeAreaPicker } from "./KnowledgeAreaPicker"
 import { SearchableSelect } from "./SearchableSelect"
 
-function OptionToggle({
+export function OptionToggle({
   checked,
   label,
   description,

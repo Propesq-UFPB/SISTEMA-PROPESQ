@@ -4,7 +4,9 @@ import {
   AlertCircle,
   Check,
   ClipboardList,
+  Globe,
   Info,
+  Link2,
   Pencil,
   Plus,
   Search,
@@ -14,11 +16,16 @@ import {
 } from "lucide-react"
 import { ConsultantAssignmentsDrawer } from "@/features/consultants/components/ConsultantAssignmentsDrawer"
 import { ConsultantFormModal } from "@/features/consultants/components/ConsultantFormModal"
+import { ExternalConsultantFormModal } from "@/features/consultants/components/ExternalConsultantFormModal"
+import { ExternalLinkModal } from "@/features/consultants/components/ExternalLinkModal"
 import { useConsultants } from "@/features/consultants/hooks/useConsultants"
 import type {
   Consultant,
   ConsultantFormValues,
   ConsultantStatusFilter,
+  ConsultantTypeFilter,
+  ExternalFormValues,
+  ExternalLink,
 } from "@/features/consultants/types/consultant"
 import {
   areaLabel,
@@ -26,8 +33,14 @@ import {
   EMPTY_CONSULTANT_FORM,
   toFormValues,
 } from "@/features/consultants/utils/consultantHelpers"
+import {
+  EMPTY_EXTERNAL_FORM,
+  toExternalFormValues,
+} from "@/features/consultants/utils/externalHelpers"
 
 type ModalState = { editingId: number | null; initialValues: ConsultantFormValues }
+type ExternalModalState = { editingId: number | null; initialValues: ExternalFormValues }
+type LinkModalState = { consultant: Consultant; initialLink?: ExternalLink }
 
 export default function Consultants() {
   const {
@@ -44,12 +57,17 @@ export default function Consultants() {
     setQuery,
     statusFilter,
     setStatusFilter,
+    typeFilter,
+    setTypeFilter,
     saveConsultant,
+    saveExternal,
     toggleActive,
     removeConsultant,
   } = useConsultants()
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [externalModal, setExternalModal] = useState<ExternalModalState | null>(null)
+  const [linkModal, setLinkModal] = useState<LinkModalState | null>(null)
   const [viewing, setViewing] = useState<Consultant | null>(null)
 
   function openCreate() {
@@ -57,8 +75,21 @@ export default function Consultants() {
     setModal({ editingId: null, initialValues: EMPTY_CONSULTANT_FORM })
   }
 
+  function openCreateExternal() {
+    setActionError(null)
+    setExternalModal({ editingId: null, initialValues: EMPTY_EXTERNAL_FORM })
+  }
+
   function openEdit(consultant: Consultant) {
     setActionError(null)
+    const { externo } = consultant
+    if (consultant.tipo === "EXTERNO" && externo) {
+      setExternalModal({
+        editingId: consultant.id,
+        initialValues: toExternalFormValues({ ...consultant, externo }),
+      })
+      return
+    }
     setModal({ editingId: consultant.id, initialValues: toFormValues(consultant) })
   }
 
@@ -66,6 +97,7 @@ export default function Consultants() {
     if (saving) return
     setActionError(null)
     setModal(null)
+    setExternalModal(null)
   }
 
   function handleRemove(consultant: Consultant) {
@@ -99,22 +131,33 @@ export default function Consultants() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
-          >
-            <Plus size={16} />
-            Novo avaliador
-          </button>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={openCreateExternal}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-primary border border-primary/30 bg-white hover:bg-primary/5 transition-colors"
+            >
+              <Globe size={16} />
+              Novo avaliador externo
+            </button>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
+            >
+              <Plus size={16} />
+              Novo avaliador
+            </button>
+          </div>
         </div>
       </div>
 
       <section className="rounded-xl border border-neutral-light bg-white p-5 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { label: "Total", value: stats.total },
             { label: "Ativos", value: stats.ativos },
+            { label: "Externos", value: stats.externos },
             { label: "PROPESQ", value: stats.propesq },
             { label: "Voluntários", value: stats.voluntarios },
           ].map((item) => (
@@ -149,13 +192,26 @@ export default function Consultants() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Nome, e-mail ou área de conhecimento..."
+                placeholder="Nome, e-mail, instituição ou área de conhecimento..."
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-light text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
 
           <div className="flex items-end gap-3 flex-wrap justify-end">
+            <div>
+              <label className="text-xs text-neutral">Tipo</label>
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as ConsultantTypeFilter)}
+                className="mt-1 block rounded-lg border border-neutral-light px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="ALL">Todos</option>
+                <option value="INTERNO">Internos</option>
+                <option value="EXTERNO">Externos</option>
+              </select>
+            </div>
+
             <div>
               <label className="text-xs text-neutral">Status</label>
               <select
@@ -182,14 +238,14 @@ export default function Consultants() {
           <h3 className="text-sm font-semibold text-primary">Lista de avaliadores</h3>
         </div>
 
-        <table className="w-full min-w-[1040px] text-sm">
+        <table className="w-full min-w-[1140px] text-sm">
           <thead className="bg-neutral-50 text-neutral">
             <tr>
               <th className="text-left font-semibold px-5 py-3">Avaliador</th>
               <th className="text-left font-semibold px-5 py-3">Perfil</th>
               <th className="text-left font-semibold px-5 py-3">Áreas de conhecimento</th>
               <th className="text-left font-semibold px-5 py-3 w-[180px]">Status</th>
-              <th className="text-right font-semibold px-5 py-3 w-[380px]">Ações</th>
+              <th className="text-right font-semibold px-5 py-3 w-[470px]">Ações</th>
             </tr>
           </thead>
 
@@ -215,23 +271,31 @@ export default function Consultants() {
                     <td className="px-5 py-3">
                       <p className="font-semibold text-primary">{consultant.user.nome}</p>
                       <p className="text-xs text-neutral">{consultant.user.email}</p>
+                      {consultant.externo && (
+                        <p className="text-xs text-neutral">{consultant.externo.instituicao}</p>
+                      )}
                     </td>
 
                     <td className="px-5 py-3">
-                      {tags.length === 0 ? (
-                        <p className="text-neutral">—</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-primary"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                            consultant.tipo === "EXTERNO"
+                              ? "border-amber-200 bg-amber-50 text-amber-800"
+                              : "border-neutral-light bg-neutral-50 text-neutral"
+                          }`}
+                        >
+                          {consultant.tipo === "EXTERNO" ? "Externo" : "Interno"}
+                        </span>
+                        {tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </td>
 
                     <td className="px-5 py-3">
@@ -275,6 +339,16 @@ export default function Consultants() {
 
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-2">
+                        {consultant.tipo === "EXTERNO" && (
+                          <button
+                            type="button"
+                            onClick={() => setLinkModal({ consultant })}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-light text-neutral hover:bg-neutral-50 font-semibold"
+                          >
+                            <Link2 size={16} />
+                            Link
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setViewing(consultant)}
@@ -313,6 +387,35 @@ export default function Consultants() {
         <ConsultantAssignmentsDrawer
           consultant={{ id: viewing.id, name: viewing.user.nome, email: viewing.user.email }}
           onClose={() => setViewing(null)}
+        />
+      )}
+
+      {externalModal && (
+        <ExternalConsultantFormModal
+          editing={externalModal.editingId !== null}
+          initialValues={externalModal.initialValues}
+          saving={saving}
+          error={actionError}
+          onClose={closeModal}
+          onSave={async (values) => {
+            const saved = await saveExternal(values, externalModal.editingId)
+            if (!saved) return
+            setExternalModal(null)
+            // Cadastro novo: mostra o link gerado (única vez em que ele aparece)
+            if (saved.link) setLinkModal({ consultant: saved.consultant, initialLink: saved.link })
+          }}
+        />
+      )}
+
+      {linkModal && (
+        <ExternalLinkModal
+          consultant={{
+            id: linkModal.consultant.id,
+            name: linkModal.consultant.user.nome,
+            email: linkModal.consultant.user.email,
+          }}
+          initialLink={linkModal.initialLink}
+          onClose={() => setLinkModal(null)}
         />
       )}
 

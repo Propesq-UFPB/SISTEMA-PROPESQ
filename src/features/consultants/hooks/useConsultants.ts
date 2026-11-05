@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { consultantService } from "../api/consultantService"
+import { consultantService, externalConsultantService } from "../api/consultantService"
 import type {
   Consultant,
   ConsultantFormValues,
   ConsultantStatusFilter,
+  ConsultantTypeFilter,
+  ExternalFormValues,
+  ExternalLink,
 } from "../types/consultant"
+import { toExternalPayload } from "../utils/externalHelpers"
 import {
   apiErrorMessage,
   areaPathParts,
@@ -21,6 +25,7 @@ export function useConsultants() {
   const [saving, setSaving] = useState(false)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<ConsultantStatusFilter>("ACTIVE")
+  const [typeFilter, setTypeFilter] = useState<ConsultantTypeFilter>("ALL")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,6 +55,7 @@ export function useConsultants() {
         if (statusFilter === "INACTIVE") return !consultant.ativo
         return true
       })
+      .filter((consultant) => typeFilter === "ALL" || consultant.tipo === typeFilter)
       .filter((consultant) => {
         if (!q) return true
 
@@ -58,14 +64,14 @@ export function useConsultants() {
           .join(" ")
 
         return normalizeText(
-          `${consultant.user.nome} ${consultant.user.email} ${areaNames}`,
+          `${consultant.user.nome} ${consultant.user.email} ${consultant.externo?.instituicao ?? ""} ${areaNames}`,
         ).includes(q)
       })
       .sort((a, b) => {
         if (a.ativo !== b.ativo) return a.ativo ? -1 : 1
         return a.user.nome.localeCompare(b.user.nome, "pt-BR")
       })
-  }, [consultants, query, statusFilter])
+  }, [consultants, query, statusFilter, typeFilter])
 
   const stats = useMemo(
     () => ({
@@ -73,6 +79,7 @@ export function useConsultants() {
       ativos: consultants.filter((consultant) => consultant.ativo).length,
       propesq: consultants.filter((consultant) => consultant.isPropesq).length,
       voluntarios: consultants.filter((consultant) => consultant.isVoluntario).length,
+      externos: consultants.filter((consultant) => consultant.tipo === "EXTERNO").length,
     }),
     [consultants],
   )
@@ -99,6 +106,31 @@ export function useConsultants() {
     } catch (err) {
       setActionError(apiErrorMessage(err, "Não foi possível salvar o avaliador."))
       return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Na criação devolve o link de acesso (exibido uma única vez); null se não salvou
+  async function saveExternal(
+    values: ExternalFormValues,
+    editingId: number | null,
+  ): Promise<{ consultant: Consultant; link: ExternalLink | null } | null> {
+    setSaving(true)
+    setActionError(null)
+    try {
+      const payload = toExternalPayload(values, editingId !== null)
+      if (editingId !== null) {
+        const updated = await externalConsultantService.update(editingId, payload)
+        replace(updated)
+        return { consultant: updated, link: null }
+      }
+      const { consultant, link } = await externalConsultantService.create(payload)
+      setConsultants((current) => [consultant, ...current])
+      return { consultant, link }
+    } catch (err) {
+      setActionError(apiErrorMessage(err, "Não foi possível salvar o avaliador externo."))
+      return null
     } finally {
       setSaving(false)
     }
@@ -145,7 +177,10 @@ export function useConsultants() {
     setQuery,
     statusFilter,
     setStatusFilter,
+    typeFilter,
+    setTypeFilter,
     saveConsultant,
+    saveExternal,
     toggleActive,
     removeConsultant,
   }

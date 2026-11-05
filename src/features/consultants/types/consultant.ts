@@ -21,9 +21,27 @@ export type EligibleUser = ConsultantUser & {
   area: KnowledgeArea | null
 }
 
+export type EvaluatorType = "INTERNO" | "EXTERNO"
+
+export type Titulacao = "GRADUACAO" | "ESPECIALIZACAO" | "MESTRADO" | "DOUTORADO"
+
+// Dados de quem avalia sem ser usuário do sistema (acessa por link)
+export type ExternalData = {
+  instituicao: string
+  titulacao: Titulacao | null
+  cpf: string | null
+  pais: string | null
+  telefone: string | null
+  lattesUrl: string | null
+  orcid: string | null
+  observacao: string | null
+}
+
 export type Consultant = {
   id: number
   user: ConsultantUser
+  tipo: EvaluatorType
+  externo: ExternalData | null
   isPropesq: boolean
   isVoluntario: boolean
   isCnpq: boolean
@@ -47,9 +65,47 @@ export type EditalConsultant = Consultant & {
   vinculadoEm: string
 }
 
-export type ConsultantFormValues = Omit<Consultant, "id" | "user" | "areaPrincipal"> & {
+export type ConsultantFormValues = Omit<
+  Consultant,
+  "id" | "user" | "areaPrincipal" | "tipo" | "externo"
+> & {
   user: ConsultantUser | null
   areaPrincipal: KnowledgeArea | null
 }
 
 export type ConsultantStatusFilter = "ALL" | "ACTIVE" | "INACTIVE"
+
+export type ConsultantTypeFilter = "ALL" | EvaluatorType
+
+// Situação do link de acesso mais recente de um avaliador externo
+export type ExternalLinkStatus = {
+  ativo: boolean
+  criadoEm: string | null
+  expiraEm: string | null
+  ultimoAcessoEm: string | null
+}
+
+export type ExternalConsultant = Consultant & { externo: ExternalData; link: ExternalLinkStatus }
+
+// O token só é devolvido na criação e ao gerar um novo link
+export type ExternalLink = { url: string; expiraEm: string | null }
+
+export type ExternalFormValues = {
+  nome: string
+  email: string
+  instituicao: string
+  titulacao: Titulacao | ""
+  cpf: string
+  pais: string
+  telefone: string
+  lattesUrl: string
+  orcid: string
+  observacao: string
+  isVoluntario: boolean
+  isCnpq: boolean
+  areaPrincipal: KnowledgeArea | null
+  areasAdicionais: KnowledgeArea[]
+  ativo: boolean
+  // Só na criação; vazio = sem validade
+  linkExpiraEm: string
+}
