@@ -66,7 +66,7 @@ export function EditalConsultantsModal({
             <p className="mt-1 text-xs text-neutral">
               Somente os avaliadores vinculados participam da distribuição.{" "}
               <Link
-                to="/gestor/settings/consultants"
+                to="/gestor/avaliacao/avaliadores"
                 className="font-semibold text-primary hover:underline"
               >
                 Gerenciar cadastro

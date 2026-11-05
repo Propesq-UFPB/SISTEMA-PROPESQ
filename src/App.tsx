@@ -29,7 +29,6 @@ import Login from "./pages/Login"
 
 // gestor pages
 import Dashboard from "./pages/gestor/Dashboard"
-import Evaluators from "./pages/gestor/avaliacao/Evaluators"
 import GestorEvaluationDistribution from "./pages/gestor/avaliacao/GestorEvaluationDistribution"
 import GestorIPIReport from "./pages/gestor/avaliacao/GestorIPIReport"
 import EvaluationCriteria from "./pages/gestor/avaliacao/EvaluationCriteria"
@@ -53,7 +52,7 @@ import ScholarshipEntities from "./pages/gestor/settings/ScholarshipEntities"
 import AcademicUnits from "./pages/gestor/settings/AcademicUnits"
 import RolesDictionary from "./pages/gestor/settings/RolesDictionary"
 import UserTypes from "./pages/gestor/settings/UserTypes"
-import Consultants from "./pages/gestor/settings/Consultants"
+import Consultants from "./pages/gestor/avaliacao/Consultants"
 
 import GestorProjectCommunication from "./pages/gestor/projetos/GestorProjectCommunication"
 import GestorResearchModuleParameters from "./pages/gestor/settings/Parameters"
@@ -240,7 +239,7 @@ export default function App() {
 
         {/* SISTEMA */}
         <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
-        <Route path="/gestor/avaliacao/avaliadores" element={<Protected><Shell><Evaluators /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/avaliadores" element={<Protected><GestorProtected><Shell><Consultants /></Shell></GestorProtected></Protected>} />
         <Route path="/gestor/avaliacao/distribuicao" element={<Protected><Shell><GestorEvaluationDistribution /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/ipi" element={<Protected><Shell><GestorIPIReport /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/criterios" element={<Protected><GestorProtected><Shell><EvaluationCriteria /></Shell></GestorProtected></Protected>} />
@@ -264,7 +263,8 @@ export default function App() {
         <Route path="/gestor/settings/academic-units" element={<Protected><Shell><AcademicUnits /></Shell></Protected>} />
         <Route path="/gestor/settings/roles" element={<Protected><Shell><RolesDictionary /></Shell></Protected>} />
         <Route path="/gestor/settings/user-types" element={<Protected><Shell><UserTypes /></Shell></Protected>} />
-        <Route path="/gestor/settings/consultants" element={<Protected><GestorProtected><Shell><Consultants /></Shell></GestorProtected></Protected>} />
+        {/* Cadastro de avaliadores mudou de Configurações para Avaliação */}
+        <Route path="/gestor/settings/consultants" element={<Navigate to="/gestor/avaliacao/avaliadores" replace />} />
         <Route path="/gestor/settings/parameters" element={<Protected><Shell><GestorResearchModuleParameters /></Shell></Protected>} />
 
         <Route path="/gestor/projetos/comunicacao" element={<Protected><Shell><GestorProjectCommunication /></Shell></Protected>} />

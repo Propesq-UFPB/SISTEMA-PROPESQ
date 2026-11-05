@@ -119,7 +119,7 @@ export default function Consultants() {
           <div className="space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 text-primary px-3 py-1 text-xs font-semibold border border-blue-100">
               <UserCheck size={14} />
-              Configurações
+              Avaliação
             </span>
 
             <div>
