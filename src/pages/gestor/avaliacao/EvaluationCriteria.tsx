@@ -45,7 +45,7 @@ export default function EvaluationCriteria() {
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="space-y-6">
           <Link
-            to="/gestor/avaliacao/avaliadores"
+            to="/gestor/avaliacao/distribuicao"
             className="inline-flex items-center gap-2 rounded-xl border border-neutral/20 bg-white px-4 py-2.5 text-sm font-medium text-neutral transition hover:border-primary/30 hover:text-primary"
           >
             <ArrowLeft size={16} />

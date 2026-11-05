@@ -29,7 +29,6 @@ import Login from "./pages/Login"
 
 // gestor pages
 import Dashboard from "./pages/gestor/Dashboard"
-import Evaluators from "./pages/gestor/avaliacao/Evaluators"
 import GestorEvaluationDistribution from "./pages/gestor/avaliacao/GestorEvaluationDistribution"
 import GestorIPIReport from "./pages/gestor/avaliacao/GestorIPIReport"
 import EvaluationCriteria from "./pages/gestor/avaliacao/EvaluationCriteria"
@@ -240,7 +239,7 @@ export default function App() {
 
         {/* SISTEMA */}
         <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
-        <Route path="/gestor/avaliacao/avaliadores" element={<Protected><Shell><Evaluators /></Shell></Protected>} />
+        <Route path="/gestor/avaliacao/avaliadores" element={<Navigate to="/gestor/avaliacao/distribuicao" replace />} />
         <Route path="/gestor/avaliacao/distribuicao" element={<Protected><Shell><GestorEvaluationDistribution /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/ipi" element={<Protected><Shell><GestorIPIReport /></Shell></Protected>} />
         <Route path="/gestor/avaliacao/criterios" element={<Protected><GestorProtected><Shell><EvaluationCriteria /></Shell></GestorProtected></Protected>} />

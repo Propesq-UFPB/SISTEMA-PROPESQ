@@ -1,7 +1,7 @@
 import { BookOpen, ChevronDown } from "lucide-react"
 import type { Call } from "../types/evaluators"
-import { FieldLabel } from "./formPrimitives"
 
+// Seletor de edital exibido no cabeçalho da página (mesmo padrão do EditalSelector)
 export function CallSelectorSection({
   callsSorted,
   selectedCallId,
@@ -16,47 +16,40 @@ export function CallSelectorSection({
   selectedCallAssignmentsCount: number
 }>) {
   return (
-    <section className="rounded-2xl border border-neutral-light bg-white p-5 shadow-sm">
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-        <FieldLabel label="Edital em acompanhamento">
-          <div className="relative">
-            <ChevronDown
-              size={16}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral"
-            />
+    <label className="block text-sm">
+      <span className="mb-1 block text-xs font-medium text-neutral">
+        Edital em acompanhamento
+      </span>
 
-            <select
-              value={selectedCallId}
-              onChange={(event) => onSelectedCallIdChange(event.target.value)}
-              className="h-11 w-full appearance-none rounded-xl border border-neutral-light bg-white px-3 pr-9 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-            >
-              {callsSorted.map((call) => (
-                <option key={call.id} value={call.id}>
-                  {call.title} • {call.baseYear} • {call.statusLabel}
-                </option>
-              ))}
-            </select>
-          </div>
-        </FieldLabel>
+      <div className="relative">
+        <ChevronDown
+          size={16}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral"
+        />
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
-          <div className="flex items-start gap-3">
-            <BookOpen size={18} className="mt-0.5 text-blue-700" />
-
-            <div>
-              <p className="text-sm font-semibold text-blue-800">
-                {selectedCall?.title ?? "Edital não selecionado"}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-blue-800/80">
-                {selectedCall?.baseYear ?? "—"} •{" "}
-                {selectedCall?.statusLabel ?? "—"} •{" "}
-                {selectedCallAssignmentsCount} avaliação(ões)
-                vinculada(s)
-              </p>
-            </div>
-          </div>
-        </div>
+        <select
+          value={selectedCallId}
+          onChange={(event) => onSelectedCallIdChange(event.target.value)}
+          className="h-11 w-full appearance-none rounded-xl border border-neutral/20 bg-white px-3 pr-9 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+        >
+          {callsSorted.map((call) => (
+            <option key={call.id} value={call.id}>
+              {call.title} • {call.baseYear} • {call.statusLabel}
+            </option>
+          ))}
+        </select>
       </div>
-    </section>
+
+      <span className="mt-1.5 flex items-start gap-1.5 text-xs text-neutral">
+        <BookOpen size={14} className="mt-0.5 shrink-0 text-primary" />
+        <span>
+          <span className="font-semibold text-neutral-dark">
+            {selectedCall?.title ?? "Edital não selecionado"}
+          </span>{" "}
+          · {selectedCall?.baseYear ?? "—"} · {selectedCall?.statusLabel ?? "—"} ·{" "}
+          {selectedCallAssignmentsCount} avaliação(ões) vinculada(s)
+        </span>
+      </span>
+    </label>
   )
 }
