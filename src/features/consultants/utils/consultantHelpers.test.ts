@@ -128,10 +128,10 @@ describe("toMyEvaluatorAreas", () => {
     especialidade: "",
   }
 
-  it("mapeia o perfil de quem ainda não é consultor", () => {
+  it("mapeia o perfil de quem ainda não é avaliador", () => {
     expect(
       toMyEvaluatorAreas({
-        consultor_id: null,
+        avaliador_cadastro_id: null,
         area_principal: null,
         areas_adicionais: [],
         areas_atualizadas_em: null,
@@ -150,7 +150,7 @@ describe("toMyEvaluatorAreas", () => {
 
   it("mapeia as áreas e a data de atualização", () => {
     const result = toMyEvaluatorAreas({
-      consultor_id: 1,
+      avaliador_cadastro_id: 1,
       area_principal: row,
       areas_adicionais: [{ ...row, id: 11, sub_area: "Teoria da Computação" }],
       areas_atualizadas_em: "2026-11-04T12:00:00.000Z",

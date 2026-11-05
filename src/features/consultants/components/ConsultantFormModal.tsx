@@ -45,7 +45,7 @@ function OptionToggle({
   )
 }
 
-// Busca no servidor os usuários que ainda podem ser cadastrados como consultor.
+// Busca no servidor os usuários que ainda podem ser cadastrados como avaliador.
 function useEligibleUsers(enabled: boolean) {
   const [search, setSearch] = useState("")
   const [users, setUsers] = useState<EligibleUser[]>([])
@@ -158,10 +158,10 @@ export function ConsultantFormModal({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-primary">
-              {editing ? "Editar consultor" : "Novo consultor"}
+              {editing ? "Editar avaliador" : "Novo avaliador"}
             </h3>
             <p className="mt-1 text-xs text-neutral">
-              Consultores serão os avaliadores dos projetos distribuídos.
+              Avaliadores recebem convites para avaliar os projetos distribuídos nos editais.
             </p>
           </div>
 
@@ -211,7 +211,7 @@ export function ConsultantFormModal({
               <OptionToggle
                 checked={values.isVoluntario}
                 label="Voluntário"
-                description="Atua como consultor voluntário."
+                description="Atua como avaliador voluntário."
                 onChange={(isVoluntario) => update({ isVoluntario })}
               />
               <OptionToggle

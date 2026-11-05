@@ -15,7 +15,7 @@ export type ConsultantUser = {
   email: string
 }
 
-// Usuário que pode ser cadastrado como consultor; `area` vem do cadastro docente, se houver.
+// Usuário que pode ser cadastrado como avaliador; `area` vem do cadastro docente, se houver.
 export type EligibleUser = ConsultantUser & {
   funcao: string
   area: KnowledgeArea | null
@@ -32,7 +32,7 @@ export type Consultant = {
   ativo: boolean
 }
 
-// Áreas de avaliação do usuário logado; `consultantId` é nulo enquanto ele não for consultor.
+// Áreas de avaliação do usuário logado; `consultantId` é nulo enquanto ele não for avaliador.
 export type MyEvaluatorAreas = {
   consultantId: number | null
   areaPrincipal: KnowledgeArea | null

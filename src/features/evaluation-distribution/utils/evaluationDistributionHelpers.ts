@@ -149,7 +149,7 @@ export function projectAreaLabel(project: DistributableProject) {
   return [project.area.grandeArea, project.area.area].filter(Boolean).join(" › ")
 }
 
-// Pendente: sem convite ativo; distribuído: atingiu o número de consultores; incompleto: entre os dois
+// Pendente: sem convite ativo; distribuído: atingiu o número de avaliadores; incompleto: entre os dois
 export function areaSummary(
   projects: DistributableProject[],
   assignments: Assignment[],
@@ -193,7 +193,7 @@ export function matchesAssignmentFilter(assignment: Assignment, filter: Assignme
   return assignment.status === filter
 }
 
-// Agrupa os convites do edital por consultor (ou pelo nome do avaliador, em atribuições antigas)
+// Agrupa os convites do edital pelo cadastro do avaliador (ou pelo nome, se o usuário não tiver cadastro)
 export function groupByConsultant(assignments: Assignment[]) {
   const groups = new Map<
     string,

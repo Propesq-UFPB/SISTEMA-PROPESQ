@@ -61,7 +61,7 @@ export function DeclineInvitationModal({
           <p className="mt-1 text-xs text-red-600">Informe o motivo da recusa.</p>
         )}
         <p className="mt-2 text-xs text-neutral">
-          O gestor verá o motivo e o projeto será redistribuído para outro consultor.
+          O gestor verá o motivo e o projeto será redistribuído para outro avaliador.
         </p>
 
         {error && (

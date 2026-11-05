@@ -69,7 +69,7 @@ export function DraftAssignmentsSection({
         <SectionTitle
           icon={<ListChecks size={18} />}
           title="Rascunho por projeto"
-          subtitle="Clique em um projeto para trocar, incluir ou remover consultores."
+          subtitle="Clique em um projeto para trocar, incluir ou remover avaliadores."
         />
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 whitespace-nowrap text-xs text-neutral">
@@ -110,7 +110,7 @@ export function DraftAssignmentsSection({
           <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
             <tr>
               <th className="px-4 py-2 text-left font-semibold">Projeto</th>
-              <th className="px-4 py-2 text-left font-semibold">Consultores</th>
+              <th className="px-4 py-2 text-left font-semibold">Avaliadores</th>
               <th className="px-4 py-2 text-right font-semibold w-[90px]">Total</th>
             </tr>
           </thead>
@@ -145,7 +145,7 @@ export function DraftAssignmentsSection({
                             key={item.consultantId}
                             className={`rounded-full border px-2 py-0.5 text-xs ${chipClassName(item)}`}
                           >
-                            {consultantName.get(item.consultantId) ?? `Consultor ${item.consultantId}`}
+                            {consultantName.get(item.consultantId) ?? `Avaliador ${item.consultantId}`}
                             <span className="opacity-70"> · {chipSuffix(item)}</span>
                           </span>
                         ))}

@@ -4,7 +4,7 @@ import { editalService } from "../api/editalService";
 import type { EditalLookup } from "../types/edital";
 
 // Lista de editais + edital selecionado, guardado em ?edital= para sobreviver
-// à navegação entre as telas que dependem dele (distribuição, consultores)
+// à navegação entre as telas que dependem dele (distribuição, avaliadores)
 export function useEditalSelection() {
   const [editais, setEditais] = useState<EditalLookup[]>([]);
   const [loading, setLoading] = useState(true);

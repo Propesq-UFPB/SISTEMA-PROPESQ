@@ -36,7 +36,7 @@ const assignment = (
   id,
   projectId,
   consultantId,
-  evaluatorName: `Consultor ${consultantId}`,
+  evaluatorName: `Avaliador ${consultantId}`,
   status: "PENDENTE",
   reason: null,
   hasGrades: false,
@@ -60,7 +60,7 @@ const draftItem = (
 })
 
 describe("draftFromAssignments", () => {
-  it("usa só convites ativos com consultor e marca como existentes", () => {
+  it("usa só convites ativos com avaliador e marca como existentes", () => {
     const draft = draftFromAssignments([
       assignment(1, 10, 1, { status: "ACEITO", hasGrades: true }),
       assignment(2, 10, 2, { status: "RECUSADO" }),
@@ -76,7 +76,7 @@ describe("draftFromAssignments", () => {
 })
 
 describe("computeIssues", () => {
-  it("lista projetos com menos consultores que o necessário", () => {
+  it("lista projetos com menos avaliadores que o necessário", () => {
     const issues = computeIssues(
       [project(10), project(20), project(30)],
       [draftItem(10, 1), draftItem(10, 2), draftItem(20, 1)],
@@ -180,7 +180,7 @@ describe("resumos", () => {
 })
 
 describe("visões das atribuições", () => {
-  it("agrupa por consultor e usa o nome em atribuições antigas sem consultor", () => {
+  it("agrupa pelo cadastro do avaliador e usa o nome quando o usuário não tem cadastro", () => {
     const groups = groupByConsultant([
       assignment(1, 10, 2),
       assignment(2, 20, 2),
@@ -189,8 +189,8 @@ describe("visões das atribuições", () => {
     ])
     expect(groups.map((g) => [g.name, g.consultantId, g.assignments.length])).toEqual([
       ["Antigo", null, 1],
-      ["Consultor 1", 1, 1],
-      ["Consultor 2", 2, 2],
+      ["Avaliador 1", 1, 1],
+      ["Avaliador 2", 2, 2],
     ])
   })
 

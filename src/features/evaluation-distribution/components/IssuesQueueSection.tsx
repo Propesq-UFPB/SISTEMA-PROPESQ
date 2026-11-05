@@ -24,7 +24,7 @@ export function IssuesQueueSection({
       <SectionTitle
         icon={<AlertTriangle size={18} />}
         title="Fila de exceções"
-        subtitle="Projetos do rascunho com menos consultores que o necessário."
+        subtitle="Projetos do rascunho com menos avaliadores que o necessário."
       />
 
       {issueProjects.length > 0 ? (
@@ -55,7 +55,7 @@ export function IssuesQueueSection({
         <EmptyState
           icon={<CheckCircle2 size={28} />}
           title="Nenhuma exceção pendente"
-          desc="Todos os projetos do rascunho têm consultores suficientes."
+          desc="Todos os projetos do rascunho têm avaliadores suficientes."
           success
         />
       )}
