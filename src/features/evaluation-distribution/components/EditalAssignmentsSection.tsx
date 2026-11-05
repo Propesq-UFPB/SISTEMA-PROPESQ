@@ -12,7 +12,7 @@ import {
 import { AssignmentStatusBadge } from "./AssignmentStatusBadge"
 import { SectionTitle } from "./formPrimitives"
 
-type View = "PROJETO" | "CONSULTOR"
+type View = "PROJETO" | "AVALIADOR"
 
 const FILTERS: { value: AssignmentFilter; label: string }[] = [
   { value: "ALL", label: "Todos os status" },
@@ -91,7 +91,7 @@ export function EditalAssignmentsSection({
         <SectionTitle
           icon={<FolderKanban size={18} />}
           title="Atribuições do edital"
-          subtitle="Convites gravados, por projeto ou por consultor."
+          subtitle="Convites gravados, por projeto ou por avaliador."
         />
 
         <div className="flex flex-wrap items-center gap-2">
@@ -100,9 +100,9 @@ export function EditalAssignmentsSection({
               <FolderKanban size={15} />
               Por projeto
             </button>
-            <button type="button" onClick={() => setView("CONSULTOR")} className={tabClassName(view === "CONSULTOR")}>
+            <button type="button" onClick={() => setView("AVALIADOR")} className={tabClassName(view === "AVALIADOR")}>
               <Users size={15} />
-              Por consultor
+              Por avaliador
             </button>
           </div>
 
@@ -123,7 +123,7 @@ export function EditalAssignmentsSection({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={view === "PROJETO" ? "Buscar projeto, área ou consultor..." : "Buscar consultor..."}
+              placeholder={view === "PROJETO" ? "Buscar projeto, área ou avaliador..." : "Buscar avaliador..."}
               className="h-10 w-full rounded-xl border border-neutral/20 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/10"
             />
           </div>
@@ -136,7 +136,7 @@ export function EditalAssignmentsSection({
             <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
               <tr>
                 <th className="px-4 py-2 text-left font-semibold">Projeto</th>
-                <th className="px-4 py-2 text-left font-semibold">Consultores</th>
+                <th className="px-4 py-2 text-left font-semibold">Avaliadores</th>
                 <th className="w-[110px] px-4 py-2 text-right font-semibold">Ativos</th>
               </tr>
             </thead>
@@ -189,7 +189,7 @@ export function EditalAssignmentsSection({
           <table className="w-full min-w-[640px] text-sm">
             <thead className="sticky top-0 bg-neutral-light/90 text-neutral">
               <tr>
-                <th className="px-4 py-2 text-left font-semibold">Consultor</th>
+                <th className="px-4 py-2 text-left font-semibold">Avaliador</th>
                 <th className="px-4 py-2 text-left font-semibold">Projetos</th>
                 <th className="w-[150px] px-4 py-2 text-right font-semibold">Ações</th>
               </tr>
@@ -198,7 +198,7 @@ export function EditalAssignmentsSection({
               {consultantRows.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-4 text-neutral">
-                    Nenhum consultor encontrado.
+                    Nenhum avaliador encontrado.
                   </td>
                 </tr>
               ) : (

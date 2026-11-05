@@ -29,7 +29,7 @@ type PanoramaResponse = {
   atribuicoes: {
     id: number
     projeto_id: number
-    consultor_id: number | null
+    avaliador_cadastro_id: number | null
     avaliador_id: number
     avaliador_nome: string
     status: AssignmentStatus
@@ -44,7 +44,7 @@ type PreviewResponse = {
   status: string
   atribuicoes: {
     projeto_id: number
-    consultor_id: number | null
+    avaliador_cadastro_id: number | null
     avaliador_id: number
     score: number
     existente: boolean
@@ -55,7 +55,7 @@ type PreviewResponse = {
 }
 
 type CandidateResponse = {
-  consultor_id: number
+  avaliador_cadastro_id: number
   nome: string
   score: number
   carga: number
@@ -64,7 +64,7 @@ type CandidateResponse = {
 
 type ProjetoAtribuicaoResponse = {
   id: number
-  consultor_id: number | null
+  avaliador_cadastro_id: number | null
   avaliador_nome: string
   avaliador_email: string
   status: AssignmentStatus
@@ -99,7 +99,7 @@ export const distributionService = {
     const assignments: Assignment[] = data.atribuicoes.map((a) => ({
       id: a.id,
       projectId: a.projeto_id,
-      consultantId: a.consultor_id,
+      consultantId: a.avaliador_cadastro_id,
       evaluatorName: a.avaliador_nome,
       status: a.status,
       reason: a.motivo_recusa,
@@ -121,13 +121,13 @@ export const distributionService = {
       }),
     })
 
-    // Atribuições antigas sem consultor não podem ser reenviadas no confirm
+    // Atribuições de usuários sem cadastro de avaliador não podem ser reenviadas no confirm
     return data.atribuicoes
-      .filter((a) => a.consultor_id !== null)
+      .filter((a) => a.avaliador_cadastro_id !== null)
       .map(
         (a): DraftAssignment => ({
           projectId: a.projeto_id,
-          consultantId: a.consultor_id!,
+          consultantId: a.avaliador_cadastro_id!,
           score: a.score,
           origin: a.existente ? "EXISTENTE" : "AUTO",
           status: a.status,
@@ -142,7 +142,7 @@ export const distributionService = {
       body: JSON.stringify({
         atribuicoes: assignments.map((a) => ({
           projeto_id: a.projectId,
-          consultor_id: a.consultantId,
+          avaliador_cadastro_id: a.consultantId,
         })),
       }),
     })
@@ -156,7 +156,7 @@ export const distributionService = {
       (a): ProjectAssignment => ({
         id: a.id,
         projectId,
-        consultantId: a.consultor_id,
+        consultantId: a.avaliador_cadastro_id,
         evaluatorName: a.avaliador_nome,
         evaluatorEmail: a.avaliador_email,
         status: a.status,
@@ -171,7 +171,7 @@ export const distributionService = {
   // Mesmo formato dos convites vistos pelo próprio avaliador
   async consultantAssignments(consultantId: number, editalId?: number) {
     const rows = await apiRequest<AtribuicaoAvaliadorResponse[]>(
-      `${ENDPOINT}/consultores/${consultantId}/atribuicoes${buildQuery({ edital_id: editalId })}`,
+      `${ENDPOINT}/avaliadores/${consultantId}/atribuicoes${buildQuery({ edital_id: editalId })}`,
     )
     return rows.map(toInvitation)
   },
@@ -181,7 +181,7 @@ export const distributionService = {
       `${ENDPOINT}/${editalId}/candidatos/${projectId}`,
     )
     return rows.map(
-      (c): Candidate => ({ consultantId: c.consultor_id, name: c.nome, score: c.score }),
+      (c): Candidate => ({ consultantId: c.avaliador_cadastro_id, name: c.nome, score: c.score }),
     )
   },
 }

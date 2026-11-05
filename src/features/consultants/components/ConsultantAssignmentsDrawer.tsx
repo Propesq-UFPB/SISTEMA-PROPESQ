@@ -11,7 +11,7 @@ import {
 } from "@/features/coordinator-evaluation/utils/invitationHelpers"
 import { apiErrorMessage } from "../utils/consultantHelpers"
 
-// Painel lateral com os convites de um consultor em todos os editais
+// Painel lateral com os convites de um avaliador em todos os editais
 export function ConsultantAssignmentsDrawer({
   consultant,
   initialEditalId = null,
@@ -57,7 +57,7 @@ export function ConsultantAssignmentsDrawer({
         <div className="flex items-start justify-between gap-3 border-b border-neutral-light p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral">
-              Atribuições do consultor
+              Atribuições do avaliador
             </p>
             <h3 className="mt-1 text-lg font-bold text-primary">{consultant.name}</h3>
             {consultant.email && <p className="text-xs text-neutral">{consultant.email}</p>}

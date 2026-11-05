@@ -106,7 +106,7 @@ export default function CoordinatorEvaluations() {
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral">
-              Responda aos convites de avaliação recebidos como consultor e avalie os projetos
+              Responda aos convites de avaliação recebidos como avaliador e avalie os projetos
               aceitos.
             </p>
           </div>
@@ -142,7 +142,7 @@ export default function CoordinatorEvaluations() {
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-blue-800">
                   Aceite para avaliar o projeto ou recuse informando o motivo, para que o gestor
-                  possa redistribuí-lo a outro consultor.
+                  possa redistribuí-lo a outro avaliador.
                 </p>
               </div>
             </div>
@@ -287,7 +287,7 @@ export default function CoordinatorEvaluations() {
           <div className="border-b border-neutral/20 p-6">
             <h2 className="text-base font-semibold text-primary">Convites de avaliação</h2>
             <p className="mt-1 text-sm text-neutral">
-              Projetos para os quais você foi convidado como consultor.
+              Projetos para os quais você foi convidado como avaliador.
             </p>
           </div>
 

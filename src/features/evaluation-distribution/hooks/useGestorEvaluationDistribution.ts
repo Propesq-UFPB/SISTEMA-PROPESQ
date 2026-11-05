@@ -203,7 +203,7 @@ export function useGestorEvaluationDistribution() {
     }
   }
 
-  // Recusa: abre o ajuste da distribuição atual já no projeto que perdeu o consultor
+  // Recusa: abre o ajuste da distribuição atual já no projeto que perdeu o avaliador
   function handleRedistributeDeclined(assignmentId: number) {
     const declined = assignments.find((a) => a.id === assignmentId)
     if (!declined) return

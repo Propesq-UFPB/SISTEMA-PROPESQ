@@ -86,21 +86,21 @@ export function BatchDistributionSection({
 
         <div className="flex shrink-0 flex-wrap items-end gap-3">
           <ParamInput
-            label="Consultores por projeto"
+            label="Avaliadores por projeto"
             value={params.perProject}
             min={1}
             disabled={busy !== null}
             onChange={(perProject) => onParamsChange({ ...params, perProject })}
           />
           <ParamInput
-            label="Mín. projetos por consultor"
+            label="Mín. projetos por avaliador"
             value={params.minPerConsultant}
             min={0}
             disabled={busy !== null}
             onChange={(minPerConsultant) => onParamsChange({ ...params, minPerConsultant })}
           />
           <ParamInput
-            label="Máx. projetos por consultor"
+            label="Máx. projetos por avaliador"
             value={params.maxPerConsultant}
             min={1}
             disabled={busy !== null}

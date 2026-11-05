@@ -42,7 +42,7 @@ export function ManualAdjustmentSection({
         <SectionTitle
           icon={<SlidersHorizontal size={18} />}
           title="Ajuste manual"
-          subtitle="Inclua ou remova consultores deste projeto no rascunho."
+          subtitle="Inclua ou remova avaliadores deste projeto no rascunho."
         />
         <button
           type="button"
@@ -73,7 +73,7 @@ export function ManualAdjustmentSection({
         </p>
       ) : candidates.length === 0 ? (
         <p className="text-sm text-neutral">
-          Nenhum consultor do edital apto para este projeto (conflito de interesse ou recusa).
+          Nenhum avaliador do edital apto para este projeto (conflito de interesse ou recusa).
         </p>
       ) : (
         <div className="space-y-3">

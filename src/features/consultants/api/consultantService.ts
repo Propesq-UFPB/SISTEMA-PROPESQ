@@ -16,7 +16,7 @@ type AreaConhecimentoResponse = {
   especialidade: string
 }
 
-type ConsultorResponse = {
+type AvaliadorResponse = {
   id: number
   usuario: ConsultantUser
   area_principal: AreaConhecimentoResponse
@@ -29,7 +29,7 @@ type ConsultorResponse = {
   atualizado_em: string
 }
 
-type EditalConsultorResponse = ConsultorResponse & {
+type EditalAvaliadorResponse = AvaliadorResponse & {
   carga: number
   vinculado_em: string
 }
@@ -40,7 +40,7 @@ type UsuarioElegivelResponse = ConsultantUser & {
 }
 
 type MinhasAreasResponse = {
-  consultor_id: number | null
+  avaliador_cadastro_id: number | null
   area_principal: AreaConhecimentoResponse | null
   areas_adicionais: AreaConhecimentoResponse[]
   areas_atualizadas_em: string | null
@@ -48,11 +48,11 @@ type MinhasAreasResponse = {
   area_sugerida: AreaConhecimentoResponse | null
 }
 
-type ConsultorPage = {
+type AvaliadorPage = {
   total: number
   limit: number
   offset: number
-  results: ConsultorResponse[]
+  results: AvaliadorResponse[]
 }
 
 export type ConsultantPayload = {
@@ -65,7 +65,7 @@ export type ConsultantPayload = {
   ativo?: boolean
 }
 
-const ENDPOINT = "/consultores"
+const ENDPOINT = "/avaliadores"
 const PAGE_SIZE = 100
 
 export function toKnowledgeArea(area: AreaConhecimentoResponse): KnowledgeArea {
@@ -78,7 +78,7 @@ export function toKnowledgeArea(area: AreaConhecimentoResponse): KnowledgeArea {
   }
 }
 
-export function toConsultant(row: ConsultorResponse): Consultant {
+export function toConsultant(row: AvaliadorResponse): Consultant {
   return {
     id: row.id,
     user: row.usuario,
@@ -93,7 +93,7 @@ export function toConsultant(row: ConsultorResponse): Consultant {
 
 export function toMyEvaluatorAreas(row: MinhasAreasResponse): MyEvaluatorAreas {
   return {
-    consultantId: row.consultor_id,
+    consultantId: row.avaliador_cadastro_id,
     areaPrincipal: row.area_principal && toKnowledgeArea(row.area_principal),
     areasAdicionais: row.areas_adicionais.map(toKnowledgeArea),
     updatedAt: row.areas_atualizadas_em,
@@ -102,21 +102,21 @@ export function toMyEvaluatorAreas(row: MinhasAreasResponse): MyEvaluatorAreas {
   }
 }
 
-function toEditalConsultant(row: EditalConsultorResponse): EditalConsultant {
+function toEditalConsultant(row: EditalAvaliadorResponse): EditalConsultant {
   return { ...toConsultant(row), carga: row.carga, vinculadoEm: row.vinculado_em }
 }
 
-const editalEndpoint = (editalId: number) => `/editais/${editalId}/consultores`
+const editalEndpoint = (editalId: number) => `/editais/${editalId}/avaliadores`
 
 export const consultantService = {
-  // A lista de consultores é pequena; carrega todas as páginas para filtrar no cliente.
+  // A lista de avaliadores é pequena; carrega todas as páginas para filtrar no cliente.
   async listAll(params: { ativo?: boolean } = {}) {
     const consultants: Consultant[] = []
     let offset = 0
     let total = Infinity
 
     while (offset < total) {
-      const page = await apiRequest<ConsultorPage>(
+      const page = await apiRequest<AvaliadorPage>(
         `${ENDPOINT}${buildQuery({ ...params, limit: PAGE_SIZE, offset })}`,
       )
       consultants.push(...page.results.map(toConsultant))
@@ -139,7 +139,7 @@ export const consultantService = {
   },
   async create(payload: ConsultantPayload) {
     return toConsultant(
-      await apiRequest<ConsultorResponse>(ENDPOINT, {
+      await apiRequest<AvaliadorResponse>(ENDPOINT, {
         method: "POST",
         body: JSON.stringify(payload),
       }),
@@ -147,7 +147,7 @@ export const consultantService = {
   },
   async update(id: number, payload: ConsultantPayload) {
     return toConsultant(
-      await apiRequest<ConsultorResponse>(`${ENDPOINT}/${id}`, {
+      await apiRequest<AvaliadorResponse>(`${ENDPOINT}/${id}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       }),
@@ -168,24 +168,24 @@ export const consultantService = {
     return apiRequest<void>(`${ENDPOINT}/${id}`, { method: "DELETE" })
   },
   async listByEdital(editalId: number) {
-    const rows = await apiRequest<EditalConsultorResponse[]>(editalEndpoint(editalId))
+    const rows = await apiRequest<EditalAvaliadorResponse[]>(editalEndpoint(editalId))
     return rows.map(toEditalConsultant)
   },
-  async setEditalConsultants(editalId: number, consultorIds: number[]) {
-    const rows = await apiRequest<EditalConsultorResponse[]>(editalEndpoint(editalId), {
+  async setEditalConsultants(editalId: number, avaliadorIds: number[]) {
+    const rows = await apiRequest<EditalAvaliadorResponse[]>(editalEndpoint(editalId), {
       method: "PUT",
-      body: JSON.stringify({ consultor_ids: consultorIds }),
+      body: JSON.stringify({ avaliador_cadastro_ids: avaliadorIds }),
     })
     return rows.map(toEditalConsultant)
   },
-  addToEdital(editalId: number, consultorId: number) {
-    return apiRequest<EditalConsultorResponse>(editalEndpoint(editalId), {
+  addToEdital(editalId: number, avaliadorId: number) {
+    return apiRequest<EditalAvaliadorResponse>(editalEndpoint(editalId), {
       method: "POST",
-      body: JSON.stringify({ consultor_id: consultorId }),
+      body: JSON.stringify({ avaliador_cadastro_id: avaliadorId }),
     })
   },
-  removeFromEdital(editalId: number, consultorId: number) {
-    return apiRequest<void>(`${editalEndpoint(editalId)}/${consultorId}`, {
+  removeFromEdital(editalId: number, avaliadorId: number) {
+    return apiRequest<void>(`${editalEndpoint(editalId)}/${avaliadorId}`, {
       method: "DELETE",
     })
   },

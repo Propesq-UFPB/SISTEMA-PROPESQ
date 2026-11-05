@@ -14,7 +14,7 @@ export function DeclinedAssignmentsSection({
 }: Readonly<{
   recentDeclinedAssignments: Assignment[]
   projects: DistributableProject[]
-  // O projeto já tem consultores suficientes (a recusa foi substituída)
+  // O projeto já tem avaliadores suficientes (a recusa foi substituída)
   isCovered: (projectId: number) => boolean
   onRedistributeDeclined: (assignmentId: number) => void
 }>) {
@@ -23,7 +23,7 @@ export function DeclinedAssignmentsSection({
       <SectionTitle
         icon={<XCircle size={18} />}
         title="Recusas recentes"
-        subtitle="Vagas abertas por consultores que recusaram o convite."
+        subtitle="Vagas abertas por avaliadores que recusaram o convite."
       />
 
       <div className="space-y-3">
@@ -48,7 +48,7 @@ export function DeclinedAssignmentsSection({
                     {assignment.evaluatorName}
                   </h4>
                   <p className="mt-1 text-xs text-red-700">
-                    {assignment.reason ?? "Recusa registrada pelo consultor."}
+                    {assignment.reason ?? "Recusa registrada pelo avaliador."}
                   </p>
                   <p className="mt-1 text-xs text-neutral">
                     Enviado em {formatDate(assignment.sentAt)} · recusado em{" "}

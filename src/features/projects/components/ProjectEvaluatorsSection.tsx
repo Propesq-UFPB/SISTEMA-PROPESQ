@@ -6,7 +6,7 @@ import type { ProjectAssignment } from "@/features/evaluation-distribution/types
 import { formatDate } from "@/features/evaluation-distribution/utils/evaluationDistributionHelpers"
 import { apiErrorMessage } from "@/features/consultants/utils/consultantHelpers"
 
-// Consultores convidados para avaliar o projeto (visível apenas para o gestor)
+// Avaliadores convidados para avaliar o projeto (visível apenas para o gestor)
 export function ProjectEvaluatorsSection({ projectId }: Readonly<{ projectId: number }>) {
   const [assignments, setAssignments] = useState<ProjectAssignment[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +27,7 @@ export function ProjectEvaluatorsSection({ projectId }: Readonly<{ projectId: nu
         <h2 className="text-base font-semibold text-primary">Avaliadores</h2>
       </div>
       <p className="mt-1 text-sm text-neutral">
-        Convites de avaliação enviados aos consultores na distribuição do edital.
+        Convites de avaliação enviados aos avaliadores na distribuição do edital.
       </p>
 
       {error ? (
@@ -41,7 +41,7 @@ export function ProjectEvaluatorsSection({ projectId }: Readonly<{ projectId: nu
           <table className="min-w-full text-sm">
             <thead className="bg-neutral/5 text-neutral">
               <tr>
-                <th className="px-4 py-2 text-left font-semibold">Consultor</th>
+                <th className="px-4 py-2 text-left font-semibold">Avaliador</th>
                 <th className="px-4 py-2 text-left font-semibold">Situação</th>
                 <th className="px-4 py-2 text-left font-semibold">Convite</th>
               </tr>

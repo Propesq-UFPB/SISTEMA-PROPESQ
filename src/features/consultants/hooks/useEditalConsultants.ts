@@ -22,7 +22,7 @@ export function useEditalConsultants(editalId: number | null) {
       setLinked(linkedRows)
       setActive(activeRows)
     } catch (err) {
-      setError(apiErrorMessage(err, "Não foi possível carregar os consultores do edital."))
+      setError(apiErrorMessage(err, "Não foi possível carregar os avaliadores do edital."))
     } finally {
       setLoading(false)
     }
@@ -33,7 +33,7 @@ export function useEditalConsultants(editalId: number | null) {
     void load()
   }, [load])
 
-  // Consultores ativos que ainda não estão vinculados ao edital
+  // Avaliadores ativos que ainda não estão vinculados ao edital
   const available = useMemo(() => {
     const linkedIds = new Set(linked.map((consultant) => consultant.id))
     return active.filter((consultant) => !linkedIds.has(consultant.id))
@@ -56,7 +56,7 @@ export function useEditalConsultants(editalId: number | null) {
   function add(consultantId: number) {
     return run(
       () => consultantService.addToEdital(editalId!, consultantId),
-      "Não foi possível vincular o consultor.",
+      "Não foi possível vincular o avaliador.",
     )
   }
 
@@ -67,14 +67,14 @@ export function useEditalConsultants(editalId: number | null) {
           ...linked.map((consultant) => consultant.id),
           ...available.map((consultant) => consultant.id),
         ]),
-      "Não foi possível vincular os consultores.",
+      "Não foi possível vincular os avaliadores.",
     )
   }
 
   function remove(consultantId: number) {
     return run(
       () => consultantService.removeFromEdital(editalId!, consultantId),
-      "Não foi possível desvincular o consultor.",
+      "Não foi possível desvincular o avaliador.",
     )
   }
 

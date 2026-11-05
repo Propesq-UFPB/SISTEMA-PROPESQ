@@ -56,7 +56,7 @@ export function EditalConsultantsModal({
                 id="edital-consultants-title"
                 className="text-base font-semibold text-primary"
               >
-                Consultores do edital
+                Avaliadores do edital
               </h2>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                 {linked.length}
@@ -64,7 +64,7 @@ export function EditalConsultantsModal({
             </div>
             <p className="mt-1 text-xs text-neutral">{editalLabel}</p>
             <p className="mt-1 text-xs text-neutral">
-              Somente os consultores vinculados participam da distribuição.{" "}
+              Somente os avaliadores vinculados participam da distribuição.{" "}
               <Link
                 to="/gestor/settings/consultants"
                 className="font-semibold text-primary hover:underline"
@@ -92,10 +92,10 @@ export function EditalConsultantsModal({
                 disabled={saving || loading}
                 placeholder={
                   available.length === 0
-                    ? "Todos os consultores ativos já estão vinculados"
-                    : "Pesquise um consultor ativo para vincular..."
+                    ? "Todos os avaliadores ativos já estão vinculados"
+                    : "Pesquise um avaliador ativo para vincular..."
                 }
-                emptyMessage="Nenhum consultor disponível."
+                emptyMessage="Nenhum avaliador disponível."
                 options={available.map((consultant) => ({
                   value: String(consultant.id),
                   label: consultant.user.nome,
@@ -133,7 +133,7 @@ export function EditalConsultantsModal({
               <thead className="bg-neutral-50 text-neutral">
                 <tr>
                   <th className="px-4 py-2 text-left font-semibold">
-                    Consultor
+                    Avaliador
                   </th>
                   <th className="px-4 py-2 text-left font-semibold">
                     Área principal
@@ -150,13 +150,13 @@ export function EditalConsultantsModal({
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-4 text-neutral">
-                      Carregando consultores...
+                      Carregando avaliadores...
                     </td>
                   </tr>
                 ) : linked.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-4 text-neutral">
-                      Nenhum consultor vinculado a este edital.
+                      Nenhum avaliador vinculado a este edital.
                     </td>
                   </tr>
                 ) : (
@@ -198,7 +198,7 @@ export function EditalConsultantsModal({
                           disabled={saving || consultant.carga > 0}
                           title={
                             consultant.carga > 0
-                              ? "Consultor com projetos atribuídos neste edital"
+                              ? "Avaliador com projetos atribuídos neste edital"
                               : undefined
                           }
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"

@@ -30,7 +30,7 @@ export function useConsultants() {
       setConsultants(list)
       return list
     } catch (err) {
-      setLoadError(apiErrorMessage(err, "Não foi possível carregar os consultores."))
+      setLoadError(apiErrorMessage(err, "Não foi possível carregar os avaliadores."))
       return null
     } finally {
       setLoading(false)
@@ -97,7 +97,7 @@ export function useConsultants() {
       }
       return true
     } catch (err) {
-      setActionError(apiErrorMessage(err, "Não foi possível salvar o consultor."))
+      setActionError(apiErrorMessage(err, "Não foi possível salvar o avaliador."))
       return false
     } finally {
       setSaving(false)
@@ -110,7 +110,7 @@ export function useConsultants() {
     try {
       replace(await consultantService.update(consultant.id, { ativo: !consultant.ativo }))
     } catch (err) {
-      setActionError(apiErrorMessage(err, "Não foi possível alterar o status do consultor."))
+      setActionError(apiErrorMessage(err, "Não foi possível alterar o status do avaliador."))
     }
   }
 
@@ -120,14 +120,14 @@ export function useConsultants() {
     try {
       await consultantService.remove(consultant.id)
       const list = await load()
-      // O backend apenas desativa consultores que já têm avaliações atribuídas
+      // O backend apenas desativa avaliadores que já têm avaliações atribuídas
       if (list?.some((item) => item.id === consultant.id)) {
         setNotice(
           `${consultant.user.nome} já possui avaliações atribuídas e foi desativado em vez de excluído.`,
         )
       }
     } catch (err) {
-      setActionError(apiErrorMessage(err, "Não foi possível remover o consultor."))
+      setActionError(apiErrorMessage(err, "Não foi possível remover o avaliador."))
     }
   }
 

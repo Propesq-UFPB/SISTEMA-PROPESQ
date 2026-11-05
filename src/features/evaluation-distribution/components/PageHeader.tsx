@@ -81,7 +81,7 @@ export function PageHeader({
             tone={stats.invitesDeclined > 0 ? "danger" : "default"}
           />
           <Stat
-            label="Consultores vinculados"
+            label="Avaliadores vinculados"
             value={stats.consultants}
             tone={stats.consultants === 0 ? "danger" : "default"}
             action={

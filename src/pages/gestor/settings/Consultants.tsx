@@ -70,7 +70,7 @@ export default function Consultants() {
 
   function handleRemove(consultant: Consultant) {
     const message =
-      `Remover ${consultant.user.nome} da lista de consultores?\n\n` +
+      `Remover ${consultant.user.nome} da lista de avaliadores?\n\n` +
       "Se ele já tiver avaliações atribuídas, será apenas desativado."
     if (!window.confirm(message)) return
     void removeConsultant(consultant)
@@ -79,7 +79,7 @@ export default function Consultants() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <Helmet>
-        <title>Consultores • PROPESQ</title>
+        <title>Avaliadores • PROPESQ</title>
       </Helmet>
 
       <div className="rounded-2xl border border-neutral-light bg-white p-6">
@@ -91,9 +91,9 @@ export default function Consultants() {
             </span>
 
             <div>
-              <h1 className="text-2xl font-bold text-primary">Consultores</h1>
+              <h1 className="text-2xl font-bold text-primary">Avaliadores</h1>
               <p className="text-sm text-neutral mt-1 max-w-2xl">
-                Cadastre os consultores que avaliarão os projetos distribuídos, com suas áreas de
+                Cadastre os avaliadores que avaliarão os projetos distribuídos, com suas áreas de
                 conhecimento principal e adicionais.
               </p>
             </div>
@@ -105,7 +105,7 @@ export default function Consultants() {
             className="inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-primary hover:opacity-90 transition-colors"
           >
             <Plus size={16} />
-            Novo consultor
+            Novo avaliador
           </button>
         </div>
       </div>
@@ -179,13 +179,13 @@ export default function Consultants() {
       <section className="rounded-xl border border-neutral-light bg-white overflow-x-auto">
         <div className="px-5 py-4 border-b border-neutral-light flex items-center gap-2">
           <UserCheck size={18} />
-          <h3 className="text-sm font-semibold text-primary">Lista de consultores</h3>
+          <h3 className="text-sm font-semibold text-primary">Lista de avaliadores</h3>
         </div>
 
         <table className="w-full min-w-[1040px] text-sm">
           <thead className="bg-neutral-50 text-neutral">
             <tr>
-              <th className="text-left font-semibold px-5 py-3">Consultor</th>
+              <th className="text-left font-semibold px-5 py-3">Avaliador</th>
               <th className="text-left font-semibold px-5 py-3">Perfil</th>
               <th className="text-left font-semibold px-5 py-3">Áreas de conhecimento</th>
               <th className="text-left font-semibold px-5 py-3 w-[180px]">Status</th>
@@ -197,13 +197,13 @@ export default function Consultants() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-5 py-6 text-neutral">
-                  Carregando consultores...
+                  Carregando avaliadores...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-6 text-neutral">
-                  Nenhum consultor encontrado.
+                  Nenhum avaliador encontrado.
                 </td>
               </tr>
             ) : (
